@@ -169,6 +169,19 @@ $(function () {
             "Members count of" + main_qlabel + " over time:"
           );
           break;
+        case "P22": //father
+        case "P25": //mother
+        case "P3373": //sibling
+        case "P26": //spouse
+          createIconWithLink(
+            statement_p_element,
+            "https://www.entitree.com/en/family_tree/" +
+              main_qid +
+              "?0u0=u&0u1=u",
+            "articleDisambiguation",
+            "Familytree on Entitree"
+          );
+          break;
       }
 
       // Loop through each value
