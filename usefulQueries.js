@@ -15,6 +15,30 @@ $(function () {
     return;
   }
 
+  function createIconWithLink(element, url, icon, toolhint) {
+    mw.loader
+      .using([
+        "oojs-ui-core",
+        "oojs-ui-widgets",
+        "oojs-ui.styles.icons-content",
+      ])
+      .then(function () {
+        // Create the icon that will trigger the popup.
+        let queryIcon = new OO.ui.ButtonWidget({
+          framed: false,
+          icon: icon,
+          label: "Edit",
+          invisibleLabel: true,
+          title: toolhint,
+          href: url,
+          target: "_blank",
+        });
+
+        // Add the icon and the popup to the specified element.
+        $(element).append(queryIcon.$element);
+      });
+  }
+
   // Function to create a popup and add an icon to the specified element.
   function createPopupAndAddIcon(
     element,
@@ -157,7 +181,6 @@ $(function () {
           let statement_target_qid;
           let statement_target_qLabel;
           let type;
-          let value;
           let pElement = $(this)
             .parents(".wikibase-snakview")
             .find(".wikibase-snakview-property")
@@ -203,22 +226,17 @@ $(function () {
                 }
               }
             }
-          } else {
-            statement_target_qid = "wd:" + statement_target_qid;
           }
 
           if (statement_target_qid) {
             // Queries after statement value
-            if (statement_pid == "P106") {
-              console.log(statement_target_qid);
-            }
             let main_value_element = $(this).siblings(
               ".wikibase-snakview-indicators"
             );
             switch (statement_pid) {
               case "P106": //occupation
                 switch (statement_target_qid) {
-                  case "wd:Q1028181": // painter
+                  case "Q1028181": // painter
                     let querystring =
                       "#%23defaultView%3AImageGrid%0ASELECT%20%3Fitem%20%3Fcreator%20%3FcreatorLabel%20%3Fimage%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20%3Fitem%20wdt%3AP170%20wd%3A" +
                       main_qid +
@@ -231,9 +249,28 @@ $(function () {
                       "Artworks by " + main_qlabel
                     );
                     break;
-                  case "wd:Q1650915": //researcher
+                  case "Q1650915": //researcher
+                    createIconWithLink(
+                      main_value_element,
+                      "https://scholia.toolforge.org/author/" + main_qid,
+                      "articleSearch",
+                      "Page on Scholia"
+                    );
                     break;
                 }
+                break;
+              case "P108": //employer
+                let querystring =
+                  "#%23defaultView%3AGraph%0ASELECT%20DISTINCT%20%3Femployee%20%3FemployeeLabel%20%3FimageEmp%20%3Forg%20%3ForgLabel%20%3FimageOrg%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20VALUES%20%3Forg%20%7B%0A%20%20%20%20wd%3A" +
+                  statement_target_qid +
+                  "%0A%20%20%7D%0A%20%20%3Femployee%20wdt%3AP108%20%3Forg.%0A%20%20OPTIONAL%20%7B%20%3Femployee%20wdt%3AP18%20%3FimageEmp.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Forg%20wdt%3AP154%20%3FimageOrg.%20%7D%0A%7D%0ALIMIT%20100";
+                createPopupAndAddIcon(
+                  main_value_element,
+                  querystring,
+                  "ellipsis",
+                  "Other employies of this organization as graph",
+                  "100 other employies of " + statement_target_qLabel
+                );
                 break;
             }
           }
