@@ -28,3 +28,7 @@ To test this script locally before deploying to MediaWiki, you can use the brows
 
 3. Navigate to any Wikidata entity page
 4. Click the bookmarklet to load and execute the script
+
+## Todo
+
+* Make it Wikibase neutral

@@ -109,12 +109,13 @@ $(function () {
       });
   }
 
+
   /**
    * Extract basic entity information from the page
    * @returns {Object} Entity details including QID and label
    */
   function extractEntityDetails() {
-    const $title = $(".wikibase-title");
+    const $title = $(".wikibase-title").first();
     const qid = $title.find(".wikibase-title-id").text().replace(/[()]/g, "");
     const label = $title.find(".wikibase-title-label").text();
 
