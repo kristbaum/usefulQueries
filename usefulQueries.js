@@ -117,9 +117,9 @@ $(function () {
     const $title = $(".wikibase-title");
     const qid = $title.find(".wikibase-title-id").text().replace(/[()]/g, "");
     const label = $title.find(".wikibase-title-label").text();
-    
+
     console.log("Extracted entity details:", { qid, label });
-    
+
     return {
       qid: qid,
       label: label,
@@ -138,7 +138,7 @@ $(function () {
     const statement_pLabel = statementElement
       .find(".wikibase-statementgroupview-property-label")
       .text();
-    
+
     const statement_p_element = statementElement
       .find(".wikibase-statementgroupview-property-label");
 
@@ -162,7 +162,7 @@ $(function () {
   function extractValueDetails(valueElement, entityData, pidTemp) {
     let statement_target_qid = valueElement.find("a").attr("title");
     let statement_target_qLabel = valueElement.find("a").text();
-    
+
     // Extract just the Q-number from the title (in case it contains ": Label" suffix)
     if (statement_target_qid) {
       let qidMatch = statement_target_qid.match(/^(Q\d+)/);
@@ -184,7 +184,7 @@ $(function () {
           try {
             const datavalue = entityData.claims[pidTemp][0].mainsnak.datavalue;
             const type = datavalue.type;
-            
+
             if (type === "time") {
               const time = datavalue.value.time;
               statement_target_qid = '"' + time + '"^^xsd:dateTime';
@@ -258,8 +258,8 @@ $(function () {
         createIconWithLink(
           $propertyElement,
           "https://www.entitree.com/en/family_tree/" +
-            main_qid +
-            "?0u0=u&0u1=u",
+          main_qid +
+          "?0u0=u&0u1=u",
           "articleDisambiguation",
           "Familytree on Entitree"
         );
@@ -345,7 +345,7 @@ $(function () {
       .find(".wikibase-snakview-value")
       .each(function () {
         const $valueElement = $(this);
-        
+
         // Extract property details for this specific value
         let pidTemp;
         let pLabelTemp;
@@ -353,7 +353,7 @@ $(function () {
           .parents(".wikibase-snakview")
           .find(".wikibase-snakview-property")
           .find("a");
-        
+
         if (pElement.length) {
           pidTemp = pElement.attr("title").split(":")[1];
           pLabelTemp = pElement.text();
@@ -364,7 +364,7 @@ $(function () {
 
         // Extract value details
         const valueDetails = extractValueDetails($valueElement, entityData, pidTemp);
-        
+
         // Add value-level features
         addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
       });
@@ -378,7 +378,7 @@ $(function () {
    */
   function createEntityGraphPopup(entityDetails) {
     const { qid, label, $titleElement } = entityDetails;
-    
+
     const querystring =
       "#%23defaultView%3AGraph%0ASELECT%20%3Fnode%20%3FnodeLabel%20%3FnodeImage%20%3FchildNode%20%3FchildNodeLabel%20%3FchildNodeImage%20%3Frgb%20WHERE%20%7B%0A%20%20%7B%0A%20%20%20%20BIND%28wd%3A" +
       qid +
@@ -387,7 +387,7 @@ $(function () {
       "%20%3Fp%20%3FchildNode.%0A%20%20%20%20OPTIONAL%20%7B%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%20%7D%0A%20%20%20%20%3Fnode%20%3Fx%20%3Fp.%0A%20%20%20%20%3Fnode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%0A%20%20%20%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%0A%20%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22" +
       mw.config.get("wgUserLanguage") +
       "%22.%20%7D%0A%7D";
-    
+
     createPopupAndAddIcon(
       $titleElement.find(".wikibase-title-id"),
       querystring,
@@ -404,7 +404,7 @@ $(function () {
    */
   function processWikibaseEntityPage() {
     console.log("Starting Wikibase entity page processing...");
-    
+
     // Step 1: Extract entity details
     const entityDetails = extractEntityDetails();
     if (!entityDetails.qid) {
@@ -418,16 +418,16 @@ $(function () {
     // Step 3: Process statements when entity data is loaded
     mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
       console.log("Entity data loaded, processing statements...");
-      
+
       $(".wikibase-statementgroupview").each(function () {
         const $statementElement = $(this);
-        
+
         // Step 4: Extract statement details
         const statementDetails = extractStatementDetails($statementElement, entityData);
-        
+
         // Step 5: Add property-level features
         addPropertyLevelFeatures(statementDetails, entityDetails);
-        
+
         // Step 6: Process statement values
         processStatementValues(statementDetails, entityDetails, entityData);
       });
