@@ -109,185 +109,335 @@ $(function () {
       });
   }
 
-  // Prepare the URL and create the popup for the title label.
-  var $title = $(".wikibase-title");
-  var main_qid = $title.find(".wikibase-title-id").text().replace(/[()]/g, "");
-  var main_qlabel = $title.find(".wikibase-title-label").text();
-  let querystring =
-    "#%23defaultView%3AGraph%0ASELECT%20%3Fnode%20%3FnodeLabel%20%3FnodeImage%20%3FchildNode%20%3FchildNodeLabel%20%3FchildNodeImage%20%3Frgb%20WHERE%20%7B%0A%20%20%7B%0A%20%20%20%20BIND%28wd%3A" +
-    main_qid +
-    "%20AS%20%3Fnode%29%0A%20%20%20%20%3Fnode%20%3Fp%20%3Fi.%0A%20%20%20%20OPTIONAL%20%7B%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%20%7D%0A%20%20%20%20%3FchildNode%20%3Fx%20%3Fp.%0A%20%20%20%20%3FchildNode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3Fi%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FP%22%29%29%0A%20%20%7D%0A%20%20UNION%0A%20%20%7B%0A%20%20%20%20BIND%28%22EFFBD8%22%20AS%20%3Frgb%29%0A%20%20%20%20wd%3A" +
-    main_qid +
-    "%20%3Fp%20%3FchildNode.%0A%20%20%20%20OPTIONAL%20%7B%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%20%7D%0A%20%20%20%20%3Fnode%20%3Fx%20%3Fp.%0A%20%20%20%20%3Fnode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%0A%20%20%20%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%0A%20%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22" +
-    mw.config.get("wgUserLanguage") +
-    "%22.%20%7D%0A%7D";
-  createPopupAndAddIcon(
-    $title.find(".wikibase-title-id"),
-    querystring,
-    "ellipsis",
-    "Click to see entity graph",
-    "Entity Graph of " + main_qlabel
-  );
+  /**
+   * Extract basic entity information from the page
+   * @returns {Object} Entity details including QID and label
+   */
+  function extractEntityDetails() {
+    const $title = $(".wikibase-title");
+    const qid = $title.find(".wikibase-title-id").text().replace(/[()]/g, "");
+    const label = $title.find(".wikibase-title-label").text();
+    
+    console.log("Extracted entity details:", { qid, label });
+    
+    return {
+      qid: qid,
+      label: label,
+      $titleElement: $title
+    };
+  }
 
-  // When a Wikibase entity page loads, add popups for relevant statements.
-  mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
-    $(".wikibase-statementgroupview").each(function () {
-      let statement_pid = this.id;
-      let querystring;
-      let statement_pLabel = $(this)
-        .find(".wikibase-statementgroupview-property-label")
-        .text();
+  /**
+   * Extract property and value information from a statement element
+   * @param {jQuery} statementElement - The statement element to process
+   * @param {Object} entityData - The full entity data from Wikibase
+   * @returns {Object} Property and value details
+   */
+  function extractStatementDetails(statementElement, entityData) {
+    const statement_pid = statementElement.attr('id');
+    const statement_pLabel = statementElement
+      .find(".wikibase-statementgroupview-property-label")
+      .text();
+    
+    const statement_p_element = statementElement
+      .find(".wikibase-statementgroupview-property-label");
 
-      // Icon appears directly after statement p value
-      let statement_p_element = $(
-        ".wikibase-statementgroupview#" + statement_pid
-      ).find(".wikibase-statementgroupview-property-label");
-      switch (statement_pid) {
-        case "P2196": //students count
-          querystring =
-            "#%23defaultView%3ALineChart%0ASELECT%20%3Fpit%20%3Fs_count%20%20WHERE%20%7B%0A%20%20wd%3A" +
-            main_qid +
-            "%20p%3AP2196%20%3Fstatement.%0A%20%20%3Fstatement%20ps%3AP2196%20%3Fs_count.%0A%20%20OPTIONAL%20%7B%20%3Fstatement%20pq%3AP585%20%3Fpit.%20%7D%0A%7D";
-          createPopupAndAddIcon(
-            statement_p_element,
-            querystring,
-            "ellipsis",
-            "Students count over time",
-            'Students count of "' + main_qlabel + '" over time:'
-          );
-          break;
-        case "P2124": //members count
-          querystring =
-            "#%23defaultView%3ALineChart%0ASELECT%20%3Fpit%20%3Fs_count%20%20WHERE%20%7B%0A%20%20wd%3A" +
-            main_qid +
-            "%20p%3AP2124%20%3Fstatement.%0A%20%20%3Fstatement%20ps%3AP2196%20%3Fs_count.%0A%20%20OPTIONAL%20%7B%20%3Fstatement%20pq%3AP585%20%3Fpit.%20%7D%0A%7D";
-          createPopupAndAddIcon(
-            statement_p_element,
-            querystring,
-            "ellipsis",
-            "Members count over time",
-            "Members count of" + main_qlabel + " over time:"
-          );
-          break;
-        case "P22": //father
-        case "P25": //mother
-        case "P3373": //sibling
-        case "P26": //spouse
-          createIconWithLink(
-            statement_p_element,
-            "https://www.entitree.com/en/family_tree/" +
-              main_qid +
-              "?0u0=u&0u1=u",
-            "articleDisambiguation",
-            "Familytree on Entitree"
-          );
-          break;
+    console.log("Processing statement:", { statement_pid, statement_pLabel });
+
+    return {
+      pid: statement_pid,
+      pLabel: statement_pLabel,
+      $propertyElement: statement_p_element,
+      $statementElement: statementElement
+    };
+  }
+
+  /**
+   * Extract value details from a statement value element
+   * @param {jQuery} valueElement - The value element to process
+   * @param {Object} entityData - The full entity data from Wikibase
+   * @param {string} pidTemp - The property ID
+   * @returns {Object} Value details including QID and label
+   */
+  function extractValueDetails(valueElement, entityData, pidTemp) {
+    let statement_target_qid = valueElement.find("a").attr("title");
+    let statement_target_qLabel = valueElement.find("a").text();
+    
+    // Extract just the Q-number from the title (in case it contains ": Label" suffix)
+    if (statement_target_qid) {
+      let qidMatch = statement_target_qid.match(/^(Q\d+)/);
+      if (qidMatch) {
+        statement_target_qid = qidMatch[1];
       }
+    }
 
-      // Loop through each value
-      $(".wikibase-statementgroupview#" + statement_pid)
-        .find(".wikibase-statementview-mainsnak-container")
-        .find(".wikibase-snakview-value")
-        .each(function () {
-          let pidTemp;
-          let pLabelTemp;
-          let statement_target_qid;
-          let statement_target_qLabel;
-          let type;
-          let pElement = $(this)
-            .parents(".wikibase-snakview")
-            .find(".wikibase-snakview-property")
-            .find("a");
-          if (pElement.length) {
-            pidTemp = pElement.attr("title").split(":")[1];
-            pLabelTemp = pElement.text();
-          } else {
-            pidTemp = statement_pid;
-            pLabelTemp = statement_pLabel;
-          }
-
-          statement_target_qid = $(this).find("a").attr("title");
-          statement_target_qLabel = $(this).find("a").text();
-          if (!statement_target_qid) {
-            // Check target datatype
-            if ($(this).find("a").length === 0) {
-              if ($(this).find(".wb-monolingualtext-value").length) {
-                statement_target_qLabel = $(this)
-                  .find(".wb-monolingualtext-value")
-                  .html();
-                statement_target_qid = null;
-              } else {
-                statement_target_qLabel = $(this).html();
-                try {
-                  datavalue = entityData.claims[pidTemp][0].mainsnak.datavalue;
-                  type = datavalue.type;
-                } catch (e) {
-                  // Escape if it has no type
-                  type = null;
-                }
-                if (type === "time") {
-                  // select time as value
-                  time = datavalue.value.time;
-                  statement_target_qid = '"' + time + '"^^xsd:dateTime';
-                } else if (type === "quantity") {
-                  // select amount as value
-                  amount = datavalue.value.amount;
-                  statement_target_qid = amount;
-                } else {
-                  statement_target_qLabel = $(this).text();
-                  statement_target_qid = '"' + statement_target_qLabel + '"';
-                }
-              }
+    // Handle non-entity values
+    if (!statement_target_qid) {
+      if (valueElement.find("a").length === 0) {
+        if (valueElement.find(".wb-monolingualtext-value").length) {
+          statement_target_qLabel = valueElement
+            .find(".wb-monolingualtext-value")
+            .html();
+          statement_target_qid = null;
+        } else {
+          statement_target_qLabel = valueElement.html();
+          try {
+            const datavalue = entityData.claims[pidTemp][0].mainsnak.datavalue;
+            const type = datavalue.type;
+            
+            if (type === "time") {
+              const time = datavalue.value.time;
+              statement_target_qid = '"' + time + '"^^xsd:dateTime';
+            } else if (type === "quantity") {
+              const amount = datavalue.value.amount;
+              statement_target_qid = amount;
+            } else {
+              statement_target_qLabel = valueElement.text();
+              statement_target_qid = '"' + statement_target_qLabel + '"';
             }
+          } catch (e) {
+            console.warn("Could not extract datavalue type:", e);
+            statement_target_qid = null;
           }
+        }
+      }
+    }
 
-          if (statement_target_qid) {
-            // Queries after statement value
-            let main_value_element = $(this).siblings(
-              ".wikibase-snakview-indicators"
+    const valueDetails = {
+      qid: statement_target_qid,
+      label: statement_target_qLabel,
+      $indicatorElement: valueElement.siblings(".wikibase-snakview-indicators")
+    };
+
+    console.log("Extracted value details:", valueDetails);
+    return valueDetails;
+  }
+
+  /**
+   * Add property-level icons and popups based on property type
+   * @param {Object} statementDetails - Details about the statement
+   * @param {Object} entityDetails - Details about the main entity
+   */
+  function addPropertyLevelFeatures(statementDetails, entityDetails) {
+    const { pid, $propertyElement } = statementDetails;
+    const { qid: main_qid, label: main_qlabel } = entityDetails;
+
+    switch (pid) {
+      case "P2196": //students count
+        const studentsQuerystring =
+          "#%23defaultView%3ALineChart%0ASELECT%20%3Fpit%20%3Fs_count%20%20WHERE%20%7B%0A%20%20wd%3A" +
+          main_qid +
+          "%20p%3AP2196%20%3Fstatement.%0A%20%20%3Fstatement%20ps%3AP2196%20%3Fs_count.%0A%20%20OPTIONAL%20%7B%20%3Fstatement%20pq%3AP585%20%3Fpit.%20%7D%0A%7D";
+        createPopupAndAddIcon(
+          $propertyElement,
+          studentsQuerystring,
+          "ellipsis",
+          "Students count over time",
+          'Students count of "' + main_qlabel + '" over time:'
+        );
+        break;
+
+      case "P2124": //members count
+        const membersQuerystring =
+          "#%23defaultView%3ALineChart%0ASELECT%20%3Fpit%20%3Fs_count%20%20WHERE%20%7B%0A%20%20wd%3A" +
+          main_qid +
+          "%20p%3AP2124%20%3Fstatement.%0A%20%20%3Fstatement%20ps%3AP2196%20%3Fs_count.%0A%20%20OPTIONAL%20%7B%20%3Fstatement%20pq%3AP585%20%3Fpit.%20%7D%0A%7D";
+        createPopupAndAddIcon(
+          $propertyElement,
+          membersQuerystring,
+          "ellipsis",
+          "Members count over time",
+          "Members count of " + main_qlabel + " over time:"
+        );
+        break;
+
+      case "P22": //father
+      case "P25": //mother
+      case "P3373": //sibling
+      case "P26": //spouse
+        createIconWithLink(
+          $propertyElement,
+          "https://www.entitree.com/en/family_tree/" +
+            main_qid +
+            "?0u0=u&0u1=u",
+          "articleDisambiguation",
+          "Familytree on Entitree"
+        );
+        break;
+    }
+
+    console.log("Added property-level features for:", pid);
+  }
+
+  /**
+   * Add value-level icons and popups based on property and value
+   * @param {Object} statementDetails - Details about the statement
+   * @param {Object} valueDetails - Details about the value
+   * @param {Object} entityDetails - Details about the main entity
+   */
+  function addValueLevelFeatures(statementDetails, valueDetails, entityDetails) {
+    const { pid } = statementDetails;
+    const { qid: statement_target_qid, label: statement_target_qLabel, $indicatorElement } = valueDetails;
+    const { qid: main_qid, label: main_qlabel } = entityDetails;
+
+    if (!statement_target_qid) {
+      console.log("No target QID, skipping value-level features");
+      return;
+    }
+
+    switch (pid) {
+      case "P106": //occupation
+        switch (statement_target_qid) {
+          case "Q1028181": // painter
+            const artworksQuerystring =
+              "#%23defaultView%3AImageGrid%0ASELECT%20%3Fitem%20%3Fcreator%20%3FcreatorLabel%20%3Fimage%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20%3Fitem%20wdt%3AP170%20wd%3A" +
+              main_qid +
+              ".%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP18%20%3Fimage.%20%7D%0A%7D%0ALIMIT%20100";
+            createPopupAndAddIcon(
+              $indicatorElement,
+              artworksQuerystring,
+              "ellipsis",
+              "Artworks by this painter in Wikimedia Commons",
+              "Artworks by " + main_qlabel
             );
-            switch (statement_pid) {
-              case "P106": //occupation
-                switch (statement_target_qid) {
-                  case "Q1028181": // painter
-                    let querystring =
-                      "#%23defaultView%3AImageGrid%0ASELECT%20%3Fitem%20%3Fcreator%20%3FcreatorLabel%20%3Fimage%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20%3Fitem%20wdt%3AP170%20wd%3A" +
-                      main_qid +
-                      ".%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP18%20%3Fimage.%20%7D%0A%7D%0ALIMIT%20100";
-                    createPopupAndAddIcon(
-                      main_value_element,
-                      querystring,
-                      "ellipsis",
-                      "Artworks by this painter in Wikimedia Commons",
-                      "Artworks by " + main_qlabel
-                    );
-                    break;
-                  case "Q1650915": //researcher
-                    createIconWithLink(
-                      main_value_element,
-                      "https://scholia.toolforge.org/author/" + main_qid,
-                      "articleSearch",
-                      "Page on Scholia"
-                    );
-                    break;
-                }
-                break;
-              case "P108": //employer
-                let querystring =
-                  "#%23defaultView%3AGraph%0ASELECT%20DISTINCT%20%3Femployee%20%3FemployeeLabel%20%3FimageEmp%20%3Forg%20%3ForgLabel%20%3FimageOrg%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20VALUES%20%3Forg%20%7B%0A%20%20%20%20wd%3A" +
-                  statement_target_qid +
-                  "%0A%20%20%7D%0A%20%20%3Femployee%20wdt%3AP108%20%3Forg.%0A%20%20OPTIONAL%20%7B%20%3Femployee%20wdt%3AP18%20%3FimageEmp.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Forg%20wdt%3AP154%20%3FimageOrg.%20%7D%0A%7D%0ALIMIT%20100";
-                createPopupAndAddIcon(
-                  main_value_element,
-                  querystring,
-                  "ellipsis",
-                  "Other employies of this organization as graph",
-                  "100 other employies of " + statement_target_qLabel
-                );
-                break;
-            }
-          }
-        });
+            break;
+
+          case "Q1650915": //researcher
+            createIconWithLink(
+              $indicatorElement,
+              "https://scholia.toolforge.org/author/" + main_qid,
+              "articleSearch",
+              "Page on Scholia"
+            );
+            break;
+        }
+        break;
+
+      case "P108": //employer
+        const employerQuerystring =
+          "#%23defaultView%3AGraph%0ASELECT%20DISTINCT%20%3Femployee%20%3FemployeeLabel%20%3FimageEmp%20%3Forg%20%3ForgLabel%20%3FimageOrg%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20VALUES%20%3Forg%20%7B%0A%20%20%20%20wd%3A" +
+          statement_target_qid +
+          "%0A%20%20%7D%0A%20%20%3Femployee%20wdt%3AP108%20%3Forg.%0A%20%20OPTIONAL%20%7B%20%3Femployee%20wdt%3AP18%20%3FimageEmp.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Forg%20wdt%3AP154%20%3FimageOrg.%20%7D%0A%7D%0ALIMIT%20100";
+        createPopupAndAddIcon(
+          $indicatorElement,
+          employerQuerystring,
+          "ellipsis",
+          "Other employees of this organization as graph",
+          "100 other employees of " + statement_target_qLabel
+        );
+        break;
+    }
+
+    console.log("Added value-level features for:", pid, statement_target_qid);
+  }
+
+  /**
+   * Process all statement values for a given statement
+   * @param {Object} statementDetails - Details about the statement
+   * @param {Object} entityDetails - Details about the main entity
+   * @param {Object} entityData - The full entity data from Wikibase
+   */
+  function processStatementValues(statementDetails, entityDetails, entityData) {
+    const { pid, $statementElement } = statementDetails;
+
+    $statementElement
+      .find(".wikibase-statementview-mainsnak-container")
+      .find(".wikibase-snakview-value")
+      .each(function () {
+        const $valueElement = $(this);
+        
+        // Extract property details for this specific value
+        let pidTemp;
+        let pLabelTemp;
+        const pElement = $valueElement
+          .parents(".wikibase-snakview")
+          .find(".wikibase-snakview-property")
+          .find("a");
+        
+        if (pElement.length) {
+          pidTemp = pElement.attr("title").split(":")[1];
+          pLabelTemp = pElement.text();
+        } else {
+          pidTemp = pid;
+          pLabelTemp = statementDetails.pLabel;
+        }
+
+        // Extract value details
+        const valueDetails = extractValueDetails($valueElement, entityData, pidTemp);
+        
+        // Add value-level features
+        addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
+      });
+
+    console.log("Processed all values for statement:", pid);
+  }
+
+  /**
+   * Create entity graph popup for the main entity
+   * @param {Object} entityDetails - Details about the main entity
+   */
+  function createEntityGraphPopup(entityDetails) {
+    const { qid, label, $titleElement } = entityDetails;
+    
+    const querystring =
+      "#%23defaultView%3AGraph%0ASELECT%20%3Fnode%20%3FnodeLabel%20%3FnodeImage%20%3FchildNode%20%3FchildNodeLabel%20%3FchildNodeImage%20%3Frgb%20WHERE%20%7B%0A%20%20%7B%0A%20%20%20%20BIND%28wd%3A" +
+      qid +
+      "%20AS%20%3Fnode%29%0A%20%20%20%20%3Fnode%20%3Fp%20%3Fi.%0A%20%20%20%20OPTIONAL%20%7B%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%20%7D%0A%20%20%20%20%3FchildNode%20%3Fx%20%3Fp.%0A%20%20%20%20%3FchildNode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3Fi%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FP%22%29%29%0A%20%20%7D%0A%20%20UNION%0A%20%20%7B%0A%20%20%20%20BIND%28%22EFFBD8%22%20AS%20%3Frgb%29%0A%20%20%20%20wd%3A" +
+      qid +
+      "%20%3Fp%20%3FchildNode.%0A%20%20%20%20OPTIONAL%20%7B%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%20%7D%0A%20%20%20%20%3Fnode%20%3Fx%20%3Fp.%0A%20%20%20%20%3Fnode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%0A%20%20%20%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%0A%20%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22" +
+      mw.config.get("wgUserLanguage") +
+      "%22.%20%7D%0A%7D";
+    
+    createPopupAndAddIcon(
+      $titleElement.find(".wikibase-title-id"),
+      querystring,
+      "ellipsis",
+      "Click to see entity graph",
+      "Entity Graph of " + label
+    );
+
+    console.log("Created entity graph popup for:", qid);
+  }
+
+  /**
+   * Main function to orchestrate the processing of the Wikibase entity page
+   */
+  function processWikibaseEntityPage() {
+    console.log("Starting Wikibase entity page processing...");
+    
+    // Step 1: Extract entity details
+    const entityDetails = extractEntityDetails();
+    if (!entityDetails.qid) {
+      console.warn("Could not extract entity QID, aborting");
+      return;
+    }
+
+    // Step 2: Create entity graph popup
+    createEntityGraphPopup(entityDetails);
+
+    // Step 3: Process statements when entity data is loaded
+    mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
+      console.log("Entity data loaded, processing statements...");
+      
+      $(".wikibase-statementgroupview").each(function () {
+        const $statementElement = $(this);
+        
+        // Step 4: Extract statement details
+        const statementDetails = extractStatementDetails($statementElement, entityData);
+        
+        // Step 5: Add property-level features
+        addPropertyLevelFeatures(statementDetails, entityDetails);
+        
+        // Step 6: Process statement values
+        processStatementValues(statementDetails, entityDetails, entityData);
+      });
+
+      console.log("Finished processing all statements");
     });
-  });
+
+    console.log("Wikibase entity page processing setup complete");
+  }
+
+  // Initialize the main processing
+  processWikibaseEntityPage();
 });
