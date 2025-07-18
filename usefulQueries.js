@@ -10,9 +10,92 @@
  */
 $(function () {
   "use strict";
+
+  // ===== WIKIBASE CONFIGURATION =====
+  // Configure these values for your specific Wikibase instance
+  const WIKIBASE_CONFIG = {
+    // Base URLs - change these for your Wikibase instance
+    queryServiceUrl: "https://query.wikidata.org/",
+    queryEmbedUrl: "https://query.wikidata.org/embed.html",
+    entityPrefix: "wd:",
+    propertyPrefix: "wdt:",
+
+    // Property mappings - update these IDs for your Wikibase
+    properties: {
+      studentsCount: "P2196",        // students count
+      membersCount: "P2124",         // members count
+      father: "P22",                 // father
+      mother: "P25",                 // mother
+      sibling: "P3373",              // sibling
+      spouse: "P26",                 // spouse
+      occupation: "P106",            // occupation
+      employer: "P108",              // employer
+      creator: "P170",               // creator
+      image: "P18",                  // image
+      logo: "P154",                  // logo
+      pointInTime: "P585"            // point in time
+    },
+
+    // Entity mappings - update these IDs for your Wikibase
+    entities: {
+      painter: "Q1028181",           // painter
+      researcher: "Q1650915"         // researcher
+    },
+
+    // External service URLs
+    externalServices: {
+      entitree: "https://www.entitree.com/en/family_tree/",
+      scholia: "https://scholia.toolforge.org/author/"
+    }
+  };
+
   // Exit the script if we're not in the main namespace (article namespace).
   if (mw.config.get("wgNamespaceNumber") !== 0) {
     return;
+  }
+
+  /**
+   * Helper function to replace property and entity placeholders in query strings
+   * @param {string} queryString - The query string with placeholders
+   * @param {Object} replacements - Object containing replacement values
+   * @returns {string} Updated query string
+   */
+  function replaceQueryPlaceholders(queryString, replacements = {}) {
+    let result = queryString;
+
+    // Replace base configuration placeholders first
+    result = result.replace(/{entityPrefix}/g, WIKIBASE_CONFIG.entityPrefix);
+    result = result.replace(/{propertyPrefix}/g, WIKIBASE_CONFIG.propertyPrefix);
+
+    // Replace property placeholders
+    Object.entries(WIKIBASE_CONFIG.properties).forEach(([key, value]) => {
+      const placeholder = `{${key}}`;
+      result = result.replace(new RegExp(placeholder, 'g'), value);
+    });
+
+    // Replace entity placeholders
+    Object.entries(WIKIBASE_CONFIG.entities).forEach(([key, value]) => {
+      const placeholder = `{${key}}`;
+      result = result.replace(new RegExp(placeholder, 'g'), value);
+    });
+
+    // Replace custom replacements
+    Object.entries(replacements).forEach(([key, value]) => {
+      const placeholder = `{${key}}`;
+      result = result.replace(new RegExp(placeholder, 'g'), value);
+    });
+
+    return result;
+  }
+
+  /**
+   * Convert a human-readable SPARQL query to URL-encoded format
+   * @param {string} sparqlQuery - The human-readable SPARQL query
+   * @returns {string} URL-encoded query string
+   */
+  function encodeQueryForURL(sparqlQuery) {
+    // First encode the query, then add the # prefix for the query service
+    return "#" + encodeURIComponent(sparqlQuery);
   }
 
   function createIconWithLink(element, url, icon, toolhint) {
@@ -60,7 +143,7 @@ $(function () {
           iconTitle: toolhint,
           title: toolhint,
           $element: $("<a>").attr({
-            href: "https://query.wikidata.org/" + querystring,
+            href: WIKIBASE_CONFIG.queryServiceUrl + querystring,
             target: "_blank",
             style: "background-size: 20px 20px; opacity: 0.5;",
           }),
@@ -94,7 +177,7 @@ $(function () {
         queryIcon.$element.click(function () {
           $content.html(
             $('<iframe scrolling="yes" frameborder="0">').attr({
-              src: "https://query.wikidata.org/embed.html" + querystring,
+              src: WIKIBASE_CONFIG.queryEmbedUrl + querystring,
               width: width_with_min,
               height: width_with_min,
             })
@@ -119,8 +202,6 @@ $(function () {
     const qid = $title.find(".wikibase-title-id").text().replace(/[()]/g, "");
     const label = $title.find(".wikibase-title-label").text();
 
-    console.log("Extracted entity details:", { qid, label });
-
     return {
       qid: qid,
       label: label,
@@ -142,9 +223,6 @@ $(function () {
 
     const statement_p_element = statementElement
       .find(".wikibase-statementgroupview-property-label");
-
-    console.log("Processing statement:", { statement_pid, statement_pLabel });
-
     return {
       pid: statement_pid,
       pLabel: statement_pLabel,
@@ -209,8 +287,6 @@ $(function () {
       label: statement_target_qLabel,
       $indicatorElement: valueElement.siblings(".wikibase-snakview-indicators")
     };
-
-    console.log("Extracted value details:", valueDetails);
     return valueDetails;
   }
 
@@ -222,13 +298,22 @@ $(function () {
   function addPropertyLevelFeatures(statementDetails, entityDetails) {
     const { pid, $propertyElement } = statementDetails;
     const { qid: main_qid, label: main_qlabel } = entityDetails;
+    const config = WIKIBASE_CONFIG;
 
     switch (pid) {
-      case "P2196": //students count
-        const studentsQuerystring =
-          "#%23defaultView%3ALineChart%0ASELECT%20%3Fpit%20%3Fs_count%20%20WHERE%20%7B%0A%20%20wd%3A" +
-          main_qid +
-          "%20p%3AP2196%20%3Fstatement.%0A%20%20%3Fstatement%20ps%3AP2196%20%3Fs_count.%0A%20%20OPTIONAL%20%7B%20%3Fstatement%20pq%3AP585%20%3Fpit.%20%7D%0A%7D";
+      case config.properties.studentsCount:
+        const studentsQueryTemplate = `#defaultView:LineChart
+SELECT ?pit ?s_count WHERE {
+  {entityPrefix}{entityQid} p:{studentsCount} ?statement.
+  ?statement ps:{studentsCount} ?s_count.
+  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
+}`;
+
+        const studentsQuery = replaceQueryPlaceholders(studentsQueryTemplate, {
+          entityQid: main_qid
+        });
+        const studentsQuerystring = encodeQueryForURL(studentsQuery);
+
         createPopupAndAddIcon(
           $propertyElement,
           studentsQuerystring,
@@ -238,11 +323,19 @@ $(function () {
         );
         break;
 
-      case "P2124": //members count
-        const membersQuerystring =
-          "#%23defaultView%3ALineChart%0ASELECT%20%3Fpit%20%3Fs_count%20%20WHERE%20%7B%0A%20%20wd%3A" +
-          main_qid +
-          "%20p%3AP2124%20%3Fstatement.%0A%20%20%3Fstatement%20ps%3AP2196%20%3Fs_count.%0A%20%20OPTIONAL%20%7B%20%3Fstatement%20pq%3AP585%20%3Fpit.%20%7D%0A%7D";
+      case config.properties.membersCount:
+        const membersQueryTemplate = `#defaultView:LineChart
+SELECT ?pit ?s_count WHERE {
+  {entityPrefix}{entityQid} p:{membersCount} ?statement.
+  ?statement ps:{membersCount} ?s_count.
+  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
+}`;
+
+        const membersQuery = replaceQueryPlaceholders(membersQueryTemplate, {
+          entityQid: main_qid
+        });
+        const membersQuerystring = encodeQueryForURL(membersQuery);
+
         createPopupAndAddIcon(
           $propertyElement,
           membersQuerystring,
@@ -252,22 +345,18 @@ $(function () {
         );
         break;
 
-      case "P22": //father
-      case "P25": //mother
-      case "P3373": //sibling
-      case "P26": //spouse
+      case config.properties.father:
+      case config.properties.mother:
+      case config.properties.sibling:
+      case config.properties.spouse:
         createIconWithLink(
           $propertyElement,
-          "https://www.entitree.com/en/family_tree/" +
-          main_qid +
-          "?0u0=u&0u1=u",
+          config.externalServices.entitree + main_qid + "?0u0=u&0u1=u",
           "articleDisambiguation",
           "Familytree on Entitree"
         );
         break;
     }
-
-    console.log("Added property-level features for:", pid);
   }
 
   /**
@@ -280,20 +369,29 @@ $(function () {
     const { pid } = statementDetails;
     const { qid: statement_target_qid, label: statement_target_qLabel, $indicatorElement } = valueDetails;
     const { qid: main_qid, label: main_qlabel } = entityDetails;
+    const config = WIKIBASE_CONFIG;
 
     if (!statement_target_qid) {
-      console.log("No target QID, skipping value-level features");
       return;
     }
 
     switch (pid) {
-      case "P106": //occupation
+      case config.properties.occupation:
         switch (statement_target_qid) {
-          case "Q1028181": // painter
-            const artworksQuerystring =
-              "#%23defaultView%3AImageGrid%0ASELECT%20%3Fitem%20%3Fcreator%20%3FcreatorLabel%20%3Fimage%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20%3Fitem%20wdt%3AP170%20wd%3A" +
-              main_qid +
-              ".%0A%20%20OPTIONAL%20%7B%20%3Fitem%20wdt%3AP18%20%3Fimage.%20%7D%0A%7D%0ALIMIT%20100";
+          case config.entities.painter:
+            const artworksQueryTemplate = `#defaultView:ImageGrid
+SELECT ?item ?creator ?creatorLabel ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  ?item {propertyPrefix}{creator} {entityPrefix}{entityQid}.
+  OPTIONAL { ?item {propertyPrefix}{image} ?image. }
+}
+LIMIT 100`;
+
+            const artworksQuery = replaceQueryPlaceholders(artworksQueryTemplate, {
+              entityQid: main_qid
+            });
+            const artworksQuerystring = encodeQueryForURL(artworksQuery);
+
             createPopupAndAddIcon(
               $indicatorElement,
               artworksQuerystring,
@@ -303,10 +401,10 @@ $(function () {
             );
             break;
 
-          case "Q1650915": //researcher
+          case config.entities.researcher:
             createIconWithLink(
               $indicatorElement,
-              "https://scholia.toolforge.org/author/" + main_qid,
+              config.externalServices.scholia + main_qid,
               "articleSearch",
               "Page on Scholia"
             );
@@ -314,11 +412,24 @@ $(function () {
         }
         break;
 
-      case "P108": //employer
-        const employerQuerystring =
-          "#%23defaultView%3AGraph%0ASELECT%20DISTINCT%20%3Femployee%20%3FemployeeLabel%20%3FimageEmp%20%3Forg%20%3ForgLabel%20%3FimageOrg%20WHERE%20%7B%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22%5BAUTO_LANGUAGE%5D%2Cen%22.%20%7D%0A%20%20VALUES%20%3Forg%20%7B%0A%20%20%20%20wd%3A" +
-          statement_target_qid +
-          "%0A%20%20%7D%0A%20%20%3Femployee%20wdt%3AP108%20%3Forg.%0A%20%20OPTIONAL%20%7B%20%3Femployee%20wdt%3AP18%20%3FimageEmp.%20%7D%0A%20%20OPTIONAL%20%7B%20%3Forg%20wdt%3AP154%20%3FimageOrg.%20%7D%0A%7D%0ALIMIT%20100";
+      case config.properties.employer:
+        const employerQueryTemplate = `#defaultView:Graph
+SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  VALUES ?org {
+    {entityPrefix}{targetEntityQid}
+  }
+  ?employee {propertyPrefix}{employer} ?org.
+  OPTIONAL { ?employee {propertyPrefix}{image} ?imageEmp. }
+  OPTIONAL { ?org {propertyPrefix}{logo} ?imageOrg. }
+}
+LIMIT 100`;
+
+        const employerQuery = replaceQueryPlaceholders(employerQueryTemplate, {
+          targetEntityQid: statement_target_qid
+        });
+        const employerQuerystring = encodeQueryForURL(employerQuery);
+
         createPopupAndAddIcon(
           $indicatorElement,
           employerQuerystring,
@@ -328,8 +439,6 @@ $(function () {
         );
         break;
     }
-
-    console.log("Added value-level features for:", pid, statement_target_qid);
   }
 
   /**
@@ -369,8 +478,6 @@ $(function () {
         // Add value-level features
         addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
       });
-
-    console.log("Processed all values for statement:", pid);
   }
 
   /**
@@ -380,14 +487,38 @@ $(function () {
   function createEntityGraphPopup(entityDetails) {
     const { qid, label, $titleElement } = entityDetails;
 
-    const querystring =
-      "#%23defaultView%3AGraph%0ASELECT%20%3Fnode%20%3FnodeLabel%20%3FnodeImage%20%3FchildNode%20%3FchildNodeLabel%20%3FchildNodeImage%20%3Frgb%20WHERE%20%7B%0A%20%20%7B%0A%20%20%20%20BIND%28wd%3A" +
-      qid +
-      "%20AS%20%3Fnode%29%0A%20%20%20%20%3Fnode%20%3Fp%20%3Fi.%0A%20%20%20%20OPTIONAL%20%7B%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%20%7D%0A%20%20%20%20%3FchildNode%20%3Fx%20%3Fp.%0A%20%20%20%20%3FchildNode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3Fi%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FP%22%29%29%0A%20%20%7D%0A%20%20UNION%0A%20%20%7B%0A%20%20%20%20BIND%28%22EFFBD8%22%20AS%20%3Frgb%29%0A%20%20%20%20wd%3A" +
-      qid +
-      "%20%3Fp%20%3FchildNode.%0A%20%20%20%20OPTIONAL%20%7B%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%20%7D%0A%20%20%20%20%3Fnode%20%3Fx%20%3Fp.%0A%20%20%20%20%3Fnode%20rdf%3Atype%20wikibase%3AProperty.%0A%20%20%20%20FILTER%28STRSTARTS%28STR%28%3FchildNode%29%2C%20%22http%3A%2F%2Fwww.wikidata.org%2Fentity%2FQ%22%29%29%0A%20%20%7D%0A%20%20OPTIONAL%20%7B%0A%20%20%20%20%3Fnode%20wdt%3AP18%20%3FnodeImage.%0A%20%20%20%20%3FchildNode%20wdt%3AP18%20%3FchildNodeImage.%0A%20%20%7D%0A%20%20SERVICE%20wikibase%3Alabel%20%7B%20bd%3AserviceParam%20wikibase%3Alanguage%20%22" +
-      mw.config.get("wgUserLanguage") +
-      "%22.%20%7D%0A%7D";
+    const entityGraphQueryTemplate = `#defaultView:Graph
+SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
+  {
+    BIND({entityPrefix}{entityQid} AS ?node)
+    ?node ?p ?i.
+    OPTIONAL { ?node {propertyPrefix}{image} ?nodeImage. }
+    ?childNode ?x ?p.
+    ?childNode rdf:type wikibase:Property.
+    FILTER(STRSTARTS(STR(?i), "http://www.wikidata.org/entity/Q"))
+    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/P"))
+  }
+  UNION
+  {
+    BIND("EFFBD8" AS ?rgb)
+    {entityPrefix}{entityQid} ?p ?childNode.
+    OPTIONAL { ?childNode {propertyPrefix}{image} ?childNodeImage. }
+    ?node ?x ?p.
+    ?node rdf:type wikibase:Property.
+    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/Q"))
+  }
+  OPTIONAL {
+    ?node {propertyPrefix}{image} ?nodeImage.
+    ?childNode {propertyPrefix}{image} ?childNodeImage.
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
+}`;
+
+    const entityGraphQuery = replaceQueryPlaceholders(entityGraphQueryTemplate, {
+      entityQid: qid,
+      userLanguage: mw.config.get("wgUserLanguage")
+    });
+    const querystring = encodeQueryForURL(entityGraphQuery);
 
     createPopupAndAddIcon(
       $titleElement.find(".wikibase-title-id"),
@@ -396,8 +527,6 @@ $(function () {
       "Click to see entity graph",
       "Entity Graph of " + label
     );
-
-    console.log("Created entity graph popup for:", qid);
   }
 
   /**
@@ -418,7 +547,6 @@ $(function () {
 
     // Step 3: Process statements when entity data is loaded
     mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
-      console.log("Entity data loaded, processing statements...");
 
       $(".wikibase-statementgroupview").each(function () {
         const $statementElement = $(this);
@@ -433,7 +561,6 @@ $(function () {
         processStatementValues(statementDetails, entityDetails, entityData);
       });
 
-      console.log("Finished processing all statements");
     });
 
     console.log("Wikibase entity page processing setup complete");
