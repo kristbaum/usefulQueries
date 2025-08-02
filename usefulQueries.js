@@ -89,6 +89,19 @@ $(function () {
   }
 
   /**
+   * Check if the current Wikibase is Wikidata
+   * @returns {boolean} True if using Wikidata
+   */
+  function isWikidata() {
+    return WIKIBASE_CONFIG.queryServiceUrl.includes("query.wikidata.org");
+  }
+
+  /**
+   * Convert URL-encoded query to QLever format
+   * @param {string} querystring - URL-encoded query string
+   * @returns {string} QLever URL
+   */
+  /**
    * Convert a human-readable SPARQL query to URL-encoded format
    * @param {string} sparqlQuery - The human-readable SPARQL query
    * @returns {string} URL-encoded query string
@@ -96,6 +109,85 @@ $(function () {
   function encodeQueryForURL(sparqlQuery) {
     // First encode the query, then add the # prefix for the query service
     return "#" + encodeURIComponent(sparqlQuery);
+  }
+
+  /**
+   * Convert a Wikidata SPARQL query to QLever-compatible format
+   * @param {string} query - The original SPARQL query
+   * @returns {string} QLever-compatible SPARQL query
+   */
+  function convertToQLeverQuery(query) {
+    // Replace Wikidata's wikibase:label service with standard SPARQL labels
+    let qleverQuery = query;
+
+    // Add necessary PREFIX declarations if not present
+    const needsRdfsPrefix = !qleverQuery.includes('PREFIX rdfs:') && qleverQuery.includes('rdfs:label');
+    const needsWdtPrefix = !qleverQuery.includes('PREFIX wdt:') && qleverQuery.includes('wdt:');
+    const needsWdPrefix = !qleverQuery.includes('PREFIX wd:') && qleverQuery.includes('wd:');
+    
+    if (needsRdfsPrefix || needsWdtPrefix || needsWdPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
+      let prefixDeclarations = '';
+      
+      if (needsRdfsPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
+        prefixDeclarations += 'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n';
+      }
+      if (needsWdtPrefix) {
+        prefixDeclarations += 'PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n';
+      }
+      if (needsWdPrefix) {
+        prefixDeclarations += 'PREFIX wd: <http://www.wikidata.org/entity/>\n';
+      }
+      
+      // Insert prefixes at the beginning, after any existing #defaultView comments
+      const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
+      if (defaultViewMatch) {
+        qleverQuery = defaultViewMatch[1] + prefixDeclarations + qleverQuery.substring(defaultViewMatch[1].length);
+      } else {
+        qleverQuery = prefixDeclarations + qleverQuery;
+      }
+    }
+
+    // Remove the SERVICE wikibase:label block entirely
+    qleverQuery = qleverQuery.replace(
+      /SERVICE wikibase:label \{ bd:serviceParam wikibase:language "[^"]*"\. \}/g,
+      ''
+    );
+    qleverQuery = qleverQuery.replace(
+      /SERVICE wikibase:label \{ bd:serviceParam wikibase:language "[^"]*", ?[^}]*\. \}/g,
+      ''
+    );
+
+    // Find all variables that end with "Label" and add manual label fetching
+    const labelVars = query.match(/\?(\w+Label)\b/g);
+    if (labelVars) {
+      const uniqueLabelVars = [...new Set(labelVars)];
+      let labelStatements = '';
+
+      uniqueLabelVars.forEach(labelVar => {
+        const baseVar = labelVar.replace('Label', '').replace('?', '');
+        labelStatements += `  OPTIONAL { ?${baseVar} rdfs:label ${labelVar} . FILTER(LANG(${labelVar}) = "en") }\n`;
+      });
+
+      // Insert label statements before the closing brace
+      const lastBraceIndex = qleverQuery.lastIndexOf('}');
+      if (lastBraceIndex !== -1 && labelStatements) {
+        qleverQuery = qleverQuery.slice(0, lastBraceIndex) + labelStatements + qleverQuery.slice(lastBraceIndex);
+      }
+    }
+
+    // Clean up extra whitespace
+    qleverQuery = qleverQuery.replace(/\n\s*\n/g, '\n').trim();
+
+    return qleverQuery;
+  }
+
+  function getQLeverUrl(querystring) {
+    // Decode the query string (remove # and decode)
+    const decodedQuery = decodeURIComponent(querystring.substring(1));
+    // Convert to QLever-compatible format
+    const qleverQuery = convertToQLeverQuery(decodedQuery);
+    // Encode for QLever
+    return "https://qlever.cs.uni-freiburg.de/wikidata/?query=" + encodeURIComponent(qleverQuery);
   }
 
   function createIconWithLink(element, url, icon, toolhint) {
@@ -175,13 +267,34 @@ $(function () {
 
         // When the icon is clicked, populate the popup with the iframe content and show it.
         queryIcon.$element.click(function () {
-          $content.html(
-            $('<iframe scrolling="yes" frameborder="0">').attr({
-              src: WIKIBASE_CONFIG.queryEmbedUrl + querystring,
-              width: width_with_min,
-              height: width_with_min,
-            })
-          );
+          // Create the iframe
+          let $iframe = $('<iframe scrolling="yes" frameborder="0">').attr({
+            src: WIKIBASE_CONFIG.queryEmbedUrl + querystring,
+            width: width_with_min,
+            height: width_with_min,
+          });
+
+          // Create content container
+          let $contentDiv = $('<div>');
+          $contentDiv.append($iframe);
+
+          // Add QLever link if this is Wikidata
+          if (isWikidata()) {
+            let $linkContainer = $('<div>').attr({
+              style: 'padding: 10px; border-top: 1px solid #ccc; background: #f8f9fa;'
+            });
+
+            let $qleverLink = $('<a>').attr({
+              href: getQLeverUrl(querystring),
+              target: '_blank',
+              style: 'color: #0645ad; text-decoration: none;'
+            }).text('🚀 Run query on QLever (alternative query service)');
+
+            $linkContainer.append($qleverLink);
+            $contentDiv.append($linkContainer);
+          }
+
+          $content.html($contentDiv);
           popup.$element.attr("style", "position:absolute; z-index:100;");
           popup.toggle(true);
           return false; // Prevent the default action (like navigating to a link).
