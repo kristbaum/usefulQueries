@@ -2,7 +2,7 @@
  * This script provides context-based queries to statements for Wikimedia pages.
  * It creates a popup when you click on certain elements, showing data from Wikidata.
  *
- * To activate this script, add the line below to your common.js on MediaWiki:
+ * To activate this script, add the line below to your common.js on MediaWiki (go to https://www.wikidata.org/wiki/Special:MyPage/common.js):
  * mw.loader.load("//www.wikidata.org/w/index.php?title=User:Kristbaum/usefulQueries.js&action=raw&ctype=text/javascript");
  * The source code in readable form can be found here https://github.com/kristbaum/usefulQueries/
  *
@@ -10,6 +10,11 @@
  */
 $(function () {
   "use strict";
+
+  // Exit the script if we're not in the main namespace (article namespace).
+  if (mw.config.get("wgNamespaceNumber") !== 0) {
+    return;
+  }
 
   // ===== WIKIBASE CONFIGURATION =====
   // Configure these values for your specific Wikibase instance
@@ -46,13 +51,43 @@ $(function () {
     externalServices: {
       entitree: "https://www.entitree.com/en/family_tree/",
       scholia: "https://scholia.toolforge.org/author/"
+    },
+
+    queryTemplates: {
+      students: `#defaultView:LineChart
+SELECT ?pit ?s_count WHERE {
+  {entityPrefix}{entityQid} p:{studentsCount} ?statement.
+  ?statement ps:{studentsCount} ?s_count.
+  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
+}`,
+      membersCount: `#defaultView:LineChart
+SELECT ?pit ?s_count WHERE {
+  {entityPrefix}{entityQid} p:{membersCount} ?statement.
+  ?statement ps:{membersCount} ?s_count.
+  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
+}`
+      ,
+      artworks: `#defaultView:ImageGrid
+SELECT ?item ?creator ?creatorLabel ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  ?item {propertyPrefix}{creator} {entityPrefix}{entityQid}.
+  OPTIONAL { ?item {propertyPrefix}{image} ?image. }
+}
+LIMIT 100`,
+      employer: `#defaultView:Graph
+SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  VALUES ?org {
+    {entityPrefix}{targetEntityQid}
+  }
+  ?employee {propertyPrefix}{employer} ?org.
+  OPTIONAL { ?employee {propertyPrefix}{image} ?imageEmp. }
+  OPTIONAL { ?org {propertyPrefix}{logo} ?imageOrg. }
+}
+LIMIT 100`
     }
   };
 
-  // Exit the script if we're not in the main namespace (article namespace).
-  if (mw.config.get("wgNamespaceNumber") !== 0) {
-    return;
-  }
 
   /**
    * Helper function to replace property and entity placeholders in query strings
@@ -85,7 +120,8 @@ $(function () {
       result = result.replace(new RegExp(placeholder, 'g'), value);
     });
 
-    return result;
+    // Return the encoded String
+    return "#" + encodeURIComponent(result);
   }
 
   /**
@@ -94,21 +130,6 @@ $(function () {
    */
   function isWikidata() {
     return WIKIBASE_CONFIG.queryServiceUrl.includes("query.wikidata.org");
-  }
-
-  /**
-   * Convert URL-encoded query to QLever format
-   * @param {string} querystring - URL-encoded query string
-   * @returns {string} QLever URL
-   */
-  /**
-   * Convert a human-readable SPARQL query to URL-encoded format
-   * @param {string} sparqlQuery - The human-readable SPARQL query
-   * @returns {string} URL-encoded query string
-   */
-  function encodeQueryForURL(sparqlQuery) {
-    // First encode the query, then add the # prefix for the query service
-    return "#" + encodeURIComponent(sparqlQuery);
   }
 
   /**
@@ -124,10 +145,10 @@ $(function () {
     const needsRdfsPrefix = !qleverQuery.includes('PREFIX rdfs:') && qleverQuery.includes('rdfs:label');
     const needsWdtPrefix = !qleverQuery.includes('PREFIX wdt:') && qleverQuery.includes('wdt:');
     const needsWdPrefix = !qleverQuery.includes('PREFIX wd:') && qleverQuery.includes('wd:');
-    
+
     if (needsRdfsPrefix || needsWdtPrefix || needsWdPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
       let prefixDeclarations = '';
-      
+
       if (needsRdfsPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
         prefixDeclarations += 'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n';
       }
@@ -137,7 +158,7 @@ $(function () {
       if (needsWdPrefix) {
         prefixDeclarations += 'PREFIX wd: <http://www.wikidata.org/entity/>\n';
       }
-      
+
       // Insert prefixes at the beginning, after any existing #defaultView comments
       const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
       if (defaultViewMatch) {
@@ -191,27 +212,42 @@ $(function () {
   }
 
   function createIconWithLink(element, url, icon, toolhint) {
-    mw.loader
-      .using([
-        "oojs-ui-core",
-        "oojs-ui-widgets",
-        "oojs-ui.styles.icons-content",
-      ])
-      .then(function () {
-        // Create the icon that will trigger the popup.
-        let queryIcon = new OO.ui.ButtonWidget({
-          framed: false,
-          icon: icon,
-          label: "Edit",
-          invisibleLabel: true,
-          title: toolhint,
-          href: url,
-          target: "_blank",
-        });
+    mw.loader.using("@wikimedia/codex").then(function (require) {
+      const Vue = require("vue");
+      const Codex = require("@wikimedia/codex");
 
-        // Add the icon and the popup to the specified element.
-        $(element).append(queryIcon.$element);
+      const mountPoint = document.createElement("span");
+      $(element).append(mountPoint);
+
+      const app = Vue.createMwApp({
+        name: "UsefulQueriesLinkButton",
+        data: function () {
+          return {
+            url: url,
+            toolhint: toolhint,
+            icon: null,
+          };
+        },
+        template: `
+          <cdx-button
+            :href="url"
+            target="_blank"
+            rel="noopener noreferrer"
+            weight="quiet"
+            action="default"
+            :aria-label="toolhint"
+            :title="toolhint"
+          >
+            <cdx-icon v-if="icon" :icon="icon" />
+            <span v-else>{{ toolhint }}</span>
+          </cdx-button>
+        `,
       });
+
+      app.component("CdxButton", Codex.CdxButton);
+      app.component("CdxIcon", Codex.CdxIcon);
+      app.mount(mountPoint);
+    });
   }
 
   // Function to create a popup and add an icon to the specified element.
@@ -222,87 +258,90 @@ $(function () {
     toolhint,
     toplabel
   ) {
-    mw.loader
-      .using([
-        "oojs-ui-core",
-        "oojs-ui-widgets",
-        "oojs-ui.styles.icons-interactions",
-      ])
-      .then(function () {
-        // Create the icon that will trigger the popup.
-        let queryIcon = new OO.ui.IconWidget({
-          icon: icon,
-          iconTitle: toolhint,
-          title: toolhint,
-          $element: $("<a>").attr({
-            href: WIKIBASE_CONFIG.queryServiceUrl + querystring,
-            target: "_blank",
-            style: "background-size: 20px 20px; opacity: 0.5;",
-          }),
-        });
+    console.log("Adding a Popup button");
+    mw.loader.using("@wikimedia/codex").then(function (require) {
+      const Vue = require("vue");
+      const Codex = require("@wikimedia/codex");
+      const iconMap = getCodexIconMap(require);
 
-        let width_with_min = window.screen.width / 3;
-        if (width_with_min < 500) {
-          width_with_min = 500;
-        }
+      const mountPoint = document.createElement("span");
+      $(element).append(mountPoint);
 
-        // Create the popup widget.
-        let $content = $("<div>");
-        let popup = new OO.ui.PopupWidget({
-          $content: $content,
-          width: width_with_min,
-          head: true,
-          padded: false,
-          label: toplabel,
-          align: "force-right",
-        });
+      const widthWithMin = Math.max(window.screen.width / 3, 500);
 
-        // Close the popup when the ESC key is pressed.
-        $(document).keydown(function (e) {
-          if (e.keyCode === 27) {
-            // ESCAPE key
-            popup.onCloseButtonClick();
-          }
-        });
+      const queryServiceHref = WIKIBASE_CONFIG.queryServiceUrl + querystring;
+      const embedHref = WIKIBASE_CONFIG.queryEmbedUrl + querystring;
+      const qleverHref = isWikidata() ? getQLeverUrl(querystring) : null;
 
-        // When the icon is clicked, populate the popup with the iframe content and show it.
-        queryIcon.$element.click(function () {
-          // Create the iframe
-          let $iframe = $('<iframe scrolling="yes" frameborder="0">').attr({
-            src: WIKIBASE_CONFIG.queryEmbedUrl + querystring,
-            width: width_with_min,
-            height: width_with_min,
-          });
+      const app = Vue.createMwApp({
+        name: "UsefulQueriesPopover",
+        data: function () {
+          return {
+            open: false,
+            anchorEl: null,
+            toolhint: toolhint,
+            toplabel: toplabel,
+            icon: iconMap[icon] || null,
+            queryServiceHref: queryServiceHref,
+            embedHref: embedHref,
+            qleverHref: qleverHref,
+            iframeSize: widthWithMin,
+          };
+        },
+        mounted: function () {
+          this.anchorEl = this.$refs.triggerEl || null;
+        },
+        template: `
+          <span ref="triggerEl">
+            <cdx-button
+              :href="queryServiceHref"
+              target="_blank"
+              rel="noopener noreferrer"
+              weight="quiet"
+              action="default"
+              :aria-label="toolhint"
+              :title="toolhint"
+              @click.prevent="open = !open"
+            >
+              <cdx-icon v-if="icon" :icon="icon" />
+              <span v-else>{{ toolhint }}</span>
+            </cdx-button>
+          </span>
 
-          // Create content container
-          let $contentDiv = $('<div>');
-          $contentDiv.append($iframe);
+          <cdx-popover
+            v-if="anchorEl"
+            v-model:open="open"
+            :anchor="anchorEl"
+            placement="bottom-start"
+            :render-in-place="true"
+            :title="toplabel"
+            :use-close-button="true"
+          >
+            <div>
+              <iframe
+                v-if="open"
+                scrolling="yes"
+                frameborder="0"
+                :src="embedHref"
+                :width="iframeSize"
+                :height="iframeSize"
+              ></iframe>
 
-          // Add QLever link if this is Wikidata
-          if (isWikidata()) {
-            let $linkContainer = $('<div>').attr({
-              style: 'padding: 10px; border-top: 1px solid #ccc; background: #f8f9fa;'
-            });
-
-            let $qleverLink = $('<a>').attr({
-              href: getQLeverUrl(querystring),
-              target: '_blank',
-              style: 'color: #0645ad; text-decoration: none;'
-            }).text('🚀 Run query on QLever (alternative query service)');
-
-            $linkContainer.append($qleverLink);
-            $contentDiv.append($linkContainer);
-          }
-
-          $content.html($contentDiv);
-          popup.$element.attr("style", "position:absolute; z-index:100;");
-          popup.toggle(true);
-          return false; // Prevent the default action (like navigating to a link).
-        });
-
-        // Add the icon and the popup to the specified element.
-        $(element).append(queryIcon.$element, popup.$element);
+              <div v-if="qleverHref" style="padding: 10px; border-top: 1px solid;">
+                <a :href="qleverHref" target="_blank" rel="noopener noreferrer">
+                  Run query on QLever (alternative query service)
+                </a>
+              </div>
+            </div>
+          </cdx-popover>
+        `,
       });
+
+      app.component("CdxButton", Codex.CdxButton);
+      app.component("CdxIcon", Codex.CdxIcon);
+      app.component("CdxPopover", Codex.CdxPopover);
+      app.mount(mountPoint);
+    });
   }
 
 
@@ -318,7 +357,7 @@ $(function () {
     return {
       qid: qid,
       label: label,
-      $titleElement: $title
+      $titleElement: $title.find(".wikibase-title-id")
     };
   }
 
@@ -328,17 +367,13 @@ $(function () {
    * @param {Object} entityData - The full entity data from Wikibase
    * @returns {Object} Property and value details
    */
-  function extractStatementDetails(statementElement, entityData) {
+  function extractStatementDetails(statementElement) {
     const statement_pid = statementElement.attr('id');
-    const statement_pLabel = statementElement
-      .find(".wikibase-statementgroupview-property-label")
-      .text();
-
     const statement_p_element = statementElement
       .find(".wikibase-statementgroupview-property-label");
     return {
       pid: statement_pid,
-      pLabel: statement_pLabel,
+      pLabel: statement_p_element.text(),
       $propertyElement: statement_p_element,
       $statementElement: statementElement
     };
@@ -411,60 +446,37 @@ $(function () {
   function addPropertyLevelFeatures(statementDetails, entityDetails) {
     const { pid, $propertyElement } = statementDetails;
     const { qid: main_qid, label: main_qlabel } = entityDetails;
-    const config = WIKIBASE_CONFIG;
 
     switch (pid) {
-      case config.properties.studentsCount:
-        const studentsQueryTemplate = `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  {entityPrefix}{entityQid} p:{studentsCount} ?statement.
-  ?statement ps:{studentsCount} ?s_count.
-  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
-}`;
-
-        const studentsQuery = replaceQueryPlaceholders(studentsQueryTemplate, {
-          entityQid: main_qid
-        });
-        const studentsQuerystring = encodeQueryForURL(studentsQuery);
-
+      case WIKIBASE_CONFIG.properties.studentsCount:
         createPopupAndAddIcon(
           $propertyElement,
-          studentsQuerystring,
+          replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
+            entityQid: main_qid
+          }),
           "ellipsis",
           "Students count over time",
           'Students count of "' + main_qlabel + '" over time:'
         );
         break;
-
-      case config.properties.membersCount:
-        const membersQueryTemplate = `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  {entityPrefix}{entityQid} p:{membersCount} ?statement.
-  ?statement ps:{membersCount} ?s_count.
-  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
-}`;
-
-        const membersQuery = replaceQueryPlaceholders(membersQueryTemplate, {
-          entityQid: main_qid
-        });
-        const membersQuerystring = encodeQueryForURL(membersQuery);
-
+      case WIKIBASE_CONFIG.properties.membersCount:
         createPopupAndAddIcon(
           $propertyElement,
-          membersQuerystring,
+          replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.membersCount, {
+            entityQid: main_qid
+          }),
           "ellipsis",
           "Members count over time",
           "Members count of " + main_qlabel + " over time:"
         );
         break;
-
-      case config.properties.father:
-      case config.properties.mother:
-      case config.properties.sibling:
-      case config.properties.spouse:
+      case WIKIBASE_CONFIG.properties.father:
+      case WIKIBASE_CONFIG.properties.mother:
+      case WIKIBASE_CONFIG.properties.sibling:
+      case WIKIBASE_CONFIG.properties.spouse:
         createIconWithLink(
           $propertyElement,
-          config.externalServices.entitree + main_qid + "?0u0=u&0u1=u",
+          WIKIBASE_CONFIG.externalServices.entitree + main_qid + "?0u0=u&0u1=u",
           "articleDisambiguation",
           "Familytree on Entitree"
         );
@@ -482,42 +494,31 @@ SELECT ?pit ?s_count WHERE {
     const { pid } = statementDetails;
     const { qid: statement_target_qid, label: statement_target_qLabel, $indicatorElement } = valueDetails;
     const { qid: main_qid, label: main_qlabel } = entityDetails;
-    const config = WIKIBASE_CONFIG;
 
     if (!statement_target_qid) {
       return;
     }
 
     switch (pid) {
-      case config.properties.occupation:
+      // Occupation based queries
+      case WIKIBASE_CONFIG.properties.occupation:
         switch (statement_target_qid) {
-          case config.entities.painter:
-            const artworksQueryTemplate = `#defaultView:ImageGrid
-SELECT ?item ?creator ?creatorLabel ?image WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  ?item {propertyPrefix}{creator} {entityPrefix}{entityQid}.
-  OPTIONAL { ?item {propertyPrefix}{image} ?image. }
-}
-LIMIT 100`;
-
-            const artworksQuery = replaceQueryPlaceholders(artworksQueryTemplate, {
-              entityQid: main_qid
-            });
-            const artworksQuerystring = encodeQueryForURL(artworksQuery);
-
+          case WIKIBASE_CONFIG.entities.painter:
             createPopupAndAddIcon(
               $indicatorElement,
-              artworksQuerystring,
+              replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.artworks, {
+                entityQid: main_qid
+              }),
               "ellipsis",
               "Artworks by this painter in Wikimedia Commons",
               "Artworks by " + main_qlabel
             );
             break;
 
-          case config.entities.researcher:
+          case WIKIBASE_CONFIG.entities.researcher:
             createIconWithLink(
               $indicatorElement,
-              config.externalServices.scholia + main_qid,
+              WIKIBASE_CONFIG.externalServices.scholia + main_qid,
               "articleSearch",
               "Page on Scholia"
             );
@@ -525,27 +526,12 @@ LIMIT 100`;
         }
         break;
 
-      case config.properties.employer:
-        const employerQueryTemplate = `#defaultView:Graph
-SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  VALUES ?org {
-    {entityPrefix}{targetEntityQid}
-  }
-  ?employee {propertyPrefix}{employer} ?org.
-  OPTIONAL { ?employee {propertyPrefix}{image} ?imageEmp. }
-  OPTIONAL { ?org {propertyPrefix}{logo} ?imageOrg. }
-}
-LIMIT 100`;
-
-        const employerQuery = replaceQueryPlaceholders(employerQueryTemplate, {
-          targetEntityQid: statement_target_qid
-        });
-        const employerQuerystring = encodeQueryForURL(employerQuery);
-
+      case WIKIBASE_CONFIG.properties.employer:
         createPopupAndAddIcon(
           $indicatorElement,
-          employerQuerystring,
+          replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.employer, {
+            targetEntityQid: statement_target_qid
+          }),
           "ellipsis",
           "Other employees of this organization as graph",
           "100 other employees of " + statement_target_qLabel
@@ -627,17 +613,14 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
 }`;
 
-    const entityGraphQuery = replaceQueryPlaceholders(entityGraphQueryTemplate, {
-      entityQid: qid,
-      userLanguage: mw.config.get("wgUserLanguage")
-    });
-    const querystring = encodeQueryForURL(entityGraphQuery);
-
     createPopupAndAddIcon(
-      $titleElement.find(".wikibase-title-id"),
-      querystring,
+      $titleElement,
+      replaceQueryPlaceholders(entityGraphQueryTemplate, {
+        entityQid: qid,
+        userLanguage: mw.config.get("wgUserLanguage")
+      }),
       "ellipsis",
-      "Click to see entity graph",
+      "Entity graph",
       "Entity Graph of " + label
     );
   }
@@ -646,37 +629,40 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * Main function to orchestrate the processing of the Wikibase entity page
    */
   function processWikibaseEntityPage() {
-    console.log("Starting Wikibase entity page processing...");
 
-    // Step 1: Extract entity details
+    // Extract entity details
     const entityDetails = extractEntityDetails();
     if (!entityDetails.qid) {
       console.warn("Could not extract entity QID, aborting");
       return;
     }
 
-    // Step 2: Create entity graph popup
-    createEntityGraphPopup(entityDetails);
-
-    // Step 3: Process statements when entity data is loaded
+    // Process statements when entity data is loaded
     mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
+
+      if (entityData.type != "item") {
+        // Not a supported data type, closing
+        return;
+      }
+
+      // Create entity graph popup
+      createEntityGraphPopup(entityDetails);
 
       $(".wikibase-statementgroupview").each(function () {
         const $statementElement = $(this);
 
-        // Step 4: Extract statement details
-        const statementDetails = extractStatementDetails($statementElement, entityData);
+        // Extract statement details
+        const statementDetails = extractStatementDetails($statementElement);
 
-        // Step 5: Add property-level features
+        // Add property-level features
         addPropertyLevelFeatures(statementDetails, entityDetails);
 
-        // Step 6: Process statement values
+        // Process statement values
         processStatementValues(statementDetails, entityDetails, entityData);
       });
 
     });
 
-    console.log("Wikibase entity page processing setup complete");
   }
 
   // Initialize the main processing
