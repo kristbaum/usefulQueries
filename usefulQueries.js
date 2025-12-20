@@ -8,6 +8,9 @@
  *
  * License: CC0
  */
+// For ESlint
+/* global $, mw */
+
 $(function () {
   "use strict";
 
@@ -262,7 +265,6 @@ LIMIT 100`
     mw.loader.using("@wikimedia/codex").then(function (require) {
       const Vue = require("vue");
       const Codex = require("@wikimedia/codex");
-      const iconMap = getCodexIconMap(require);
 
       const mountPoint = document.createElement("span");
       $(element).append(mountPoint);
@@ -281,7 +283,7 @@ LIMIT 100`
             anchorEl: null,
             toolhint: toolhint,
             toplabel: toplabel,
-            icon: iconMap[icon] || null,
+            icon: null,
             queryServiceHref: queryServiceHref,
             embedHref: embedHref,
             qleverHref: qleverHref,
@@ -423,7 +425,7 @@ LIMIT 100`
               statement_target_qid = '"' + statement_target_qLabel + '"';
             }
           } catch (e) {
-            console.warn("Could not extract datavalue type:", e);
+            // Another datatype
             statement_target_qid = null;
           }
         }
@@ -491,34 +493,31 @@ LIMIT 100`
    * @param {Object} entityDetails - Details about the main entity
    */
   function addValueLevelFeatures(statementDetails, valueDetails, entityDetails) {
-    const { pid } = statementDetails;
-    const { qid: statement_target_qid, label: statement_target_qLabel, $indicatorElement } = valueDetails;
-    const { qid: main_qid, label: main_qlabel } = entityDetails;
 
-    if (!statement_target_qid) {
+    if (!valueDetails.statement_target_qid) {
       return;
     }
 
-    switch (pid) {
+    switch (statementDetails.pid) {
       // Occupation based queries
       case WIKIBASE_CONFIG.properties.occupation:
-        switch (statement_target_qid) {
+        switch (valueDetails.statement_target_qid) {
           case WIKIBASE_CONFIG.entities.painter:
             createPopupAndAddIcon(
-              $indicatorElement,
+              valueDetails.$indicatorElement,
               replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.artworks, {
-                entityQid: main_qid
+                entityQid: entityDetails.main_qid
               }),
               "ellipsis",
               "Artworks by this painter in Wikimedia Commons",
-              "Artworks by " + main_qlabel
+              "Artworks by " + entityDetails.main_qlabel
             );
             break;
 
           case WIKIBASE_CONFIG.entities.researcher:
             createIconWithLink(
-              $indicatorElement,
-              WIKIBASE_CONFIG.externalServices.scholia + main_qid,
+              valueDetails.$indicatorElement,
+              WIKIBASE_CONFIG.externalServices.scholia + entityDetails.main_qid,
               "articleSearch",
               "Page on Scholia"
             );
@@ -528,13 +527,13 @@ LIMIT 100`
 
       case WIKIBASE_CONFIG.properties.employer:
         createPopupAndAddIcon(
-          $indicatorElement,
+          valueDetails.$indicatorElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.employer, {
-            targetEntityQid: statement_target_qid
+            targetEntityQid: valueDetails.statement_target_qid
           }),
           "ellipsis",
           "Other employees of this organization as graph",
-          "100 other employees of " + statement_target_qLabel
+          "100 other employees of " + valueDetails.statement_target_qLabel
         );
         break;
     }
@@ -547,9 +546,8 @@ LIMIT 100`
    * @param {Object} entityData - The full entity data from Wikibase
    */
   function processStatementValues(statementDetails, entityDetails, entityData) {
-    const { pid, $statementElement } = statementDetails;
 
-    $statementElement
+    statementDetails.$statementElement
       .find(".wikibase-statementview-mainsnak-container")
       .find(".wikibase-snakview-value")
       .each(function () {
@@ -566,8 +564,9 @@ LIMIT 100`
         if (pElement.length) {
           pidTemp = pElement.attr("title").split(":")[1];
           pLabelTemp = pElement.text();
+          console.log("Element length 1")
         } else {
-          pidTemp = pid;
+          pidTemp = statementDetails.pid;
           pLabelTemp = statementDetails.pLabel;
         }
 
