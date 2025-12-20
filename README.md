@@ -9,7 +9,10 @@ Documentation: <https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries>
 ```bash
 sudo apt install npm
 npm install # For linting tools
+npm run minify
 
+# Optional
+npm run lint
 ```
 
 ## Todo
