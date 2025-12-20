@@ -8,8 +8,6 @@
  *
  * License: CC0
  */
-// For ESlint
-/* global $, mw */
 
 $(function () {
   "use strict";
@@ -87,7 +85,33 @@ SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHER
   OPTIONAL { ?employee {propertyPrefix}{image} ?imageEmp. }
   OPTIONAL { ?org {propertyPrefix}{logo} ?imageOrg. }
 }
-LIMIT 100`
+LIMIT 100`,
+      entityGraph: `#defaultView:Graph
+SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
+  {
+    BIND({entityPrefix}{entityQid} AS ?node)
+    ?node ?p ?i.
+    OPTIONAL { ?node {propertyPrefix}{image} ?nodeImage. }
+    ?childNode ?x ?p.
+    ?childNode rdf:type wikibase:Property.
+    FILTER(STRSTARTS(STR(?i), "http://www.wikidata.org/entity/Q"))
+    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/P"))
+  }
+  UNION
+  {
+    BIND("EFFBD8" AS ?rgb)
+    {entityPrefix}{entityQid} ?p ?childNode.
+    OPTIONAL { ?childNode {propertyPrefix}{image} ?childNodeImage. }
+    ?node ?x ?p.
+    ?node rdf:type wikibase:Property.
+    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/Q"))
+  }
+  OPTIONAL {
+    ?node {propertyPrefix}{image} ?nodeImage.
+    ?childNode {propertyPrefix}{image} ?childNodeImage.
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
+}`
     }
   };
 
@@ -269,7 +293,7 @@ LIMIT 100`
       const mountPoint = document.createElement("span");
       $(element).append(mountPoint);
 
-      const widthWithMin = Math.max(window.screen.width / 3, 500);
+      const widthWithMin = Math.max(window.screen.width / 3, 600);
 
       const queryServiceHref = WIKIBASE_CONFIG.queryServiceUrl + querystring;
       const embedHref = WIKIBASE_CONFIG.queryEmbedUrl + querystring;
@@ -426,6 +450,7 @@ LIMIT 100`
             }
           } catch (e) {
             // Another datatype
+            console.log(e)
             statement_target_qid = null;
           }
         }
@@ -555,7 +580,6 @@ LIMIT 100`
 
         // Extract property details for this specific value
         let pidTemp;
-        let pLabelTemp;
         const pElement = $valueElement
           .parents(".wikibase-snakview")
           .find(".wikibase-snakview-property")
@@ -563,11 +587,9 @@ LIMIT 100`
 
         if (pElement.length) {
           pidTemp = pElement.attr("title").split(":")[1];
-          pLabelTemp = pElement.text();
           console.log("Element length 1")
         } else {
           pidTemp = statementDetails.pid;
-          pLabelTemp = statementDetails.pLabel;
         }
 
         // Extract value details
@@ -576,52 +598,6 @@ LIMIT 100`
         // Add value-level features
         addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
       });
-  }
-
-  /**
-   * Create entity graph popup for the main entity
-   * @param {Object} entityDetails - Details about the main entity
-   */
-  function createEntityGraphPopup(entityDetails) {
-    const { qid, label, $titleElement } = entityDetails;
-
-    const entityGraphQueryTemplate = `#defaultView:Graph
-SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
-  {
-    BIND({entityPrefix}{entityQid} AS ?node)
-    ?node ?p ?i.
-    OPTIONAL { ?node {propertyPrefix}{image} ?nodeImage. }
-    ?childNode ?x ?p.
-    ?childNode rdf:type wikibase:Property.
-    FILTER(STRSTARTS(STR(?i), "http://www.wikidata.org/entity/Q"))
-    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/P"))
-  }
-  UNION
-  {
-    BIND("EFFBD8" AS ?rgb)
-    {entityPrefix}{entityQid} ?p ?childNode.
-    OPTIONAL { ?childNode {propertyPrefix}{image} ?childNodeImage. }
-    ?node ?x ?p.
-    ?node rdf:type wikibase:Property.
-    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/Q"))
-  }
-  OPTIONAL {
-    ?node {propertyPrefix}{image} ?nodeImage.
-    ?childNode {propertyPrefix}{image} ?childNodeImage.
-  }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
-}`;
-
-    createPopupAndAddIcon(
-      $titleElement,
-      replaceQueryPlaceholders(entityGraphQueryTemplate, {
-        entityQid: qid,
-        userLanguage: mw.config.get("wgUserLanguage")
-      }),
-      "ellipsis",
-      "Entity graph",
-      "Entity Graph of " + label
-    );
   }
 
   /**
@@ -645,7 +621,16 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       }
 
       // Create entity graph popup
-      createEntityGraphPopup(entityDetails);
+      createPopupAndAddIcon(
+        entityDetails.$titleElement,
+        replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.entityGraph, {
+          entityQid: entityDetails.qid,
+          userLanguage: mw.config.get("wgUserLanguage")
+        }),
+        "ellipsis",
+        "Entity graph",
+        "Entity Graph of " + entityDetails.label
+      );
 
       $(".wikibase-statementgroupview").each(function () {
         const $statementElement = $(this);
