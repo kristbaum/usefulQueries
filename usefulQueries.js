@@ -448,21 +448,19 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
               statement_target_qLabel = valueElement.text();
               statement_target_qid = '"' + statement_target_qLabel + '"';
             }
-          } catch (e) {
+          } finally {
             // Another datatype
-            console.log(e)
             statement_target_qid = null;
           }
         }
       }
     }
 
-    const valueDetails = {
-      qid: statement_target_qid,
+    return {
+      value: statement_target_qid,
       label: statement_target_qLabel,
       $indicatorElement: valueElement.siblings(".wikibase-snakview-indicators")
     };
-    return valueDetails;
   }
 
   /**
@@ -471,30 +469,28 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @param {Object} entityDetails - Details about the main entity
    */
   function addPropertyLevelFeatures(statementDetails, entityDetails) {
-    const { pid, $propertyElement } = statementDetails;
-    const { qid: main_qid, label: main_qlabel } = entityDetails;
 
-    switch (pid) {
+    switch (statementDetails.pid) {
       case WIKIBASE_CONFIG.properties.studentsCount:
         createPopupAndAddIcon(
-          $propertyElement,
+          statementDetails.$propertyElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
-            entityQid: main_qid
+            entityQid: entityDetails.qid
           }),
           "ellipsis",
           "Students count over time",
-          'Students count of "' + main_qlabel + '" over time:'
+          'Students count of "' + entityDetails.label + '" over time:'
         );
         break;
       case WIKIBASE_CONFIG.properties.membersCount:
         createPopupAndAddIcon(
-          $propertyElement,
+          statementDetails.$propertyElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.membersCount, {
-            entityQid: main_qid
+            entityQid: entityDetails.qid
           }),
           "ellipsis",
           "Members count over time",
-          "Members count of " + main_qlabel + " over time:"
+          "Members count of " + entityDetails.label + " over time:"
         );
         break;
       case WIKIBASE_CONFIG.properties.father:
@@ -502,8 +498,8 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       case WIKIBASE_CONFIG.properties.sibling:
       case WIKIBASE_CONFIG.properties.spouse:
         createIconWithLink(
-          $propertyElement,
-          WIKIBASE_CONFIG.externalServices.entitree + main_qid + "?0u0=u&0u1=u",
+          statementDetails.$propertyElement,
+          WIKIBASE_CONFIG.externalServices.entitree + entityDetails.qid + "?0u0=u&0u1=u",
           "articleDisambiguation",
           "Familytree on Entitree"
         );
@@ -519,30 +515,30 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    */
   function addValueLevelFeatures(statementDetails, valueDetails, entityDetails) {
 
-    if (!valueDetails.statement_target_qid) {
+    if (!valueDetails.value) {
       return;
     }
 
     switch (statementDetails.pid) {
       // Occupation based queries
       case WIKIBASE_CONFIG.properties.occupation:
-        switch (valueDetails.statement_target_qid) {
+        switch (valueDetails.value) {
           case WIKIBASE_CONFIG.entities.painter:
             createPopupAndAddIcon(
               valueDetails.$indicatorElement,
               replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.artworks, {
-                entityQid: entityDetails.main_qid
+                entityQid: entityDetails.qid
               }),
               "ellipsis",
               "Artworks by this painter in Wikimedia Commons",
-              "Artworks by " + entityDetails.main_qlabel
+              "Artworks by " + entityDetails.label
             );
             break;
 
           case WIKIBASE_CONFIG.entities.researcher:
             createIconWithLink(
               valueDetails.$indicatorElement,
-              WIKIBASE_CONFIG.externalServices.scholia + entityDetails.main_qid,
+              WIKIBASE_CONFIG.externalServices.scholia + entityDetails.qid,
               "articleSearch",
               "Page on Scholia"
             );
@@ -571,15 +567,16 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @param {Object} entityData - The full entity data from Wikibase
    */
   function processStatementValues(statementDetails, entityDetails, entityData) {
-
+    // This iterates over each valuebox for a statement (contains all the qualifiers and their value)
     statementDetails.$statementElement
       .find(".wikibase-statementview-mainsnak-container")
-      .find(".wikibase-snakview-value")
       .each(function () {
-        const $valueElement = $(this);
+
+        // We ignore qualifiers for now and focus on the mainsnak
+        const $valueElement = $(this).find(".wikibase-statementview-mainsnak");
 
         // Extract property details for this specific value
-        let pidTemp;
+        /*let pidTemp;
         const pElement = $valueElement
           .parents(".wikibase-snakview")
           .find(".wikibase-snakview-property")
@@ -590,10 +587,10 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           console.log("Element length 1")
         } else {
           pidTemp = statementDetails.pid;
-        }
+        }*/
 
         // Extract value details
-        const valueDetails = extractValueDetails($valueElement, entityData, pidTemp);
+        const valueDetails = extractValueDetails($valueElement, entityData, statementDetails.pid);
 
         // Add value-level features
         addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
