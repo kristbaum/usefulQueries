@@ -28,30 +28,30 @@ $(function () {
 
     // Property mappings - update these IDs for your Wikibase
     properties: {
-      studentsCount: "P2196",        // students count
-      membersCount: "P2124",         // members count
-      father: "P22",                 // father
-      mother: "P25",                 // mother
-      sibling: "P3373",              // sibling
-      spouse: "P26",                 // spouse
-      occupation: "P106",            // occupation
-      employer: "P108",              // employer
-      creator: "P170",               // creator
-      image: "P18",                  // image
-      logo: "P154",                  // logo
-      pointInTime: "P585"            // point in time
+      studentsCount: "P2196", // students count
+      membersCount: "P2124", // members count
+      father: "P22", // father
+      mother: "P25", // mother
+      sibling: "P3373", // sibling
+      spouse: "P26", // spouse
+      occupation: "P106", // occupation
+      employer: "P108", // employer
+      creator: "P170", // creator
+      image: "P18", // image
+      logo: "P154", // logo
+      pointInTime: "P585", // point in time
     },
 
     // Entity mappings - update these IDs for your Wikibase
     entities: {
-      painter: "Q1028181",           // painter
-      researcher: "Q1650915"         // researcher
+      painter: "Q1028181", // painter
+      researcher: "Q1650915", // researcher
     },
 
     // External service URLs
     externalServices: {
       entitree: "https://www.entitree.com/en/family_tree/",
-      scholia: "https://scholia.toolforge.org/author/"
+      scholia: "https://scholia.toolforge.org/author/",
     },
 
     queryTemplates: {
@@ -66,8 +66,7 @@ SELECT ?pit ?s_count WHERE {
   {entityPrefix}{entityQid} p:{membersCount} ?statement.
   ?statement ps:{membersCount} ?s_count.
   OPTIONAL { ?statement pq:{pointInTime} ?pit. }
-}`
-      ,
+}`,
       artworks: `#defaultView:ImageGrid
 SELECT ?item ?creator ?creatorLabel ?image WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
@@ -111,10 +110,9 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     ?childNode {propertyPrefix}{image} ?childNodeImage.
   }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
-}`
-    }
+}`,
+    },
   };
-
 
   /**
    * Helper function to replace property and entity placeholders in query strings
@@ -127,24 +125,27 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
     // Replace base configuration placeholders first
     result = result.replace(/{entityPrefix}/g, WIKIBASE_CONFIG.entityPrefix);
-    result = result.replace(/{propertyPrefix}/g, WIKIBASE_CONFIG.propertyPrefix);
+    result = result.replace(
+      /{propertyPrefix}/g,
+      WIKIBASE_CONFIG.propertyPrefix,
+    );
 
     // Replace property placeholders
     Object.entries(WIKIBASE_CONFIG.properties).forEach(([key, value]) => {
       const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, 'g'), value);
+      result = result.replace(new RegExp(placeholder, "g"), value);
     });
 
     // Replace entity placeholders
     Object.entries(WIKIBASE_CONFIG.entities).forEach(([key, value]) => {
       const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, 'g'), value);
+      result = result.replace(new RegExp(placeholder, "g"), value);
     });
 
     // Replace custom replacements
     Object.entries(replacements).forEach(([key, value]) => {
       const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, 'g'), value);
+      result = result.replace(new RegExp(placeholder, "g"), value);
     });
 
     // Return the encoded String
@@ -169,27 +170,41 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     let qleverQuery = query;
 
     // Add necessary PREFIX declarations if not present
-    const needsRdfsPrefix = !qleverQuery.includes('PREFIX rdfs:') && qleverQuery.includes('rdfs:label');
-    const needsWdtPrefix = !qleverQuery.includes('PREFIX wdt:') && qleverQuery.includes('wdt:');
-    const needsWdPrefix = !qleverQuery.includes('PREFIX wd:') && qleverQuery.includes('wd:');
+    const needsRdfsPrefix =
+      !qleverQuery.includes("PREFIX rdfs:") &&
+      qleverQuery.includes("rdfs:label");
+    const needsWdtPrefix =
+      !qleverQuery.includes("PREFIX wdt:") && qleverQuery.includes("wdt:");
+    const needsWdPrefix =
+      !qleverQuery.includes("PREFIX wd:") && qleverQuery.includes("wd:");
 
-    if (needsRdfsPrefix || needsWdtPrefix || needsWdPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
-      let prefixDeclarations = '';
+    if (
+      needsRdfsPrefix ||
+      needsWdtPrefix ||
+      needsWdPrefix ||
+      qleverQuery.match(/\?(\w+Label)\b/)
+    ) {
+      let prefixDeclarations = "";
 
       if (needsRdfsPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
-        prefixDeclarations += 'PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n';
+        prefixDeclarations +=
+          "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n";
       }
       if (needsWdtPrefix) {
-        prefixDeclarations += 'PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n';
+        prefixDeclarations +=
+          "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n";
       }
       if (needsWdPrefix) {
-        prefixDeclarations += 'PREFIX wd: <http://www.wikidata.org/entity/>\n';
+        prefixDeclarations += "PREFIX wd: <http://www.wikidata.org/entity/>\n";
       }
 
       // Insert prefixes at the beginning, after any existing #defaultView comments
       const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
       if (defaultViewMatch) {
-        qleverQuery = defaultViewMatch[1] + prefixDeclarations + qleverQuery.substring(defaultViewMatch[1].length);
+        qleverQuery =
+          defaultViewMatch[1] +
+          prefixDeclarations +
+          qleverQuery.substring(defaultViewMatch[1].length);
       } else {
         qleverQuery = prefixDeclarations + qleverQuery;
       }
@@ -198,33 +213,36 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     // Remove the SERVICE wikibase:label block entirely
     qleverQuery = qleverQuery.replace(
       /SERVICE wikibase:label \{ bd:serviceParam wikibase:language "[^"]*"\. \}/g,
-      ''
+      "",
     );
     qleverQuery = qleverQuery.replace(
       /SERVICE wikibase:label \{ bd:serviceParam wikibase:language "[^"]*", ?[^}]*\. \}/g,
-      ''
+      "",
     );
 
     // Find all variables that end with "Label" and add manual label fetching
     const labelVars = query.match(/\?(\w+Label)\b/g);
     if (labelVars) {
       const uniqueLabelVars = [...new Set(labelVars)];
-      let labelStatements = '';
+      let labelStatements = "";
 
-      uniqueLabelVars.forEach(labelVar => {
-        const baseVar = labelVar.replace('Label', '').replace('?', '');
+      uniqueLabelVars.forEach((labelVar) => {
+        const baseVar = labelVar.replace("Label", "").replace("?", "");
         labelStatements += `  OPTIONAL { ?${baseVar} rdfs:label ${labelVar} . FILTER(LANG(${labelVar}) = "en") }\n`;
       });
 
       // Insert label statements before the closing brace
-      const lastBraceIndex = qleverQuery.lastIndexOf('}');
+      const lastBraceIndex = qleverQuery.lastIndexOf("}");
       if (lastBraceIndex !== -1 && labelStatements) {
-        qleverQuery = qleverQuery.slice(0, lastBraceIndex) + labelStatements + qleverQuery.slice(lastBraceIndex);
+        qleverQuery =
+          qleverQuery.slice(0, lastBraceIndex) +
+          labelStatements +
+          qleverQuery.slice(lastBraceIndex);
       }
     }
 
     // Clean up extra whitespace
-    qleverQuery = qleverQuery.replace(/\n\s*\n/g, '\n').trim();
+    qleverQuery = qleverQuery.replace(/\n\s*\n/g, "\n").trim();
 
     return qleverQuery;
   }
@@ -235,7 +253,10 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     // Convert to QLever-compatible format
     const qleverQuery = convertToQLeverQuery(decodedQuery);
     // Encode for QLever
-    return "https://qlever.cs.uni-freiburg.de/wikidata/?query=" + encodeURIComponent(qleverQuery);
+    return (
+      "https://qlever.cs.uni-freiburg.de/wikidata/?query=" +
+      encodeURIComponent(qleverQuery)
+    );
   }
 
   function createIconWithLink(element, url, icon, toolhint) {
@@ -283,7 +304,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     querystring,
     icon,
     toolhint,
-    toplabel
+    toplabel,
   ) {
     console.log("Adding a Popup button");
     mw.loader.using("@wikimedia/codex").then(function (require) {
@@ -370,7 +391,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     });
   }
 
-
   /**
    * Extract basic entity information from the page
    * @returns {Object} Entity details including QID and label
@@ -383,7 +403,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     return {
       qid: qid,
       label: label,
-      $titleElement: $title.find(".wikibase-title-id")
+      $titleElement: $title.find(".wikibase-title-id"),
     };
   }
 
@@ -394,14 +414,15 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @returns {Object} Property and value details
    */
   function extractStatementDetails(statementElement) {
-    const statement_pid = statementElement.attr('id');
-    const statement_p_element = statementElement
-      .find(".wikibase-statementgroupview-property-label");
+    const statement_pid = statementElement.attr("id");
+    const statement_p_element = statementElement.find(
+      ".wikibase-statementgroupview-property-label",
+    );
     return {
       pid: statement_pid,
       pLabel: statement_p_element.text(),
       $propertyElement: statement_p_element,
-      $statementElement: statementElement
+      $statementElement: statementElement,
     };
   }
 
@@ -459,7 +480,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     return {
       value: statement_target_qid,
       label: statement_target_qLabel,
-      $indicatorElement: valueElement.siblings(".wikibase-snakview-indicators")
+      $indicatorElement: valueElement.siblings(".wikibase-snakview-indicators"),
     };
   }
 
@@ -469,28 +490,30 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @param {Object} entityDetails - Details about the main entity
    */
   function addPropertyLevelFeatures(statementDetails, entityDetails) {
-
     switch (statementDetails.pid) {
       case WIKIBASE_CONFIG.properties.studentsCount:
         createPopupAndAddIcon(
           statementDetails.$propertyElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
-            entityQid: entityDetails.qid
+            entityQid: entityDetails.qid,
           }),
           "ellipsis",
           "Students count over time",
-          'Students count of "' + entityDetails.label + '" over time:'
+          'Students count of "' + entityDetails.label + '" over time:',
         );
         break;
       case WIKIBASE_CONFIG.properties.membersCount:
         createPopupAndAddIcon(
           statementDetails.$propertyElement,
-          replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.membersCount, {
-            entityQid: entityDetails.qid
-          }),
+          replaceQueryPlaceholders(
+            WIKIBASE_CONFIG.queryTemplates.membersCount,
+            {
+              entityQid: entityDetails.qid,
+            },
+          ),
           "ellipsis",
           "Members count over time",
-          "Members count of " + entityDetails.label + " over time:"
+          "Members count of " + entityDetails.label + " over time:",
         );
         break;
       case WIKIBASE_CONFIG.properties.father:
@@ -499,9 +522,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       case WIKIBASE_CONFIG.properties.spouse:
         createIconWithLink(
           statementDetails.$propertyElement,
-          WIKIBASE_CONFIG.externalServices.entitree + entityDetails.qid + "?0u0=u&0u1=u",
+          WIKIBASE_CONFIG.externalServices.entitree +
+            entityDetails.qid +
+            "?0u0=u&0u1=u",
           "articleDisambiguation",
-          "Familytree on Entitree"
+          "Familytree on Entitree",
         );
         break;
     }
@@ -513,8 +538,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @param {Object} valueDetails - Details about the value
    * @param {Object} entityDetails - Details about the main entity
    */
-  function addValueLevelFeatures(statementDetails, valueDetails, entityDetails) {
-
+  function addValueLevelFeatures(
+    statementDetails,
+    valueDetails,
+    entityDetails,
+  ) {
     if (!valueDetails.value) {
       return;
     }
@@ -526,12 +554,15 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           case WIKIBASE_CONFIG.entities.painter:
             createPopupAndAddIcon(
               valueDetails.$indicatorElement,
-              replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.artworks, {
-                entityQid: entityDetails.qid
-              }),
+              replaceQueryPlaceholders(
+                WIKIBASE_CONFIG.queryTemplates.artworks,
+                {
+                  entityQid: entityDetails.qid,
+                },
+              ),
               "ellipsis",
               "Artworks by this painter in Wikimedia Commons",
-              "Artworks by " + entityDetails.label
+              "Artworks by " + entityDetails.label,
             );
             break;
 
@@ -540,7 +571,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
               valueDetails.$indicatorElement,
               WIKIBASE_CONFIG.externalServices.scholia + entityDetails.qid,
               "articleSearch",
-              "Page on Scholia"
+              "Page on Scholia",
             );
             break;
         }
@@ -550,11 +581,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         createPopupAndAddIcon(
           valueDetails.$indicatorElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.employer, {
-            targetEntityQid: valueDetails.statement_target_qid
+            targetEntityQid: valueDetails.statement_target_qid,
           }),
           "ellipsis",
           "Other employees of this organization as graph",
-          "100 other employees of " + valueDetails.statement_target_qLabel
+          "100 other employees of " + valueDetails.statement_target_qLabel,
         );
         break;
     }
@@ -571,7 +602,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     statementDetails.$statementElement
       .find(".wikibase-statementview-mainsnak-container")
       .each(function () {
-
         // We ignore qualifiers for now and focus on the mainsnak
         const $valueElement = $(this).find(".wikibase-statementview-mainsnak");
 
@@ -590,7 +620,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         }*/
 
         // Extract value details
-        const valueDetails = extractValueDetails($valueElement, entityData, statementDetails.pid);
+        const valueDetails = extractValueDetails(
+          $valueElement,
+          entityData,
+          statementDetails.pid,
+        );
 
         // Add value-level features
         addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
@@ -601,7 +635,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * Main function to orchestrate the processing of the Wikibase entity page
    */
   function processWikibaseEntityPage() {
-
     // Extract entity details
     const entityDetails = extractEntityDetails();
     if (!entityDetails.qid) {
@@ -611,7 +644,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
     // Process statements when entity data is loaded
     mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
-
       if (entityData.type != "item") {
         // Not a supported data type, closing
         return;
@@ -622,11 +654,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         entityDetails.$titleElement,
         replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.entityGraph, {
           entityQid: entityDetails.qid,
-          userLanguage: mw.config.get("wgUserLanguage")
+          userLanguage: mw.config.get("wgUserLanguage"),
         }),
         "ellipsis",
         "Entity graph",
-        "Entity Graph of " + entityDetails.label
+        "Entity Graph of " + entityDetails.label,
       );
 
       $(".wikibase-statementgroupview").each(function () {
@@ -641,9 +673,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         // Process statement values
         processStatementValues(statementDetails, entityDetails, entityData);
       });
-
     });
-
   }
 
   // Initialize the main processing
