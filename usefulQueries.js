@@ -26,6 +26,9 @@ $(function () {
     entityPrefix: "wd:",
     propertyPrefix: "wdt:",
 
+    // Feature toggles
+    enableQLever: true, // Set to false to disable QLever query links
+
     // Property mappings - update these IDs for your Wikibase
     properties: {
       studentsCount: "P2196", // students count
@@ -259,7 +262,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     );
   }
 
-  function createIconWithLink(element, url, icon, toolhint) {
+  function createIconWithLink(element, url, buttonLabel, toolhint) {
     mw.loader.using("@wikimedia/codex").then(function (require) {
       const Vue = require("vue");
       const Codex = require("@wikimedia/codex");
@@ -272,8 +275,8 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         data: function () {
           return {
             url: url,
+            buttonLabel: buttonLabel,
             toolhint: toolhint,
-            icon: null,
           };
         },
         template: `
@@ -282,31 +285,28 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
             target="_blank"
             rel="noopener noreferrer"
             weight="quiet"
-            action="default"
+            action="progressive"
             :aria-label="toolhint"
             :title="toolhint"
           >
-            <cdx-icon v-if="icon" :icon="icon" />
-            <span v-else>{{ toolhint }}</span>
+            {{ buttonLabel }}
           </cdx-button>
         `,
       });
 
       app.component("CdxButton", Codex.CdxButton);
-      app.component("CdxIcon", Codex.CdxIcon);
       app.mount(mountPoint);
     });
   }
 
-  // Function to create a popup and add an icon to the specified element.
+  // Function to create a popup and add a button to the specified element.
   function createPopupAndAddIcon(
     element,
     querystring,
-    icon,
+    buttonLabel,
     toolhint,
     toplabel,
   ) {
-    console.log("Adding a Popup button");
     mw.loader.using("@wikimedia/codex").then(function (require) {
       const Vue = require("vue");
       const Codex = require("@wikimedia/codex");
@@ -318,7 +318,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
       const queryServiceHref = WIKIBASE_CONFIG.queryServiceUrl + querystring;
       const embedHref = WIKIBASE_CONFIG.queryEmbedUrl + querystring;
-      const qleverHref = isWikidata() ? getQLeverUrl(querystring) : null;
+      // Only generate QLever URL if the feature is enabled and we're on Wikidata
+      const qleverHref =
+        WIKIBASE_CONFIG.enableQLever && isWikidata()
+          ? getQLeverUrl(querystring)
+          : null;
 
       const app = Vue.createMwApp({
         name: "UsefulQueriesPopover",
@@ -326,9 +330,9 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           return {
             open: false,
             anchorEl: null,
+            buttonLabel: buttonLabel,
             toolhint: toolhint,
             toplabel: toplabel,
-            icon: null,
             queryServiceHref: queryServiceHref,
             embedHref: embedHref,
             qleverHref: qleverHref,
@@ -345,13 +349,12 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
               target="_blank"
               rel="noopener noreferrer"
               weight="quiet"
-              action="default"
+              action="progressive"
               :aria-label="toolhint"
               :title="toolhint"
               @click.prevent="open = !open"
             >
-              <cdx-icon v-if="icon" :icon="icon" />
-              <span v-else>{{ toolhint }}</span>
+              {{ buttonLabel }}
             </cdx-button>
           </span>
 
@@ -385,7 +388,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       });
 
       app.component("CdxButton", Codex.CdxButton);
-      app.component("CdxIcon", Codex.CdxIcon);
       app.component("CdxPopover", Codex.CdxPopover);
       app.mount(mountPoint);
     });
@@ -497,7 +499,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
             entityQid: entityDetails.qid,
           }),
-          "ellipsis",
+          "📊",
           "Students count over time",
           'Students count of "' + entityDetails.label + '" over time:',
         );
@@ -511,7 +513,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
               entityQid: entityDetails.qid,
             },
           ),
-          "ellipsis",
+          "📊",
           "Members count over time",
           "Members count of " + entityDetails.label + " over time:",
         );
@@ -525,8 +527,8 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           WIKIBASE_CONFIG.externalServices.entitree +
             entityDetails.qid +
             "?0u0=u&0u1=u",
-          "articleDisambiguation",
-          "Familytree on Entitree",
+          "🌳",
+          "Family tree on Entitree",
         );
         break;
     }
@@ -560,7 +562,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
                   entityQid: entityDetails.qid,
                 },
               ),
-              "ellipsis",
+              "🖼️",
               "Artworks by this painter in Wikimedia Commons",
               "Artworks by " + entityDetails.label,
             );
@@ -570,7 +572,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
             createIconWithLink(
               valueDetails.$indicatorElement,
               WIKIBASE_CONFIG.externalServices.scholia + entityDetails.qid,
-              "articleSearch",
+              "📚",
               "Page on Scholia",
             );
             break;
@@ -583,7 +585,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.employer, {
             targetEntityQid: valueDetails.statement_target_qid,
           }),
-          "ellipsis",
+          "👥",
           "Other employees of this organization as graph",
           "100 other employees of " + valueDetails.statement_target_qLabel,
         );
@@ -656,7 +658,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           entityQid: entityDetails.qid,
           userLanguage: mw.config.get("wgUserLanguage"),
         }),
-        "ellipsis",
+        "🔗",
         "Entity graph",
         "Entity Graph of " + entityDetails.label,
       );
