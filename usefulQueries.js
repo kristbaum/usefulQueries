@@ -1,6 +1,6 @@
 /*
- * This script provides context-based queries to statements for Wikimedia pages.
- * It creates a popup when you click on certain elements, showing data from Wikidata.
+ * This script provides context-based queries to statements for Wikibase pages.
+ * It creates a popup when you click on certain elements, showing live queries It also provides some some links to projects like entitree and scholia.
  *
  * To activate this script, add the line below to your common.js on MediaWiki (go to https://www.wikidata.org/wiki/Special:MyPage/common.js):
  * mw.loader.load("//www.wikidata.org/w/index.php?title=User:Kristbaum/usefulQueries.js&action=raw&ctype=text/javascript");
@@ -28,6 +28,8 @@ $(function () {
 
     // Feature toggles
     enableQLever: true, // Set to false to disable QLever query links
+    enableEntitree: true, // Set to false to disable Entitree family tree links
+    enableScholia: true, // Set to false to disable Scholia links
 
     // Property mappings - update these IDs for your Wikibase
     properties: {
@@ -293,17 +295,21 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           };
         },
         template: `
-          <cdx-button
+          <a
             :href="url"
             target="_blank"
             rel="noopener noreferrer"
-            weight="quiet"
-            action="progressive"
-            :aria-label="toolhint"
             :title="toolhint"
+            style="text-decoration: none;"
           >
-            {{ buttonLabel }}
-          </cdx-button>
+            <cdx-button
+              weight="quiet"
+              action="progressive"
+              :aria-label="toolhint"
+            >
+              {{ buttonLabel }}
+            </cdx-button>
+          </a>
         `,
       });
 
@@ -388,6 +394,12 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
             :use-close-button="true"
           >
             <div>
+              <div v-if="qleverHref" style="padding: 10px; border-bottom: 1px solid;">
+                <a :href="qleverHref" target="_blank" rel="noopener noreferrer">
+                  Run query on QLever (alternative query service)
+                </a>
+              </div>
+
               <iframe
                 v-if="open"
                 scrolling="yes"
@@ -396,12 +408,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
                 :width="iframeSize"
                 :height="iframeSize"
               ></iframe>
-
-              <div v-if="qleverHref" style="padding: 10px; border-top: 1px solid;">
-                <a :href="qleverHref" target="_blank" rel="noopener noreferrer">
-                  Run query on QLever (alternative query service)
-                </a>
-              </div>
             </div>
           </cdx-popover>
         `,
@@ -537,12 +543,16 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       case WIKIBASE_CONFIG.properties.sibling:
       case WIKIBASE_CONFIG.properties.spouse:
       case WIKIBASE_CONFIG.properties.child:
-        createIconWithLink(
-          $propertyElement,
-          WIKIBASE_CONFIG.externalServices.entitree + itemQid + "?0u0=u&0u1=u",
-          "🌳",
-          "Family tree on Entitree",
-        );
+        if (WIKIBASE_CONFIG.enableEntitree) {
+          createIconWithLink(
+            $propertyElement,
+            WIKIBASE_CONFIG.externalServices.entitree +
+              itemQid +
+              "?0u0=u&0u1=u",
+            "🌳",
+            "Family tree on Entitree",
+          );
+        }
         break;
     }
   }
@@ -586,12 +596,14 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
             break;
 
           case WIKIBASE_CONFIG.entities.researcher:
-            createIconWithLink(
-              $indicatorElement,
-              WIKIBASE_CONFIG.externalServices.scholia + itemQid,
-              "📚",
-              "Page on Scholia",
-            );
+            if (WIKIBASE_CONFIG.enableScholia) {
+              createIconWithLink(
+                $indicatorElement,
+                WIKIBASE_CONFIG.externalServices.scholia + itemQid,
+                "📚",
+                "Page on Scholia",
+              );
+            }
             break;
         }
         break;
