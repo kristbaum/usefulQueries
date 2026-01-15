@@ -414,93 +414,102 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   }
 
   /**
-   * Extract property and value information from a statement element
-   * @param {jQuery} statementElement - The statement element to process
-   * @param {Object} entityData - The full entity data from Wikibase
-   * @returns {Object} Property and value details
+   * Get the DOM element for a property group by property ID
+   * @param {string} propertyId - The property ID (e.g., "P106")
+   * @returns {jQuery|null} The property label element or null if not found
    */
-  function extractStatementDetails(statementElement) {
-    const statement_pid = statementElement.attr("id");
-    const statement_p_element = statementElement.find(
-      ".wikibase-statementgroupview-property-label",
+  function getPropertyElement(propertyId) {
+    const $propertyLink = $(
+      '.wikibase-statementgroupview-property-label a[title="Property:' +
+        propertyId +
+        '"]',
     );
-    return {
-      pid: statement_pid,
-      pLabel: statement_p_element.text(),
-      $propertyElement: statement_p_element,
-      $statementElement: statementElement,
-    };
+    if ($propertyLink.length) {
+      return $propertyLink.closest(
+        ".wikibase-statementgroupview-property-label",
+      );
+    }
+    return null;
   }
 
   /**
-   * Extract value details from a statement value element
-   * @param {jQuery} valueElement - The value element to process
-   * @param {Object} entityData - The full entity data from Wikibase
-   * @param {string} pidTemp - The property ID
+   * Get the DOM element for a specific statement by statement ID
+   * @param {string} statementId - The full statement ID (e.g., "Q454172$84CA3CF1-...")
+   * @returns {jQuery|null} The statement element or null if not found
+   */
+  function getStatementElement(statementId) {
+    // Statement IDs in DOM use the format: id="Q454172$84CA3CF1-..."
+    const $statement = $("#" + CSS.escape(statementId));
+    if ($statement.length) {
+      return $statement;
+    }
+    return null;
+  }
+
+  /**
+   * Get the indicator element for a statement where buttons can be attached
+   * @param {jQuery} $statementElement - The statement element
+   * @returns {jQuery|null} The indicator element or null if not found
+   */
+  function getStatementIndicatorElement($statementElement) {
+    return $statementElement.find(".wikibase-snakview-indicators").first();
+  }
+
+  /**
+   * Extract value details from a claim's mainsnak
+   * @param {Object} mainsnak - The mainsnak object from the claim
    * @returns {Object} Value details including QID and label
    */
-  function extractValueDetails(valueElement, entityData, pidTemp) {
-    let statement_target_qid = valueElement.find("a").attr("title");
-    let statement_target_qLabel = valueElement.find("a").text();
-
-    // Extract just the Q-number from the title (in case it contains ": Label" suffix)
-    if (statement_target_qid) {
-      let qidMatch = statement_target_qid.match(/^(Q\d+)/);
-      if (qidMatch) {
-        statement_target_qid = qidMatch[1];
-      }
+  function extractValueFromMainsnak(mainsnak) {
+    if (!mainsnak || mainsnak.snaktype !== "value" || !mainsnak.datavalue) {
+      return { value: null, label: null };
     }
 
-    // Handle non-entity values
-    if (!statement_target_qid) {
-      if (valueElement.find("a").length === 0) {
-        if (valueElement.find(".wb-monolingualtext-value").length) {
-          statement_target_qLabel = valueElement
-            .find(".wb-monolingualtext-value")
-            .html();
-          statement_target_qid = null;
-        } else {
-          statement_target_qLabel = valueElement.html();
-          try {
-            const datavalue = entityData.claims[pidTemp][0].mainsnak.datavalue;
-            const type = datavalue.type;
+    const datavalue = mainsnak.datavalue;
 
-            if (type === "time") {
-              const time = datavalue.value.time;
-              statement_target_qid = '"' + time + '"^^xsd:dateTime';
-            } else if (type === "quantity") {
-              const amount = datavalue.value.amount;
-              statement_target_qid = amount;
-            } else {
-              statement_target_qLabel = valueElement.text();
-              statement_target_qid = '"' + statement_target_qLabel + '"';
-            }
-          } finally {
-            // Another datatype
-            statement_target_qid = null;
-          }
-        }
-      }
+    switch (datavalue.type) {
+      case "wikibase-entityid":
+        return {
+          value: datavalue.value.id,
+          label: null, // Label would need to be fetched separately or from DOM
+        };
+      case "time":
+        return {
+          value: '"' + datavalue.value.time + '"^^xsd:dateTime',
+          label: datavalue.value.time,
+        };
+      case "quantity":
+        return {
+          value: datavalue.value.amount,
+          label: datavalue.value.amount,
+        };
+      case "string":
+        return {
+          value: '"' + datavalue.value + '"',
+          label: datavalue.value,
+        };
+      default:
+        return { value: null, label: null };
     }
-
-    return {
-      value: statement_target_qid,
-      label: statement_target_qLabel,
-      $indicatorElement: valueElement.siblings(".wikibase-snakview-indicators"),
-    };
   }
 
   /**
    * Add property-level icons and popups based on property type
-   * @param {Object} statementDetails - Details about the statement
+   * @param {string} propertyId - The property ID (e.g., "P106")
+   * @param {jQuery} $propertyElement - The DOM element for the property label
    * @param {string} itemQid - Main item Qid
    * @param {string} itemLabel - Main item Label
    */
-  function addPropertyLevelFeatures(statementDetails, itemQid, itemLabel) {
-    switch (statementDetails.pid) {
+  function addPropertyLevelFeatures(
+    propertyId,
+    $propertyElement,
+    itemQid,
+    itemLabel,
+  ) {
+    switch (propertyId) {
       case WIKIBASE_CONFIG.properties.studentsCount:
         createPopupAndAddIcon(
-          statementDetails.$propertyElement,
+          $propertyElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
             entityQid: itemQid,
           }),
@@ -511,7 +520,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         break;
       case WIKIBASE_CONFIG.properties.membersCount:
         createPopupAndAddIcon(
-          statementDetails.$propertyElement,
+          $propertyElement,
           replaceQueryPlaceholders(
             WIKIBASE_CONFIG.queryTemplates.membersCount,
             {
@@ -529,7 +538,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       case WIKIBASE_CONFIG.properties.spouse:
       case WIKIBASE_CONFIG.properties.child:
         createIconWithLink(
-          statementDetails.$propertyElement,
+          $propertyElement,
           WIKIBASE_CONFIG.externalServices.entitree + itemQid + "?0u0=u&0u1=u",
           "🌳",
           "Family tree on Entitree",
@@ -540,14 +549,16 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
   /**
    * Add value-level icons and popups based on property and value
-   * @param {Object} statementDetails - Details about the statement
-   * @param {Object} valueDetails - Details about the value
+   * @param {string} propertyId - The property ID (e.g., "P106")
+   * @param {Object} valueDetails - Details about the value (from JSON)
+   * @param {jQuery} $indicatorElement - The DOM element to attach buttons to
    * @param {string} itemQid - Main item Qid
    * @param {string} itemLabel - Main item label
    */
   function addValueLevelFeatures(
-    statementDetails,
+    propertyId,
     valueDetails,
+    $indicatorElement,
     itemQid,
     itemLabel,
   ) {
@@ -555,13 +566,13 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       return;
     }
 
-    switch (statementDetails.pid) {
+    switch (propertyId) {
       // Occupation based queries
       case WIKIBASE_CONFIG.properties.occupation:
         switch (valueDetails.value) {
           case WIKIBASE_CONFIG.entities.painter:
             createPopupAndAddIcon(
-              valueDetails.$indicatorElement,
+              $indicatorElement,
               replaceQueryPlaceholders(
                 WIKIBASE_CONFIG.queryTemplates.artworks,
                 {
@@ -576,7 +587,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
           case WIKIBASE_CONFIG.entities.researcher:
             createIconWithLink(
-              valueDetails.$indicatorElement,
+              $indicatorElement,
               WIKIBASE_CONFIG.externalServices.scholia + itemQid,
               "📚",
               "Page on Scholia",
@@ -587,61 +598,77 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
       case WIKIBASE_CONFIG.properties.employer:
         createPopupAndAddIcon(
-          valueDetails.$indicatorElement,
+          $indicatorElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.employer, {
-            targetEntityQid: valueDetails.statement_target_qid,
+            targetEntityQid: valueDetails.value,
           }),
           "👥",
           "Other employees of this organization as graph",
-          "100 other employees of " + valueDetails.statement_target_qLabel,
+          "100 other employees of " +
+            (valueDetails.label || valueDetails.value),
         );
         break;
     }
   }
 
   /**
-   * Process all statement values for a given statement
-   * @param {Object} statementDetails - Details about the statement
-   * @param {Object} entityData - Main entity data
-   * @param {string} itemLabel - Label
+   * Process a single claim (statement) from the entity data
+   * @param {string} propertyId - The property ID
+   * @param {Object} claim - The claim object from entityData.claims
+   * @param {string} itemQid - Main item Qid
+   * @param {string} itemLabel - Main item label
    */
-  function processStatementValues(statementDetails, entityData, itemLabel) {
-    // This iterates over each valuebox for a statement (contains all the qualifiers and their value)
-    statementDetails.$statementElement
-      .find(".wikibase-statementview-mainsnak-container")
-      .each(function () {
-        // We ignore qualifiers for now and focus on the mainsnak
-        const $valueElement = $(this).find(".wikibase-statementview-mainsnak");
+  function processClaim(propertyId, claim, itemQid, itemLabel) {
+    // Get the statement DOM element using the statement ID
+    const $statementElement = getStatementElement(claim.id);
+    if (!$statementElement) {
+      return;
+    }
 
-        // Extract property details for this specific value
-        /*let pidTemp;
-        const pElement = $valueElement
-          .parents(".wikibase-snakview")
-          .find(".wikibase-snakview-property")
-          .find("a");
+    // Get the indicator element where we can attach value-level buttons
+    const $indicatorElement = getStatementIndicatorElement($statementElement);
+    if (!$indicatorElement) {
+      return;
+    }
 
-        if (pElement.length) {
-          pidTemp = pElement.attr("title").split(":")[1];
-          console.log("Element length 1")
-        } else {
-          pidTemp = statementDetails.pid;
-        }*/
+    // Extract value from the mainsnak
+    const valueDetails = extractValueFromMainsnak(claim.mainsnak);
 
-        // Extract value details
-        const valueDetails = extractValueDetails(
-          $valueElement,
-          entityData,
-          statementDetails.pid,
-        );
+    // Add value-level features
+    addValueLevelFeatures(
+      propertyId,
+      valueDetails,
+      $indicatorElement,
+      itemQid,
+      itemLabel,
+    );
+  }
 
-        // Add value-level features
-        addValueLevelFeatures(
-          statementDetails,
-          valueDetails,
-          entityData.id,
-          itemLabel,
-        );
-      });
+  /**
+   * Process all claims for a property
+   * @param {string} propertyId - The property ID
+   * @param {Array} claims - Array of claims for this property
+   * @param {string} itemQid - Main item Qid
+   * @param {string} itemLabel - Main item label
+   */
+  function processPropertyClaims(propertyId, claims, itemQid, itemLabel) {
+    // Get the property element in the DOM
+    const $propertyElement = getPropertyElement(propertyId);
+
+    // Add property-level features (only once per property)
+    if ($propertyElement) {
+      addPropertyLevelFeatures(
+        propertyId,
+        $propertyElement,
+        itemQid,
+        itemLabel,
+      );
+    }
+
+    // Process each claim for value-level features
+    claims.forEach(function (claim) {
+      processClaim(propertyId, claim, itemQid, itemLabel);
+    });
   }
 
   /**
@@ -654,6 +681,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         // Not a supported data type, closing
         return;
       }
+
       const itemLabel = $(".wikibase-title")
         .first()
         .find(".wikibase-title-label")
@@ -663,7 +691,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         .find(".wikibase-title-id");
       const userLanguage = mw.config.get("wgUserLanguage");
 
-      // Create entity graph popup
+      // Create entity graph popup on the title
       createPopupAndAddIcon(
         $titleElement,
         replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.entityGraph, {
@@ -675,18 +703,13 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         "Entity Graph of " + itemLabel,
       );
 
-      $(".wikibase-statementgroupview").each(function () {
-        // Iterates over all statements
-        const $statementElement = $(this);
+      // Iterate over claims from JSON data instead of DOM elements
 
-        // Extract statement details
-        const statementDetails = extractStatementDetails($statementElement);
-
-        // Add property-level features
-        addPropertyLevelFeatures(statementDetails, entityData.id, itemLabel);
-
-        // Process statement values
-        processStatementValues(statementDetails, entityData, itemLabel);
+      Object.entries(entityData.claims).forEach(function ([
+        propertyId,
+        claims,
+      ]) {
+        processPropertyClaims(propertyId, claims, entityData.id, itemLabel);
       });
     });
   }
