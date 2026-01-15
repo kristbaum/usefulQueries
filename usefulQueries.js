@@ -31,18 +31,19 @@ $(function () {
 
     // Property mappings - update these IDs for your Wikibase
     properties: {
-      studentsCount: "P2196", // students count
-      membersCount: "P2124", // members count
-      father: "P22", // father
-      mother: "P25", // mother
-      sibling: "P3373", // sibling
-      spouse: "P26", // spouse
-      occupation: "P106", // occupation
-      employer: "P108", // employer
-      creator: "P170", // creator
-      image: "P18", // image
-      logo: "P154", // logo
-      pointInTime: "P585", // point in time
+      studentsCount: "P2196",
+      membersCount: "P2124",
+      father: "P22",
+      mother: "P25",
+      sibling: "P3373",
+      spouse: "P26",
+      child: "P40",
+      occupation: "P106",
+      employer: "P108",
+      creator: "P170",
+      image: "P18",
+      logo: "P154",
+      pointInTime: "P585",
     },
 
     // Entity mappings - update these IDs for your Wikibase
@@ -250,6 +251,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     return qleverQuery;
   }
 
+  /**
+   * Returns the QLeverUrl
+   * @param {string} querystring
+   * @returns
+   */
   function getQLeverUrl(querystring) {
     // Decode the query string (remove # and decode)
     const decodedQuery = decodeURIComponent(querystring.substring(1));
@@ -262,6 +268,13 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     );
   }
 
+  /**
+   * Create a Codex button with a link and label.
+   * @param {jQuery} element - The element to append the button to.
+   * @param {string} url - The URL to open when the button is clicked.
+   * @param {string} buttonLabel - The label (emoji/text) for the button.
+   * @param {string} toolhint - The tooltip for the button.
+   */
   function createIconWithLink(element, url, buttonLabel, toolhint) {
     mw.loader.using("@wikimedia/codex").then(function (require) {
       const Vue = require("vue");
@@ -299,7 +312,14 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     });
   }
 
-  // Function to create a popup and add a button to the specified element.
+  /**
+   * Create a Codex popup button and add it to the specified element.
+   * @param {jQuery} element - The element to append the popup button to.
+   * @param {string} querystring - The query string for the query service.
+   * @param {string} buttonLabel - The label (emoji/text) for the button.
+   * @param {string} toolhint - The tooltip for the button.
+   * @param {string} toplabel - The title for the popup.
+   */
   function createPopupAndAddIcon(
     element,
     querystring,
@@ -394,22 +414,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   }
 
   /**
-   * Extract basic entity information from the page
-   * @returns {Object} Entity details including QID and label
-   */
-  function extractEntityDetails() {
-    const $title = $(".wikibase-title").first();
-    const qid = $title.find(".wikibase-title-id").text().replace(/[()]/g, "");
-    const label = $title.find(".wikibase-title-label").text();
-
-    return {
-      qid: qid,
-      label: label,
-      $titleElement: $title.find(".wikibase-title-id"),
-    };
-  }
-
-  /**
    * Extract property and value information from a statement element
    * @param {jQuery} statementElement - The statement element to process
    * @param {Object} entityData - The full entity data from Wikibase
@@ -489,19 +493,20 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   /**
    * Add property-level icons and popups based on property type
    * @param {Object} statementDetails - Details about the statement
-   * @param {Object} entityDetails - Details about the main entity
+   * @param {string} itemQid - Main item Qid
+   * @param {string} itemLabel - Main item Label
    */
-  function addPropertyLevelFeatures(statementDetails, entityDetails) {
+  function addPropertyLevelFeatures(statementDetails, itemQid, itemLabel) {
     switch (statementDetails.pid) {
       case WIKIBASE_CONFIG.properties.studentsCount:
         createPopupAndAddIcon(
           statementDetails.$propertyElement,
           replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
-            entityQid: entityDetails.qid,
+            entityQid: itemQid,
           }),
           "📊",
           "Students count over time",
-          'Students count of "' + entityDetails.label + '" over time:',
+          'Students count of "' + itemLabel + '" over time:',
         );
         break;
       case WIKIBASE_CONFIG.properties.membersCount:
@@ -510,23 +515,22 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           replaceQueryPlaceholders(
             WIKIBASE_CONFIG.queryTemplates.membersCount,
             {
-              entityQid: entityDetails.qid,
+              entityQid: itemQid,
             },
           ),
           "📊",
           "Members count over time",
-          "Members count of " + entityDetails.label + " over time:",
+          "Members count of " + itemLabel + " over time:",
         );
         break;
       case WIKIBASE_CONFIG.properties.father:
       case WIKIBASE_CONFIG.properties.mother:
       case WIKIBASE_CONFIG.properties.sibling:
       case WIKIBASE_CONFIG.properties.spouse:
+      case WIKIBASE_CONFIG.properties.child:
         createIconWithLink(
           statementDetails.$propertyElement,
-          WIKIBASE_CONFIG.externalServices.entitree +
-            entityDetails.qid +
-            "?0u0=u&0u1=u",
+          WIKIBASE_CONFIG.externalServices.entitree + itemQid + "?0u0=u&0u1=u",
           "🌳",
           "Family tree on Entitree",
         );
@@ -538,12 +542,14 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * Add value-level icons and popups based on property and value
    * @param {Object} statementDetails - Details about the statement
    * @param {Object} valueDetails - Details about the value
-   * @param {Object} entityDetails - Details about the main entity
+   * @param {string} itemQid - Main item Qid
+   * @param {string} itemLabel - Main item label
    */
   function addValueLevelFeatures(
     statementDetails,
     valueDetails,
-    entityDetails,
+    itemQid,
+    itemLabel,
   ) {
     if (!valueDetails.value) {
       return;
@@ -559,19 +565,19 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
               replaceQueryPlaceholders(
                 WIKIBASE_CONFIG.queryTemplates.artworks,
                 {
-                  entityQid: entityDetails.qid,
+                  entityQid: itemQid,
                 },
               ),
               "🖼️",
               "Artworks by this painter in Wikimedia Commons",
-              "Artworks by " + entityDetails.label,
+              "Artworks by " + itemLabel,
             );
             break;
 
           case WIKIBASE_CONFIG.entities.researcher:
             createIconWithLink(
               valueDetails.$indicatorElement,
-              WIKIBASE_CONFIG.externalServices.scholia + entityDetails.qid,
+              WIKIBASE_CONFIG.externalServices.scholia + itemQid,
               "📚",
               "Page on Scholia",
             );
@@ -596,10 +602,10 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   /**
    * Process all statement values for a given statement
    * @param {Object} statementDetails - Details about the statement
-   * @param {Object} entityDetails - Details about the main entity
-   * @param {Object} entityData - The full entity data from Wikibase
+   * @param {Object} entityData - Main entity data
+   * @param {string} itemLabel - Label
    */
-  function processStatementValues(statementDetails, entityDetails, entityData) {
+  function processStatementValues(statementDetails, entityData, itemLabel) {
     // This iterates over each valuebox for a statement (contains all the qualifiers and their value)
     statementDetails.$statementElement
       .find(".wikibase-statementview-mainsnak-container")
@@ -629,7 +635,12 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         );
 
         // Add value-level features
-        addValueLevelFeatures(statementDetails, valueDetails, entityDetails);
+        addValueLevelFeatures(
+          statementDetails,
+          valueDetails,
+          entityData.id,
+          itemLabel,
+        );
       });
   }
 
@@ -637,43 +648,45 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * Main function to orchestrate the processing of the Wikibase entity page
    */
   function processWikibaseEntityPage() {
-    // Extract entity details
-    const entityDetails = extractEntityDetails();
-    if (!entityDetails.qid) {
-      console.warn("Could not extract entity QID, aborting");
-      return;
-    }
-
     // Process statements when entity data is loaded
     mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
       if (entityData.type != "item") {
         // Not a supported data type, closing
         return;
       }
+      const itemLabel = $(".wikibase-title")
+        .first()
+        .find(".wikibase-title-label")
+        .text();
+      const $titleElement = $(".wikibase-title")
+        .first()
+        .find(".wikibase-title-id");
+      const userLanguage = mw.config.get("wgUserLanguage");
 
       // Create entity graph popup
       createPopupAndAddIcon(
-        entityDetails.$titleElement,
+        $titleElement,
         replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.entityGraph, {
-          entityQid: entityDetails.qid,
-          userLanguage: mw.config.get("wgUserLanguage"),
+          entityQid: entityData.id,
+          userLanguage: userLanguage,
         }),
         "🔗",
         "Entity graph",
-        "Entity Graph of " + entityDetails.label,
+        "Entity Graph of " + itemLabel,
       );
 
       $(".wikibase-statementgroupview").each(function () {
+        // Iterates over all statements
         const $statementElement = $(this);
 
         // Extract statement details
         const statementDetails = extractStatementDetails($statementElement);
 
         // Add property-level features
-        addPropertyLevelFeatures(statementDetails, entityDetails);
+        addPropertyLevelFeatures(statementDetails, entityData.id, itemLabel);
 
         // Process statement values
-        processStatementValues(statementDetails, entityDetails, entityData);
+        processStatementValues(statementDetails, entityData, itemLabel);
       });
     });
   }
