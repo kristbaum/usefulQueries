@@ -17,86 +17,51 @@ $(function () {
     return;
   }
 
-  // ===== WIKIBASE CONFIGURATION =====
-  // Configure these values for your specific Wikibase instance
-  const WIKIBASE_CONFIG = {
-    // Base URLs - change these for your Wikibase instance
-    queryServiceUrl: "https://query.wikidata.org/",
-    queryEmbedUrl: "https://query.wikidata.org/embed.html",
-    entityPrefix: "wd:",
-    propertyPrefix: "wdt:",
+  // ===== CONFIGURATION =====
 
-    // Feature toggles
-    enableQLever: true, // Set to false to disable QLever query links
-    enableEntitree: true, // Set to false to disable Entitree family tree links
-    enableScholia: true, // Set to false to disable Scholia links
+  /**
+   * @typedef {Object} UsefulQuery
+   * @property {string} id - Unique identifier for the query
+   * @property {"entity"|"property"|"value"} scope - Where to attach the query button
+   *   - "entity": Attaches to the entity title (entity-wide query)
+   *   - "property": Attaches to a property label
+   *   - "value": Attaches to a specific property+value combination
+   * @property {string} [propertyId] - Property ID to match (required for "property" and "value" scope)
+   * @property {string} [valueId] - Value entity ID to match (required for "value" scope)
+   * @property {string} template - SPARQL query template with placeholders
+   * @property {string} emoji - Emoji/text label for the button
+   * @property {string} toolhint - Tooltip text
+   * @property {string} popupTitle - Title for the popup (supports {itemLabel} placeholder)
+   * @property {boolean} [enabled=true] - Whether this query is enabled
+   */
 
-    // Property mappings - update these IDs for your Wikibase
-    properties: {
-      studentsCount: "P2196",
-      membersCount: "P2124",
-      father: "P22",
-      mother: "P25",
-      sibling: "P3373",
-      spouse: "P26",
-      child: "P40",
-      occupation: "P106",
-      employer: "P108",
-      creator: "P170",
-      image: "P18",
-      logo: "P154",
-      pointInTime: "P585",
-    },
+  /**
+   * @typedef {Object} UsefulLink
+   * @property {string} id - Unique identifier for the link
+   * @property {"entity"|"property"|"value"} scope - Where to attach the link button
+   * @property {string|string[]} [propertyId] - Property ID(s) to match (for "property" scope, can be array)
+   * @property {string} [valueId] - Value entity ID to match (required for "value" scope)
+   * @property {string} urlTemplate - URL template with placeholders ({itemQid}, {valueQid})
+   * @property {string} emoji - Emoji/text label for the button
+   * @property {string} toolhint - Tooltip text
+   * @property {boolean} [enabled=true] - Whether this link is enabled
+   */
 
-    // Entity mappings - update these IDs for your Wikibase
-    entities: {
-      painter: "Q1028181", // painter
-      researcher: "Q1650915", // researcher
-    },
+  // ===== USEFUL QUERIES CONFIGURATION =====
+  // Add new queries here - they will automatically be attached to the right places
 
-    // External service URLs
-    externalServices: {
-      entitree: "https://www.entitree.com/en/family_tree/",
-      scholia: "https://scholia.toolforge.org/author/",
-    },
-
-    queryTemplates: {
-      students: `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  {entityPrefix}{entityQid} p:{studentsCount} ?statement.
-  ?statement ps:{studentsCount} ?s_count.
-  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
-}`,
-      membersCount: `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  {entityPrefix}{entityQid} p:{membersCount} ?statement.
-  ?statement ps:{membersCount} ?s_count.
-  OPTIONAL { ?statement pq:{pointInTime} ?pit. }
-}`,
-      artworks: `#defaultView:ImageGrid
-SELECT ?item ?creator ?creatorLabel ?image WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  ?item {propertyPrefix}{creator} {entityPrefix}{entityQid}.
-  OPTIONAL { ?item {propertyPrefix}{image} ?image. }
-}
-LIMIT 100`,
-      employer: `#defaultView:Graph
-SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  VALUES ?org {
-    {entityPrefix}{targetEntityQid}
-  }
-  ?employee {propertyPrefix}{employer} ?org.
-  OPTIONAL { ?employee {propertyPrefix}{image} ?imageEmp. }
-  OPTIONAL { ?org {propertyPrefix}{logo} ?imageOrg. }
-}
-LIMIT 100`,
-      entityGraph: `#defaultView:Graph
+  /** @type {UsefulQuery[]} */
+  const USEFUL_QUERIES = [
+    // Entity-wide queries (attached to the entity title)
+    {
+      id: "entityGraph",
+      scope: "entity",
+      template: `#defaultView:Graph
 SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
   {
-    BIND({entityPrefix}{entityQid} AS ?node)
+    BIND(wd:{itemQid} AS ?node)
     ?node ?p ?i.
-    OPTIONAL { ?node {propertyPrefix}{image} ?nodeImage. }
+    OPTIONAL { ?node wdt:P18 ?nodeImage. }
     ?childNode ?x ?p.
     ?childNode rdf:type wikibase:Property.
     FILTER(STRSTARTS(STR(?i), "http://www.wikidata.org/entity/Q"))
@@ -105,57 +70,161 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   UNION
   {
     BIND("EFFBD8" AS ?rgb)
-    {entityPrefix}{entityQid} ?p ?childNode.
-    OPTIONAL { ?childNode {propertyPrefix}{image} ?childNodeImage. }
+    wd:{itemQid} ?p ?childNode.
+    OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
     ?node ?x ?p.
     ?node rdf:type wikibase:Property.
     FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/Q"))
   }
   OPTIONAL {
-    ?node {propertyPrefix}{image} ?nodeImage.
-    ?childNode {propertyPrefix}{image} ?childNodeImage.
+    ?node wdt:P18 ?nodeImage.
+    ?childNode wdt:P18 ?childNodeImage.
   }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
 }`,
+      emoji: "🔗",
+      toolhint: "Entity graph",
+      popupTitle: "Entity Graph of {itemLabel}",
+      enabled: true,
     },
+
+    // Property-level queries (attached to a property label)
+    {
+      id: "studentsCount",
+      scope: "property",
+      propertyId: "P2196", // students count
+      template: `#defaultView:LineChart
+SELECT ?pit ?s_count WHERE {
+  wd:{itemQid} p:P2196 ?statement.
+  ?statement ps:P2196 ?s_count.
+  OPTIONAL { ?statement pq:P585 ?pit. }
+}`,
+      emoji: "📊",
+      toolhint: "Students count over time",
+      popupTitle: 'Students count of "{itemLabel}" over time:',
+      enabled: true,
+    },
+    {
+      id: "membersCount",
+      scope: "property",
+      propertyId: "P2124", // members count
+      template: `#defaultView:LineChart
+SELECT ?pit ?s_count WHERE {
+  wd:{itemQid} p:P2124 ?statement.
+  ?statement ps:P2124 ?s_count.
+  OPTIONAL { ?statement pq:P585 ?pit. }
+}`,
+      emoji: "📊",
+      toolhint: "Members count over time",
+      popupTitle: "Members count of {itemLabel} over time:",
+      enabled: true,
+    },
+
+    // Value-level queries (attached to a specific property+value combination)
+    {
+      id: "artworks",
+      scope: "value",
+      propertyId: "P106", // occupation
+      valueId: "Q1028181", // painter
+      template: `#defaultView:ImageGrid
+SELECT ?item ?creator ?creatorLabel ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  ?item wdt:P170 wd:{itemQid}.
+  OPTIONAL { ?item wdt:P18 ?image. }
+}
+LIMIT 100`,
+      emoji: "🖼️",
+      toolhint: "Artworks by this painter in Wikimedia Commons",
+      popupTitle: "Artworks by {itemLabel}",
+      enabled: true,
+    },
+    {
+      id: "employerGraph",
+      scope: "value",
+      propertyId: "P108", // employer
+      valueId: null, // any value - null means match any entity value
+      template: `#defaultView:Graph
+SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  VALUES ?org {
+    wd:{valueQid}
+  }
+  ?employee wdt:P108 ?org.
+  OPTIONAL { ?employee wdt:P18 ?imageEmp. }
+  OPTIONAL { ?org wdt:P154 ?imageOrg. }
+}
+LIMIT 100`,
+      emoji: "👥",
+      toolhint: "Other employees of this organization as graph",
+      popupTitle: "100 other employees of {valueLabel}",
+      enabled: true,
+    },
+  ];
+
+  // ===== USEFUL LINKS CONFIGURATION =====
+  // Add new external links here - they will automatically be attached to the right places
+
+  /** @type {UsefulLink[]} */
+  const USEFUL_LINKS = [
+    // Property-level links (attached to property labels)
+    {
+      id: "entitree",
+      scope: "property",
+      propertyId: ["P22", "P25", "P3373", "P26", "P40"], // father, mother, sibling, spouse, child
+      urlTemplate:
+        "https://www.entitree.com/en/family_tree/{itemQid}?0u0=u&0u1=u",
+      emoji: "🌳",
+      toolhint: "Family tree on Entitree",
+      enabled: true,
+    },
+
+    // Value-level links (attached to specific property+value combinations)
+    {
+      id: "scholia",
+      scope: "value",
+      propertyId: "P106", // occupation
+      valueId: "Q1650915", // researcher
+      urlTemplate: "https://scholia.toolforge.org/author/{itemQid}",
+      emoji: "📚",
+      toolhint: "Page on Scholia",
+      enabled: true,
+    },
+  ];
+
+  // ===== GLOBAL SETTINGS =====
+  const SETTINGS = {
+    // Base URLs for the query service
+    queryServiceUrl: "https://query.wikidata.org/",
+    queryEmbedUrl: "https://query.wikidata.org/embed.html",
+
+    // QLever alternative query service
+    enableQLever: true,
+    qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
   };
 
+  // ===== HELPER FUNCTIONS =====
+
   /**
-   * Helper function to replace property and entity placeholders in query strings
-   * @param {string} queryString - The query string with placeholders
-   * @param {Object} replacements - Object containing replacement values
-   * @returns {string} Updated query string
+   * Replace placeholders in a template string
+   * @param {string} template - Template with placeholders like {itemQid}, {itemLabel}, etc.
+   * @param {Object} replacements - Key-value pairs for replacements
+   * @returns {string} Template with placeholders replaced
    */
-  function replaceQueryPlaceholders(queryString, replacements = {}) {
-    let result = queryString;
-
-    // Replace base configuration placeholders first
-    result = result.replace(/{entityPrefix}/g, WIKIBASE_CONFIG.entityPrefix);
-    result = result.replace(
-      /{propertyPrefix}/g,
-      WIKIBASE_CONFIG.propertyPrefix,
-    );
-
-    // Replace property placeholders
-    Object.entries(WIKIBASE_CONFIG.properties).forEach(([key, value]) => {
-      const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, "g"), value);
-    });
-
-    // Replace entity placeholders
-    Object.entries(WIKIBASE_CONFIG.entities).forEach(([key, value]) => {
-      const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, "g"), value);
-    });
-
-    // Replace custom replacements
+  function replacePlaceholders(template, replacements) {
+    let result = template;
     Object.entries(replacements).forEach(([key, value]) => {
-      const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, "g"), value);
+      result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value || "");
     });
+    return result;
+  }
 
-    // Return the encoded String
-    return "#" + encodeURIComponent(result);
+  /**
+   * Encode a query string for use in URLs
+   * @param {string} query - The SPARQL query
+   * @returns {string} URL-encoded query with # prefix
+   */
+  function encodeQueryString(query) {
+    return "#" + encodeURIComponent(query);
   }
 
   /**
@@ -163,7 +232,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @returns {boolean} True if using Wikidata
    */
   function isWikidata() {
-    return WIKIBASE_CONFIG.queryServiceUrl.includes("query.wikidata.org");
+    return SETTINGS.queryServiceUrl.includes("query.wikidata.org");
   }
 
   /**
@@ -172,7 +241,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
    * @returns {string} QLever-compatible SPARQL query
    */
   function convertToQLeverQuery(query) {
-    // Replace Wikidata's wikibase:label service with standard SPARQL labels
     let qleverQuery = query;
 
     // Add necessary PREFIX declarations if not present
@@ -204,7 +272,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         prefixDeclarations += "PREFIX wd: <http://www.wikidata.org/entity/>\n";
       }
 
-      // Insert prefixes at the beginning, after any existing #defaultView comments
       const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
       if (defaultViewMatch) {
         qleverQuery =
@@ -237,7 +304,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         labelStatements += `  OPTIONAL { ?${baseVar} rdfs:label ${labelVar} . FILTER(LANG(${labelVar}) = "en") }\n`;
       });
 
-      // Insert label statements before the closing brace
       const lastBraceIndex = qleverQuery.lastIndexOf("}");
       if (lastBraceIndex !== -1 && labelStatements) {
         qleverQuery =
@@ -247,37 +313,34 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       }
     }
 
-    // Clean up extra whitespace
     qleverQuery = qleverQuery.replace(/\n\s*\n/g, "\n").trim();
-
     return qleverQuery;
   }
 
   /**
-   * Returns the QLeverUrl
-   * @param {string} querystring
-   * @returns
+   * Get the QLever URL for a query
+   * @param {string} querystring - The encoded query string
+   * @returns {string|null} QLever URL or null if disabled
    */
   function getQLeverUrl(querystring) {
-    // Decode the query string (remove # and decode)
+    if (!SETTINGS.enableQLever || !isWikidata()) {
+      return null;
+    }
     const decodedQuery = decodeURIComponent(querystring.substring(1));
-    // Convert to QLever-compatible format
     const qleverQuery = convertToQLeverQuery(decodedQuery);
-    // Encode for QLever
-    return (
-      "https://qlever.cs.uni-freiburg.de/wikidata/?query=" +
-      encodeURIComponent(qleverQuery)
-    );
+    return SETTINGS.qleverUrl + "?query=" + encodeURIComponent(qleverQuery);
   }
 
+  // ===== UI CREATION FUNCTIONS =====
+
   /**
-   * Create a Codex button with a link and label.
-   * @param {jQuery} element - The element to append the button to.
-   * @param {string} url - The URL to open when the button is clicked.
-   * @param {string} buttonLabel - The label (emoji/text) for the button.
-   * @param {string} toolhint - The tooltip for the button.
+   * Create a Codex button with a link
+   * @param {jQuery} element - The element to append the button to
+   * @param {string} url - The URL to open when clicked
+   * @param {string} buttonLabel - The label (emoji/text) for the button
+   * @param {string} toolhint - The tooltip for the button
    */
-  function createIconWithLink(element, url, buttonLabel, toolhint) {
+  function createLinkButton(element, url, buttonLabel, toolhint) {
     mw.loader.using("@wikimedia/codex").then(function (require) {
       const Vue = require("vue");
       const Codex = require("@wikimedia/codex");
@@ -288,25 +351,11 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       const app = Vue.createMwApp({
         name: "UsefulQueriesLinkButton",
         data: function () {
-          return {
-            url: url,
-            buttonLabel: buttonLabel,
-            toolhint: toolhint,
-          };
+          return { url, buttonLabel, toolhint };
         },
         template: `
-          <a
-            :href="url"
-            target="_blank"
-            rel="noopener noreferrer"
-            :title="toolhint"
-            style="text-decoration: none;"
-          >
-            <cdx-button
-              weight="quiet"
-              action="progressive"
-              :aria-label="toolhint"
-            >
+          <a :href="url" target="_blank" rel="noopener noreferrer" :title="toolhint" style="text-decoration: none;">
+            <cdx-button weight="quiet" action="progressive" :aria-label="toolhint">
               {{ buttonLabel }}
             </cdx-button>
           </a>
@@ -319,14 +368,14 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   }
 
   /**
-   * Create a Codex popup button and add it to the specified element.
-   * @param {jQuery} element - The element to append the popup button to.
-   * @param {string} querystring - The query string for the query service.
-   * @param {string} buttonLabel - The label (emoji/text) for the button.
-   * @param {string} toolhint - The tooltip for the button.
-   * @param {string} toplabel - The title for the popup.
+   * Create a Codex popup button with an embedded query
+   * @param {jQuery} element - The element to append the popup button to
+   * @param {string} querystring - The encoded query string
+   * @param {string} buttonLabel - The label (emoji/text) for the button
+   * @param {string} toolhint - The tooltip for the button
+   * @param {string} toplabel - The title for the popup
    */
-  function createPopupAndAddIcon(
+  function createQueryPopup(
     element,
     querystring,
     buttonLabel,
@@ -341,14 +390,9 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       $(element).append(mountPoint);
 
       const widthWithMin = Math.max(window.screen.width / 3, 600);
-
-      const queryServiceHref = WIKIBASE_CONFIG.queryServiceUrl + querystring;
-      const embedHref = WIKIBASE_CONFIG.queryEmbedUrl + querystring;
-      // Only generate QLever URL if the feature is enabled and we're on Wikidata
-      const qleverHref =
-        WIKIBASE_CONFIG.enableQLever && isWikidata()
-          ? getQLeverUrl(querystring)
-          : null;
+      const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
+      const embedHref = SETTINGS.queryEmbedUrl + querystring;
+      const qleverHref = getQLeverUrl(querystring);
 
       const app = Vue.createMwApp({
         name: "UsefulQueriesPopover",
@@ -356,12 +400,12 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
           return {
             open: false,
             anchorEl: null,
-            buttonLabel: buttonLabel,
-            toolhint: toolhint,
-            toplabel: toplabel,
-            queryServiceHref: queryServiceHref,
-            embedHref: embedHref,
-            qleverHref: qleverHref,
+            buttonLabel,
+            toolhint,
+            toplabel,
+            queryServiceHref,
+            embedHref,
+            qleverHref,
             iframeSize: widthWithMin,
           };
         },
@@ -399,7 +443,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
                   Run query on QLever (alternative query service)
                 </a>
               </div>
-
               <iframe
                 v-if="open"
                 scrolling="yes"
@@ -418,6 +461,8 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       app.mount(mountPoint);
     });
   }
+
+  // ===== DOM HELPER FUNCTIONS =====
 
   /**
    * Get the DOM element for a property group by property ID
@@ -440,16 +485,12 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
   /**
    * Get the DOM element for a specific statement by statement ID
-   * @param {string} statementId - The full statement ID (e.g., "Q454172$84CA3CF1-...")
+   * @param {string} statementId - The full statement ID
    * @returns {jQuery|null} The statement element or null if not found
    */
   function getStatementElement(statementId) {
-    // Statement IDs in DOM use the format: id="Q454172$84CA3CF1-..."
     const $statement = $("#" + CSS.escape(statementId));
-    if ($statement.length) {
-      return $statement;
-    }
-    return null;
+    return $statement.length ? $statement : null;
   }
 
   /**
@@ -464,7 +505,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   /**
    * Extract value details from a claim's mainsnak
    * @param {Object} mainsnak - The mainsnak object from the claim
-   * @returns {Object} Value details including QID and label
+   * @returns {{value: string|null, label: string|null}} Value details
    */
   function extractValueFromMainsnak(mainsnak) {
     if (!mainsnak || mainsnak.snaktype !== "value" || !mainsnak.datavalue) {
@@ -475,222 +516,201 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
 
     switch (datavalue.type) {
       case "wikibase-entityid":
-        return {
-          value: datavalue.value.id,
-          label: null, // Label would need to be fetched separately or from DOM
-        };
+        return { value: datavalue.value.id, label: null };
       case "time":
         return {
           value: '"' + datavalue.value.time + '"^^xsd:dateTime',
           label: datavalue.value.time,
         };
       case "quantity":
-        return {
-          value: datavalue.value.amount,
-          label: datavalue.value.amount,
-        };
+        return { value: datavalue.value.amount, label: datavalue.value.amount };
       case "string":
-        return {
-          value: '"' + datavalue.value + '"',
-          label: datavalue.value,
-        };
+        return { value: '"' + datavalue.value + '"', label: datavalue.value };
       default:
         return { value: null, label: null };
     }
   }
 
+  // ===== PROCESSING FUNCTIONS =====
+
   /**
-   * Add property-level icons and popups based on property type
-   * @param {string} propertyId - The property ID (e.g., "P106")
-   * @param {jQuery} $propertyElement - The DOM element for the property label
-   * @param {string} itemQid - Main item Qid
-   * @param {string} itemLabel - Main item Label
+   * Check if a property ID matches a query/link configuration
+   * @param {string} propertyId - The property ID to check
+   * @param {string|string[]} configPropertyId - The configured property ID(s)
+   * @returns {boolean} True if matches
    */
-  function addPropertyLevelFeatures(
-    propertyId,
-    $propertyElement,
-    itemQid,
-    itemLabel,
-  ) {
-    switch (propertyId) {
-      case WIKIBASE_CONFIG.properties.studentsCount:
-        createPopupAndAddIcon(
-          $propertyElement,
-          replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.students, {
-            entityQid: itemQid,
-          }),
-          "📊",
-          "Students count over time",
-          'Students count of "' + itemLabel + '" over time:',
-        );
-        break;
-      case WIKIBASE_CONFIG.properties.membersCount:
-        createPopupAndAddIcon(
-          $propertyElement,
-          replaceQueryPlaceholders(
-            WIKIBASE_CONFIG.queryTemplates.membersCount,
-            {
-              entityQid: itemQid,
-            },
-          ),
-          "📊",
-          "Members count over time",
-          "Members count of " + itemLabel + " over time:",
-        );
-        break;
-      case WIKIBASE_CONFIG.properties.father:
-      case WIKIBASE_CONFIG.properties.mother:
-      case WIKIBASE_CONFIG.properties.sibling:
-      case WIKIBASE_CONFIG.properties.spouse:
-      case WIKIBASE_CONFIG.properties.child:
-        if (WIKIBASE_CONFIG.enableEntitree) {
-          createIconWithLink(
-            $propertyElement,
-            WIKIBASE_CONFIG.externalServices.entitree +
-              itemQid +
-              "?0u0=u&0u1=u",
-            "🌳",
-            "Family tree on Entitree",
-          );
-        }
-        break;
+  function matchesPropertyId(propertyId, configPropertyId) {
+    if (Array.isArray(configPropertyId)) {
+      return configPropertyId.includes(propertyId);
     }
+    return propertyId === configPropertyId;
   }
 
   /**
-   * Add value-level icons and popups based on property and value
-   * @param {string} propertyId - The property ID (e.g., "P106")
-   * @param {Object} valueDetails - Details about the value (from JSON)
-   * @param {jQuery} $indicatorElement - The DOM element to attach buttons to
-   * @param {string} itemQid - Main item Qid
-   * @param {string} itemLabel - Main item label
+   * Process entity-level features (attached to the entity title)
+   * @param {jQuery} $titleElement - The title element
+   * @param {Object} context - Context with itemQid, itemLabel, userLanguage
    */
-  function addValueLevelFeatures(
+  function processEntityFeatures($titleElement, context) {
+    // Process entity-level queries
+    USEFUL_QUERIES.filter(
+      (q) => q.scope === "entity" && q.enabled !== false,
+    ).forEach((query) => {
+      const queryText = replacePlaceholders(query.template, context);
+      const queryString = encodeQueryString(queryText);
+      const popupTitle = replacePlaceholders(query.popupTitle, context);
+
+      createQueryPopup(
+        $titleElement,
+        queryString,
+        query.emoji,
+        query.toolhint,
+        popupTitle,
+      );
+    });
+
+    // Process entity-level links
+    USEFUL_LINKS.filter(
+      (l) => l.scope === "entity" && l.enabled !== false,
+    ).forEach((link) => {
+      const url = replacePlaceholders(link.urlTemplate, context);
+      createLinkButton($titleElement, url, link.emoji, link.toolhint);
+    });
+  }
+
+  /**
+   * Process property-level features
+   * @param {string} propertyId - The property ID
+   * @param {jQuery} $propertyElement - The property DOM element
+   * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+   */
+  function processPropertyFeatures(propertyId, $propertyElement, context) {
+    // Process property-level queries
+    USEFUL_QUERIES.filter(
+      (q) =>
+        q.scope === "property" &&
+        q.enabled !== false &&
+        matchesPropertyId(propertyId, q.propertyId),
+    ).forEach((query) => {
+      const queryText = replacePlaceholders(query.template, context);
+      const queryString = encodeQueryString(queryText);
+      const popupTitle = replacePlaceholders(query.popupTitle, context);
+
+      createQueryPopup(
+        $propertyElement,
+        queryString,
+        query.emoji,
+        query.toolhint,
+        popupTitle,
+      );
+    });
+
+    // Process property-level links
+    USEFUL_LINKS.filter(
+      (l) =>
+        l.scope === "property" &&
+        l.enabled !== false &&
+        matchesPropertyId(propertyId, l.propertyId),
+    ).forEach((link) => {
+      const url = replacePlaceholders(link.urlTemplate, context);
+      createLinkButton($propertyElement, url, link.emoji, link.toolhint);
+    });
+  }
+
+  /**
+   * Process value-level features
+   * @param {string} propertyId - The property ID
+   * @param {Object} valueDetails - The value details (value, label)
+   * @param {jQuery} $indicatorElement - The indicator DOM element
+   * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+   */
+  function processValueFeatures(
     propertyId,
     valueDetails,
     $indicatorElement,
-    itemQid,
-    itemLabel,
+    context,
   ) {
-    if (!valueDetails.value) {
-      return;
-    }
+    if (!valueDetails.value) return;
 
-    switch (propertyId) {
-      // Occupation based queries
-      case WIKIBASE_CONFIG.properties.occupation:
-        switch (valueDetails.value) {
-          case WIKIBASE_CONFIG.entities.painter:
-            createPopupAndAddIcon(
-              $indicatorElement,
-              replaceQueryPlaceholders(
-                WIKIBASE_CONFIG.queryTemplates.artworks,
-                {
-                  entityQid: itemQid,
-                },
-              ),
-              "🖼️",
-              "Artworks by this painter in Wikimedia Commons",
-              "Artworks by " + itemLabel,
-            );
-            break;
+    const valueContext = {
+      ...context,
+      valueQid: valueDetails.value,
+      valueLabel: valueDetails.label || valueDetails.value,
+    };
 
-          case WIKIBASE_CONFIG.entities.researcher:
-            if (WIKIBASE_CONFIG.enableScholia) {
-              createIconWithLink(
-                $indicatorElement,
-                WIKIBASE_CONFIG.externalServices.scholia + itemQid,
-                "📚",
-                "Page on Scholia",
-              );
-            }
-            break;
-        }
-        break;
+    // Process value-level queries
+    USEFUL_QUERIES.filter(
+      (q) =>
+        q.scope === "value" &&
+        q.enabled !== false &&
+        matchesPropertyId(propertyId, q.propertyId) &&
+        (q.valueId === null || q.valueId === valueDetails.value),
+    ).forEach((query) => {
+      const queryText = replacePlaceholders(query.template, valueContext);
+      const queryString = encodeQueryString(queryText);
+      const popupTitle = replacePlaceholders(query.popupTitle, valueContext);
 
-      case WIKIBASE_CONFIG.properties.employer:
-        createPopupAndAddIcon(
-          $indicatorElement,
-          replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.employer, {
-            targetEntityQid: valueDetails.value,
-          }),
-          "👥",
-          "Other employees of this organization as graph",
-          "100 other employees of " +
-            (valueDetails.label || valueDetails.value),
-        );
-        break;
-    }
+      createQueryPopup(
+        $indicatorElement,
+        queryString,
+        query.emoji,
+        query.toolhint,
+        popupTitle,
+      );
+    });
+
+    // Process value-level links
+    USEFUL_LINKS.filter(
+      (l) =>
+        l.scope === "value" &&
+        l.enabled !== false &&
+        matchesPropertyId(propertyId, l.propertyId) &&
+        (l.valueId === null || l.valueId === valueDetails.value),
+    ).forEach((link) => {
+      const url = replacePlaceholders(link.urlTemplate, valueContext);
+      createLinkButton($indicatorElement, url, link.emoji, link.toolhint);
+    });
   }
 
   /**
    * Process a single claim (statement) from the entity data
    * @param {string} propertyId - The property ID
    * @param {Object} claim - The claim object from entityData.claims
-   * @param {string} itemQid - Main item Qid
-   * @param {string} itemLabel - Main item label
+   * @param {Object} context - Context with itemQid, itemLabel, userLanguage
    */
-  function processClaim(propertyId, claim, itemQid, itemLabel) {
-    // Get the statement DOM element using the statement ID
+  function processClaim(propertyId, claim, context) {
     const $statementElement = getStatementElement(claim.id);
-    if (!$statementElement) {
-      return;
-    }
+    if (!$statementElement) return;
 
-    // Get the indicator element where we can attach value-level buttons
     const $indicatorElement = getStatementIndicatorElement($statementElement);
-    if (!$indicatorElement) {
-      return;
-    }
+    if (!$indicatorElement) return;
 
-    // Extract value from the mainsnak
     const valueDetails = extractValueFromMainsnak(claim.mainsnak);
-
-    // Add value-level features
-    addValueLevelFeatures(
-      propertyId,
-      valueDetails,
-      $indicatorElement,
-      itemQid,
-      itemLabel,
-    );
+    processValueFeatures(propertyId, valueDetails, $indicatorElement, context);
   }
 
   /**
    * Process all claims for a property
    * @param {string} propertyId - The property ID
    * @param {Array} claims - Array of claims for this property
-   * @param {string} itemQid - Main item Qid
-   * @param {string} itemLabel - Main item label
+   * @param {Object} context - Context with itemQid, itemLabel, userLanguage
    */
-  function processPropertyClaims(propertyId, claims, itemQid, itemLabel) {
-    // Get the property element in the DOM
+  function processPropertyClaims(propertyId, claims, context) {
     const $propertyElement = getPropertyElement(propertyId);
 
-    // Add property-level features (only once per property)
     if ($propertyElement) {
-      addPropertyLevelFeatures(
-        propertyId,
-        $propertyElement,
-        itemQid,
-        itemLabel,
-      );
+      processPropertyFeatures(propertyId, $propertyElement, context);
     }
 
-    // Process each claim for value-level features
-    claims.forEach(function (claim) {
-      processClaim(propertyId, claim, itemQid, itemLabel);
-    });
+    claims.forEach((claim) => processClaim(propertyId, claim, context));
   }
 
   /**
    * Main function to orchestrate the processing of the Wikibase entity page
    */
   function processWikibaseEntityPage() {
-    // Process statements when entity data is loaded
     mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
-      if (entityData.type != "item") {
-        // Not a supported data type, closing
+      if (entityData.type !== "item") {
         return;
       }
 
@@ -703,25 +723,18 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
         .find(".wikibase-title-id");
       const userLanguage = mw.config.get("wgUserLanguage");
 
-      // Create entity graph popup on the title
-      createPopupAndAddIcon(
-        $titleElement,
-        replaceQueryPlaceholders(WIKIBASE_CONFIG.queryTemplates.entityGraph, {
-          entityQid: entityData.id,
-          userLanguage: userLanguage,
-        }),
-        "🔗",
-        "Entity graph",
-        "Entity Graph of " + itemLabel,
-      );
+      const context = {
+        itemQid: entityData.id,
+        itemLabel: itemLabel,
+        userLanguage: userLanguage,
+      };
 
-      // Iterate over claims from JSON data instead of DOM elements
+      // Process entity-level features
+      processEntityFeatures($titleElement, context);
 
-      Object.entries(entityData.claims).forEach(function ([
-        propertyId,
-        claims,
-      ]) {
-        processPropertyClaims(propertyId, claims, entityData.id, itemLabel);
+      // Process all claims
+      Object.entries(entityData.claims).forEach(([propertyId, claims]) => {
+        processPropertyClaims(propertyId, claims, context);
       });
     });
   }
