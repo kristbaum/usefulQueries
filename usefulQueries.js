@@ -139,6 +139,48 @@ LIMIT 100`,
       enabled: true,
     },
     {
+      id: "painterPlacesMap",
+      scope: "value",
+      propertyId: "P106", // occupation
+      valueId: "Q1028181", // painter
+      template: `#defaultView:Map
+SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
+  # Birth place
+  {
+    wd:{itemQid} wdt:P19 ?place.
+    ?place wdt:P625 ?coords.
+    BIND("Birth place" AS ?layer)
+  }
+  UNION
+  # Death place
+  {
+    wd:{itemQid} wdt:P20 ?place.
+    ?place wdt:P625 ?coords.
+    BIND("Death place" AS ?layer)
+  }
+  UNION
+  # Work location
+  {
+    wd:{itemQid} wdt:P937 ?place.
+    ?place wdt:P625 ?coords.
+    BIND("Work location" AS ?layer)
+  }
+  UNION
+  # Museums/institutions with painter's works
+  {
+    ?artwork wdt:P170 wd:{itemQid}.
+    ?artwork wdt:P195 ?place.
+    ?place wdt:P625 ?coords.
+    BIND("Museum/Collection" AS ?layer)
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}`,
+      emoji: "🗺️",
+      toolhint: "Map of places related to this painter",
+      popupTitle: "Places related to {itemLabel}",
+      enabled: true,
+    },
+    {
       id: "employerGraph",
       scope: "value",
       propertyId: "P108", // employer
@@ -389,7 +431,7 @@ LIMIT 100`,
       const mountPoint = document.createElement("span");
       $(element).append(mountPoint);
 
-      const widthWithMin = Math.max(window.screen.width / 3, 600);
+      const widthWithMin = Math.max(window.screen.width / 2, 800);
       const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
       const embedHref = SETTINGS.queryEmbedUrl + querystring;
       const qleverHref = getQLeverUrl(querystring);
