@@ -119,6 +119,48 @@ SELECT ?pit ?s_count WHERE {
       popupTitle: "Members count of {itemLabel} over time:",
       enabled: true,
     },
+    {
+      id: "deckenmalareiArtworkMap",
+      scope: "property",
+      propertyId: "P10626", // deckenmalerei.eu ID
+      template: `#defaultView:Map
+SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image ?workDeckenmalareiId ?workDeckenmalareiUrl ?locationDeckenmalareiId ?locationDeckenmalareiUrl WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
+  
+  # Works related to the entity with deckenmalerei.eu ID
+  {
+    wd:{itemQid} wdt:P170 ?work.  # works by this creator
+    ?work wdt:P276 ?location.
+  }
+  UNION
+  {
+    ?work wdt:P170 wd:{itemQid}.  # alternative: works created by this entity
+    ?work wdt:P276 ?location.
+  }
+  UNION
+  {
+    wd:{itemQid} wdt:P276 ?work.  # if the entity itself is located somewhere, show related works
+    ?work wdt:P276 ?location.
+  }
+  
+  ?location wdt:P625 ?coordinates.
+  OPTIONAL {?location wdt:P18 ?imageOfLocation.}
+  OPTIONAL {?work wdt:P18 ?image.}
+  OPTIONAL {
+    ?work wdt:P10626 ?workDeckenmalareiId.
+    BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?workDeckenmalareiId)) AS ?workDeckenmalareiUrl)
+  }
+  OPTIONAL {
+    ?location wdt:P10626 ?locationDeckenmalareiId.
+    BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?locationDeckenmalareiId)) AS ?locationDeckenmalareiUrl)
+  }
+}
+LIMIT 100`,
+      emoji: "🎨",
+      toolhint: "Map of artworks and locations with deckenmalerei.eu connections",
+      popupTitle: "Artworks and locations related to {itemLabel} with deckenmalerei.eu data",
+      enabled: true,
+    },
 
     // Value-level queries (attached to a specific property+value combination)
     {
@@ -178,6 +220,26 @@ SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
       emoji: "🗺️",
       toolhint: "Map of places related to this painter",
       popupTitle: "Places related to {itemLabel}",
+      enabled: true,
+    },
+    {
+      id: "artworkLocationsMap",
+      scope: "value",
+      propertyId: "P106", // occupation
+      valueId: "Q1028181", // painter
+      template: `#defaultView:Map
+SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
+  ?work wdt:P170 wd:{itemQid};
+    wdt:P276 ?location.
+  ?location wdt:P625 ?coordinates.
+  OPTIONAL {?location wdt:P18 ?imageOfLocation.}
+  OPTIONAL {?work wdt:P18 ?image.}
+}
+LIMIT 100`,
+      emoji: "📍",
+      toolhint: "Map showing locations of this painter's artworks",
+      popupTitle: "Artwork locations of {itemLabel}",
       enabled: true,
     },
     {
