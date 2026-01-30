@@ -1,0 +1,43 @@
+# Alle Abfragen am Beispiel von Andrea Bertoletti (Q83)
+
+
+##ABFRAGE 1: Visualisierung aller Wirkungsorte einer Person über die Lokalisierung der Kunstwerke (Kategorie: leicht)
+# Könnte zum Beispiel bei der Property "involved in" (P17) erscheinen
+
+PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>
+PREFIX rs: <https://resanode.wikibase.cloud/entity/>
+
+#defaultView:Map
+
+SELECT ?work ?workLabel ?coordinate WHERE {
+  rs:Q83 rst:P17 ?work.
+  ?work rst:P7 ?coordinate.
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
+}
+
+
+
+##ABFRAGE 2: Abfrage des Personennetzwerks über die mit der Person verknüpften Ereignisse (Kategorie: schwierig)
+# Hier vllt bei der Property "significant event" (P35)
+
+PREFIX rs: <https://resanode.wikibase.cloud/entity/>
+PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>
+PREFIX pq: <https://resanode.wikibase.cloud/prop/qualifier/>
+PREFIX p: <https://resanode.wikibase.cloud/prop/>
+PREFIX ps: <https://resanode.wikibase.cloud/prop/statement/>
+
+#defaultView:Graph
+
+SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WHERE {
+  
+  #Andrea Bertolettis Beziehungen zu Personen über historische Dokumente
+  rs:Q83 rst:P35 ?event.
+  ?event rst:P38 ?person.
+  
+  OPTIONAL {
+  #Nenne das Tätigkeitsfeld dieser Personen
+  ?person ( rst:P14 | rst:P29 ) ?fieldofwork.
+  }  
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
+}
