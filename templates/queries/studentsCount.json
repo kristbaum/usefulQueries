@@ -1,0 +1,10 @@
+{
+  "id": "studentsCount",
+  "scope": "property",
+  "propertyId": "P2196",
+  "template": "#defaultView:LineChart\nSELECT ?pit ?s_count WHERE {\n  wd:{itemQid} p:P2196 ?statement.\n  ?statement ps:P2196 ?s_count.\n  OPTIONAL { ?statement pq:P585 ?pit. }\n}",
+  "emoji": "📊",
+  "toolhint": "Students count over time",
+  "popupTitle": "Students count of \"{itemLabel}\" over time:",
+  "enabled": true
+}

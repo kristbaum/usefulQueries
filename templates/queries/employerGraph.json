@@ -1,0 +1,11 @@
+{
+  "id": "employerGraph",
+  "scope": "value",
+  "propertyId": "P108",
+  "valueId": null,
+  "template": "#defaultView:Graph\nSELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }\n  VALUES ?org {\n    wd:{valueQid}\n  }\n  ?employee wdt:P108 ?org.\n  OPTIONAL { ?employee wdt:P18 ?imageEmp. }\n  OPTIONAL { ?org wdt:P154 ?imageOrg. }\n}\nLIMIT 100",
+  "emoji": "👥",
+  "toolhint": "Other employees of this organization as graph",
+  "popupTitle": "100 other employees of {valueLabel}",
+  "enabled": true
+}

@@ -1,0 +1,9 @@
+{
+  "id": "entitree",
+  "scope": "property",
+  "propertyId": ["P22", "P25", "P3373", "P26", "P40"],
+  "urlTemplate": "https://www.entitree.com/en/family_tree/{itemQid}?0u0=u&0u1=u",
+  "emoji": "🌳",
+  "toolhint": "Family tree on Entitree",
+  "enabled": true
+}

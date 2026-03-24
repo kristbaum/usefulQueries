@@ -1,0 +1,11 @@
+{
+  "id": "artworkLocationsMap",
+  "scope": "value",
+  "propertyId": "P106",
+  "valueId": "Q1028181",
+  "template": "#defaultView:Map\nSELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image WHERE {\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }\n  ?work wdt:P170 wd:{itemQid};\n    wdt:P276 ?location.\n  ?location wdt:P625 ?coordinates.\n  OPTIONAL {?location wdt:P18 ?imageOfLocation.}\n  OPTIONAL {?work wdt:P18 ?image.}\n}\nLIMIT 100",
+  "emoji": "📍",
+  "toolhint": "Map showing locations of this painter's artworks",
+  "popupTitle": "Artwork locations of {itemLabel}",
+  "enabled": true
+}

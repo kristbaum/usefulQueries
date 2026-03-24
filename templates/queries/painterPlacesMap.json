@@ -1,0 +1,11 @@
+{
+  "id": "painterPlacesMap",
+  "scope": "value",
+  "propertyId": "P106",
+  "valueId": "Q1028181",
+  "template": "#defaultView:Map\nSELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {\n  # Birth place\n  {\n    wd:{itemQid} wdt:P19 ?place.\n    ?place wdt:P625 ?coords.\n    BIND(\"Birth place\" AS ?layer)\n  }\n  UNION\n  # Death place\n  {\n    wd:{itemQid} wdt:P20 ?place.\n    ?place wdt:P625 ?coords.\n    BIND(\"Death place\" AS ?layer)\n  }\n  UNION\n  # Work location\n  {\n    wd:{itemQid} wdt:P937 ?place.\n    ?place wdt:P625 ?coords.\n    BIND(\"Work location\" AS ?layer)\n  }\n  UNION\n  # Museums/institutions with painter's works\n  {\n    ?artwork wdt:P170 wd:{itemQid}.\n    ?artwork wdt:P195 ?place.\n    ?place wdt:P625 ?coords.\n    BIND(\"Museum/Collection\" AS ?layer)\n  }\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }\n}",
+  "emoji": "🗺️",
+  "toolhint": "Map of places related to this painter",
+  "popupTitle": "Places related to {itemLabel}",
+  "enabled": true
+}

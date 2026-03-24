@@ -1,0 +1,11 @@
+{
+  "id": "artworks",
+  "scope": "value",
+  "propertyId": "P106",
+  "valueId": "Q1028181",
+  "template": "#defaultView:ImageGrid\nSELECT ?item ?creator ?creatorLabel ?image WHERE {\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }\n  ?item wdt:P170 wd:{itemQid}.\n  OPTIONAL { ?item wdt:P18 ?image. }\n}\nLIMIT 100",
+  "emoji": "🖼️",
+  "toolhint": "Artworks by this painter in Wikimedia Commons",
+  "popupTitle": "Artworks by {itemLabel}",
+  "enabled": true
+}

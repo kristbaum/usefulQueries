@@ -1,6 +1,7 @@
 {
   "scripts": {
     "lint": "eslint .",
+    "build": "node scripts/assemble.mjs",
     "minify": "node scripts/minify.mjs"
   },
   "devDependencies": {

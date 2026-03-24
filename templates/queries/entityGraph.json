@@ -1,0 +1,9 @@
+{
+  "id": "entityGraph",
+  "scope": "entity",
+  "template": "#defaultView:Graph\nSELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {\n  {\n    BIND(wd:{itemQid} AS ?node)\n    ?node ?p ?i.\n    OPTIONAL { ?node wdt:P18 ?nodeImage. }\n    ?childNode ?x ?p.\n    ?childNode rdf:type wikibase:Property.\n    FILTER(STRSTARTS(STR(?i), \"http://www.wikidata.org/entity/Q\"))\n    FILTER(STRSTARTS(STR(?childNode), \"http://www.wikidata.org/entity/P\"))\n  }\n  UNION\n  {\n    BIND(\"EFFBD8\" AS ?rgb)\n    wd:{itemQid} ?p ?childNode.\n    OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }\n    ?node ?x ?p.\n    ?node rdf:type wikibase:Property.\n    FILTER(STRSTARTS(STR(?childNode), \"http://www.wikidata.org/entity/Q\"))\n  }\n  OPTIONAL {\n    ?node wdt:P18 ?nodeImage.\n    ?childNode wdt:P18 ?childNodeImage.\n  }\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"{userLanguage}\". }\n}",
+  "emoji": "🔗",
+  "toolhint": "Entity graph",
+  "popupTitle": "Entity Graph of {itemLabel}",
+  "enabled": true
+}
