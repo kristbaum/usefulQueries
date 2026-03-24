@@ -1,0 +1,6 @@
+{
+  "queryServiceUrl": "https://query.wikidata.org/",
+  "queryEmbedUrl": "https://query.wikidata.org/embed.html",
+  "enableQLever": true,
+  "qleverUrl": "https://qlever.cs.uni-freiburg.de/wikidata/"
+}

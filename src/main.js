@@ -1,0 +1,38 @@
+// ===== MAIN =====
+
+/**
+ * Main function to orchestrate the processing of the Wikibase entity page
+ */
+function processWikibaseEntityPage() {
+  mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
+    if (entityData.type !== "item") {
+      return;
+    }
+
+    const itemLabel = $(".wikibase-title")
+      .first()
+      .find(".wikibase-title-label")
+      .text();
+    const $titleElement = $(".wikibase-title")
+      .first()
+      .find(".wikibase-title-id");
+    const userLanguage = mw.config.get("wgUserLanguage");
+
+    const context = {
+      itemQid: entityData.id,
+      itemLabel: itemLabel,
+      userLanguage: userLanguage,
+    };
+
+    // Process entity-level features
+    processEntityFeatures($titleElement, context);
+
+    // Process all claims
+    Object.entries(entityData.claims).forEach(([propertyId, claims]) => {
+      processPropertyClaims(propertyId, claims, context);
+    });
+  });
+}
+
+// Initialize the main processing
+processWikibaseEntityPage();
