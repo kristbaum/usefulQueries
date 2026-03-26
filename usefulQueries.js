@@ -475,6 +475,13 @@ function createQueryPopup(
   toolhint,
   toplabel,
 ) {
+  const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
+
+  if (window.innerWidth < 900) {
+    createLinkButton(element, queryServiceHref, buttonLabel, toolhint);
+    return;
+  }
+
   mw.loader.using("@wikimedia/codex").then(function (require) {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
@@ -483,7 +490,6 @@ function createQueryPopup(
     $(element).append(mountPoint);
 
     const widthWithMin = Math.max(window.screen.width / 2, 800);
-    const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
     const qleverHref = getQLeverUrl(querystring);
 
@@ -508,14 +514,11 @@ function createQueryPopup(
       template: `
           <span ref="triggerEl">
             <cdx-button
-              :href="queryServiceHref"
-              target="_blank"
-              rel="noopener noreferrer"
               weight="quiet"
               action="progressive"
               :aria-label="toolhint"
               :title="toolhint"
-              @click.prevent="open = !open"
+              @click="$event.preventDefault(); open = !open"
             >
               {{ buttonLabel }}
             </cdx-button>
