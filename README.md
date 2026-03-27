@@ -27,12 +27,21 @@ Steps:
 7. Copy the minified_version.js and upload it a location like: <https://www.wikidata.org/wiki/Special:MyPage/myUsefuelQueries.js>
 8. Replace the link in <https://www.wikidata.org/wiki/Special:MyPage/common.js> with your version.
 
+## Run on another Wikibase
+
+Adapt the settings in [settings.json](src/settings.json) and rebuild using:
+
+```bash
+npm install
+npm run build
+```
+
 ## Development
 
 ```bash
 sudo apt install npm
 npm install # For linting tools
-npm run minify
+npm run build
 
 # Optional
 npm run lint
