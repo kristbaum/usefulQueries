@@ -1,0 +1,10 @@
+{
+  "id": "scholia",
+  "scope": "value",
+  "propertyId": "P106",
+  "valueId": "Q1650915",
+  "urlTemplate": "https://scholia.toolforge.org/author/{itemQid}",
+  "emoji": "📚",
+  "toolhint": "Page on Scholia",
+  "enabled": true
+}

@@ -1,7 +1,7 @@
 {
   "scripts": {
     "lint": "eslint .",
-    "minify": "node scripts/minify.mjs"
+    "build": "node scripts/assemble.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
