@@ -108,9 +108,10 @@ function createQueryPopup(
             v-model:open="open"
             :anchor="anchorEl"
             placement="bottom-start"
-            :render-in-place="true"
+            :render-in-place="false"
             :title="toplabel"
             :use-close-button="true"
+            style="z-index: 9999;"
           >
             <div>
               <div v-if="qleverHref" style="padding: 10px; border-bottom: 1px solid;">
