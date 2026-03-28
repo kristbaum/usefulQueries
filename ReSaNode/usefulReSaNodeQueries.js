@@ -55,207 +55,18 @@ $(function () {
     {
       id: "artworkLocationsMap",
       scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
-      template: `#defaultView:Map
-SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
-  ?work wdt:P170 wd:{itemQid};
-    wdt:P276 ?location.
-  ?location wdt:P625 ?coordinates.
-  OPTIONAL {?location wdt:P18 ?imageOfLocation.}
-  OPTIONAL {?work wdt:P18 ?image.}
-}
-LIMIT 100`,
+      propertyId: "P17",
+      template: `PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>
+PREFIX rs: <https://resanode.wikibase.cloud/entity/>
+#defaultView:Map
+SELECT ?work ?workLabel ?coordinate WHERE {
+  rs:{itemQid} rst:P17 ?work.
+  ?work rst:P7 ?coordinate.
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
+}`,
       emoji: "📍",
-      toolhint: "Map showing locations of this painter's artworks",
-      popupTitle: "Artwork locations of {itemLabel}",
-      enabled: true,
-    },
-    {
-      id: "artworks",
-      scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
-      template: `#defaultView:ImageGrid
-SELECT ?item ?creator ?creatorLabel ?image WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  ?item wdt:P170 wd:{itemQid}.
-  OPTIONAL { ?item wdt:P18 ?image. }
-}
-LIMIT 100`,
-      emoji: "🖼️",
-      toolhint: "Artworks by this painter in Wikimedia Commons",
-      popupTitle: "Artworks by {itemLabel}",
-      enabled: true,
-    },
-    {
-      id: "deckenmalareiArtworkMap",
-      scope: "property",
-      propertyId: "P10626",
-      template: `#defaultView:Map
-SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image ?workDeckenmalareiId ?workDeckenmalareiUrl ?locationDeckenmalareiId ?locationDeckenmalareiUrl WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
-  
-  # Works related to the entity with deckenmalerei.eu ID
-  {
-    wd:{itemQid} wdt:P170 ?work.  # works by this creator
-    ?work wdt:P276 ?location.
-  }
-  UNION
-  {
-    ?work wdt:P170 wd:{itemQid}.  # alternative: works created by this entity
-    ?work wdt:P276 ?location.
-  }
-  UNION
-  {
-    wd:{itemQid} wdt:P276 ?work.  # if the entity itself is located somewhere, show related works
-    ?work wdt:P276 ?location.
-  }
-  
-  ?location wdt:P625 ?coordinates.
-  OPTIONAL {?location wdt:P18 ?imageOfLocation.}
-  OPTIONAL {?work wdt:P18 ?image.}
-  OPTIONAL {
-    ?work wdt:P10626 ?workDeckenmalareiId.
-    BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?workDeckenmalareiId)) AS ?workDeckenmalareiUrl)
-  }
-  OPTIONAL {
-    ?location wdt:P10626 ?locationDeckenmalareiId.
-    BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?locationDeckenmalareiId)) AS ?locationDeckenmalareiUrl)
-  }
-}
-LIMIT 100`,
-      emoji: "🎨",
-      toolhint: "Map of artworks and locations with deckenmalerei.eu connections",
-      popupTitle: "Artworks and locations related to {itemLabel} with deckenmalerei.eu data",
-      enabled: true,
-    },
-    {
-      id: "employerGraph",
-      scope: "value",
-      propertyId: "P108",
-      valueId: null,
-      template: `#defaultView:Graph
-SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-  VALUES ?org {
-    wd:{valueQid}
-  }
-  ?employee wdt:P108 ?org.
-  OPTIONAL { ?employee wdt:P18 ?imageEmp. }
-  OPTIONAL { ?org wdt:P154 ?imageOrg. }
-}
-LIMIT 100`,
-      emoji: "👥",
-      toolhint: "Other employees of this organization as graph",
-      popupTitle: "100 other employees of {valueLabel}",
-      enabled: true,
-    },
-    {
-      id: "entityGraph",
-      scope: "entity",
-      template: `#defaultView:Graph
-SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
-  {
-    BIND(wd:{itemQid} AS ?node)
-    ?node ?p ?i.
-    OPTIONAL { ?node wdt:P18 ?nodeImage. }
-    ?childNode ?x ?p.
-    ?childNode rdf:type wikibase:Property.
-    FILTER(STRSTARTS(STR(?i), "http://www.wikidata.org/entity/Q"))
-    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/P"))
-  }
-  UNION
-  {
-    BIND("EFFBD8" AS ?rgb)
-    wd:{itemQid} ?p ?childNode.
-    OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
-    ?node ?x ?p.
-    ?node rdf:type wikibase:Property.
-    FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/Q"))
-  }
-  OPTIONAL {
-    ?node wdt:P18 ?nodeImage.
-    ?childNode wdt:P18 ?childNodeImage.
-  }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
-}`,
-      emoji: "🔗",
-      toolhint: "Entity graph",
-      popupTitle: "Entity Graph of {itemLabel}",
-      enabled: true,
-    },
-    {
-      id: "membersCount",
-      scope: "property",
-      propertyId: "P2124",
-      template: `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  wd:{itemQid} p:P2124 ?statement.
-  ?statement ps:P2124 ?s_count.
-  OPTIONAL { ?statement pq:P585 ?pit. }
-}`,
-      emoji: "📊",
-      toolhint: "Members count over time",
-      popupTitle: "Members count of {itemLabel} over time:",
-      enabled: true,
-    },
-    {
-      id: "painterPlacesMap",
-      scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
-      template: `#defaultView:Map
-SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
-  # Birth place
-  {
-    wd:{itemQid} wdt:P19 ?place.
-    ?place wdt:P625 ?coords.
-    BIND("Birth place" AS ?layer)
-  }
-  UNION
-  # Death place
-  {
-    wd:{itemQid} wdt:P20 ?place.
-    ?place wdt:P625 ?coords.
-    BIND("Death place" AS ?layer)
-  }
-  UNION
-  # Work location
-  {
-    wd:{itemQid} wdt:P937 ?place.
-    ?place wdt:P625 ?coords.
-    BIND("Work location" AS ?layer)
-  }
-  UNION
-  # Museums/institutions with painter's works
-  {
-    ?artwork wdt:P170 wd:{itemQid}.
-    ?artwork wdt:P195 ?place.
-    ?place wdt:P625 ?coords.
-    BIND("Museum/Collection" AS ?layer)
-  }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
-}`,
-      emoji: "🗺️",
-      toolhint: "Map of places related to this painter",
-      popupTitle: "Places related to {itemLabel}",
-      enabled: true,
-    },
-    {
-      id: "studentsCount",
-      scope: "property",
-      propertyId: "P2196",
-      template: `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  wd:{itemQid} p:P2196 ?statement.
-  ?statement ps:P2196 ?s_count.
-  OPTIONAL { ?statement pq:P585 ?pit. }
-}`,
-      emoji: "📊",
-      toolhint: "Students count over time",
-      popupTitle: "Students count of \"{itemLabel}\" over time:",
+      toolhint: "Visualisierung aller Wirkungsorte einer Person über die Lokalisierung der Kunstwerke",
+      popupTitle: "Lokalisierung der Kunstwerke von {itemLabel}",
       enabled: true,
     },
   ];
@@ -288,9 +99,9 @@ SELECT ?pit ?s_count WHERE {
 
   // ===== GLOBAL SETTINGS =====
   const SETTINGS = {
-    queryServiceUrl: "https://query.wikidata.org/",
-    queryEmbedUrl: "https://query.wikidata.org/embed.html",
-    enableQLever: true,
+    queryServiceUrl: "https://resanode.wikibase.cloud/query/",
+    queryEmbedUrl: "https://resanode.wikibase.cloud/query/embed.html",
+    enableQLever: false,
     qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
   };
 
@@ -318,111 +129,6 @@ SELECT ?pit ?s_count WHERE {
   function encodeQueryString(query) {
     return "#" + encodeURIComponent(query);
   }
-
-// ===== QLEVER FUNCTIONS =====
-
-/**
- * Check if the current Wikibase is Wikidata
- * @returns {boolean} True if using Wikidata
- */
-function isWikidata() {
-  return SETTINGS.queryServiceUrl.includes("query.wikidata.org");
-}
-
-/**
- * Convert a Wikidata SPARQL query to QLever-compatible format
- * @param {string} query - The original SPARQL query
- * @returns {string} QLever-compatible SPARQL query
- */
-function convertToQLeverQuery(query) {
-  let qleverQuery = query;
-
-  // Add necessary PREFIX declarations if not present
-  const needsRdfsPrefix =
-    !qleverQuery.includes("PREFIX rdfs:") && qleverQuery.includes("rdfs:label");
-  const needsWdtPrefix =
-    !qleverQuery.includes("PREFIX wdt:") && qleverQuery.includes("wdt:");
-  const needsWdPrefix =
-    !qleverQuery.includes("PREFIX wd:") && qleverQuery.includes("wd:");
-
-  if (
-    needsRdfsPrefix ||
-    needsWdtPrefix ||
-    needsWdPrefix ||
-    qleverQuery.match(/\?(\w+Label)\b/)
-  ) {
-    let prefixDeclarations = "";
-
-    if (needsRdfsPrefix || qleverQuery.match(/\?(\w+Label)\b/)) {
-      prefixDeclarations +=
-        "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n";
-    }
-    if (needsWdtPrefix) {
-      prefixDeclarations +=
-        "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\n";
-    }
-    if (needsWdPrefix) {
-      prefixDeclarations += "PREFIX wd: <http://www.wikidata.org/entity/>\n";
-    }
-
-    const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
-    if (defaultViewMatch) {
-      qleverQuery =
-        defaultViewMatch[1] +
-        prefixDeclarations +
-        qleverQuery.substring(defaultViewMatch[1].length);
-    } else {
-      qleverQuery = prefixDeclarations + qleverQuery;
-    }
-  }
-
-  // Remove the SERVICE wikibase:label block entirely
-  qleverQuery = qleverQuery.replace(
-    /SERVICE wikibase:label \{ bd:serviceParam wikibase:language "[^"]*"\. \}/g,
-    "",
-  );
-  qleverQuery = qleverQuery.replace(
-    /SERVICE wikibase:label \{ bd:serviceParam wikibase:language "[^"]*", ?[^}]*\. \}/g,
-    "",
-  );
-
-  // Find all variables that end with "Label" and add manual label fetching
-  const labelVars = query.match(/\?(\w+Label)\b/g);
-  if (labelVars) {
-    const uniqueLabelVars = [...new Set(labelVars)];
-    let labelStatements = "";
-
-    uniqueLabelVars.forEach((labelVar) => {
-      const baseVar = labelVar.replace("Label", "").replace("?", "");
-      labelStatements += `  OPTIONAL { ?${baseVar} rdfs:label ${labelVar} . FILTER(LANG(${labelVar}) = "en") }\n`;
-    });
-
-    const lastBraceIndex = qleverQuery.lastIndexOf("}");
-    if (lastBraceIndex !== -1 && labelStatements) {
-      qleverQuery =
-        qleverQuery.slice(0, lastBraceIndex) +
-        labelStatements +
-        qleverQuery.slice(lastBraceIndex);
-    }
-  }
-
-  qleverQuery = qleverQuery.replace(/\n\s*\n/g, "\n").trim();
-  return qleverQuery;
-}
-
-/**
- * Get the QLever URL for a query
- * @param {string} querystring - The encoded query string
- * @returns {string|null} QLever URL or null if disabled
- */
-function getQLeverUrl(querystring) {
-  if (!SETTINGS.enableQLever || !isWikidata()) {
-    return null;
-  }
-  const decodedQuery = decodeURIComponent(querystring.substring(1));
-  const qleverQuery = convertToQLeverQuery(decodedQuery);
-  return SETTINGS.qleverUrl + "?query=" + encodeURIComponent(qleverQuery);
-}
 
 // ===== UI CREATION FUNCTIONS =====
 
@@ -491,7 +197,7 @@ function createQueryPopup(
 
     const widthWithMin = Math.max(window.screen.width / 2, 800);
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
-    const qleverHref = getQLeverUrl(querystring);
+    const qleverHref = null;
 
     const app = Vue.createMwApp({
       name: "UsefulQueriesPopover",
