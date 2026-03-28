@@ -1,0 +1,12 @@
+{
+  "id": "entitree",
+  "scope": "property",
+  "propertyId": [
+    "P1066",
+    "P802"
+  ],
+  "urlTemplate": "https://www.entitree.com/en/student/{itemQid}",
+  "emoji": "🎓",
+  "toolhint": "Academic lineage on Entitree",
+  "enabled": true
+}
