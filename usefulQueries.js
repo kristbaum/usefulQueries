@@ -489,7 +489,12 @@ function createQueryPopup(
     const mountPoint = document.createElement("span");
     $(element).append(mountPoint);
 
-    const widthWithMin = Math.max(window.screen.width / 2, 800);
+    mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+
+    const widthWithMin = Math.max(
+      Math.min(window.screen.width, window.innerWidth / 2),
+      800,
+    );
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
     const qleverHref = getQLeverUrl(querystring);
 
@@ -528,10 +533,11 @@ function createQueryPopup(
             v-if="anchorEl"
             v-model:open="open"
             :anchor="anchorEl"
-            placement="bottom-start"
+            placement="bottom"
             :render-in-place="false"
             :title="toplabel"
             :use-close-button="true"
+            class="usefulqueries-popover"
             style="z-index: 9999;"
           >
             <div>
