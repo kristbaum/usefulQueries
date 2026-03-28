@@ -9,13 +9,13 @@ function processWikibaseEntityPage() {
       return;
     }
 
-    const itemLabel = $(".wikibase-title")
-      .first()
-      .find(".wikibase-title-label")
-      .text();
-    const $titleElement = $(".wikibase-title")
-      .first()
-      .find(".wikibase-title-id");
+    const itemLabel =
+      $(".wikibase-title").first().find(".wikibase-title-label").text() ||
+      $("h2.wb-ui-label--primary").first().text();
+    let $titleElement = $(".wikibase-title").first().find(".wikibase-title-id");
+    if (!$titleElement.length) {
+      $titleElement = $("h2.wb-ui-label--primary").first();
+    }
     const userLanguage = mw.config.get("wgUserLanguage");
 
     const context = {

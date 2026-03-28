@@ -6,6 +6,7 @@
  * @returns {jQuery|null} The property label element or null if not found
  */
 function getPropertyElement(propertyId) {
+  // Desktop
   const $propertyLink = $(
     '.wikibase-statementgroupview-property-label a[title="Property:' +
       propertyId +
@@ -13,6 +14,15 @@ function getPropertyElement(propertyId) {
   );
   if ($propertyLink.length) {
     return $propertyLink.closest(".wikibase-statementgroupview-property-label");
+  }
+  // Mobile (wbui2025): only match the heading row, not property names inside references
+  const $mobileLink = $(
+    '.wikibase-wbui2025-statement-heading .wikibase-wbui2025-property-name-link[data-property-id="' +
+      propertyId +
+      '"]',
+  );
+  if ($mobileLink.length) {
+    return $mobileLink.closest(".wikibase-wbui2025-property-name");
   }
   return null;
 }
@@ -33,7 +43,13 @@ function getStatementElement(statementId) {
  * @returns {jQuery|null} The indicator element or null if not found
  */
 function getStatementIndicatorElement($statementElement) {
-  return $statementElement.find(".wikibase-snakview-indicators").first();
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-indicators").first();
+  if ($desktop.length) return $desktop;
+  // Mobile (wbui2025)
+  return $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value")
+    .first();
 }
 
 /**

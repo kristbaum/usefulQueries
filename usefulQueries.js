@@ -573,6 +573,7 @@ function createQueryPopup(
  * @returns {jQuery|null} The property label element or null if not found
  */
 function getPropertyElement(propertyId) {
+  // Desktop
   const $propertyLink = $(
     '.wikibase-statementgroupview-property-label a[title="Property:' +
       propertyId +
@@ -580,6 +581,15 @@ function getPropertyElement(propertyId) {
   );
   if ($propertyLink.length) {
     return $propertyLink.closest(".wikibase-statementgroupview-property-label");
+  }
+  // Mobile (wbui2025): only match the heading row, not property names inside references
+  const $mobileLink = $(
+    '.wikibase-wbui2025-statement-heading .wikibase-wbui2025-property-name-link[data-property-id="' +
+      propertyId +
+      '"]',
+  );
+  if ($mobileLink.length) {
+    return $mobileLink.closest(".wikibase-wbui2025-property-name");
   }
   return null;
 }
@@ -600,7 +610,13 @@ function getStatementElement(statementId) {
  * @returns {jQuery|null} The indicator element or null if not found
  */
 function getStatementIndicatorElement($statementElement) {
-  return $statementElement.find(".wikibase-snakview-indicators").first();
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-indicators").first();
+  if ($desktop.length) return $desktop;
+  // Mobile (wbui2025)
+  return $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value")
+    .first();
 }
 
 /**
@@ -812,18 +828,20 @@ function processPropertyClaims(propertyId, claims, context) {
  * Main function to orchestrate the processing of the Wikibase entity page
  */
 function processWikibaseEntityPage() {
+  console.log("[usefulQueries] script loaded");
   mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
+    console.log("[usefulQueries] wikibase.entityPage.entityLoaded fired", entityData.type);
     if (entityData.type !== "item") {
       return;
     }
 
-    const itemLabel = $(".wikibase-title")
-      .first()
-      .find(".wikibase-title-label")
-      .text();
-    const $titleElement = $(".wikibase-title")
-      .first()
-      .find(".wikibase-title-id");
+    const itemLabel =
+      $(".wikibase-title").first().find(".wikibase-title-label").text() ||
+      $("h2.wb-ui-label--primary").first().text();
+    let $titleElement = $(".wikibase-title").first().find(".wikibase-title-id");
+    if (!$titleElement.length) {
+      $titleElement = $("h2.wb-ui-label--primary").first();
+    }
     const userLanguage = mw.config.get("wgUserLanguage");
 
     const context = {
