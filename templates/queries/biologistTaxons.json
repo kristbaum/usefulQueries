@@ -1,8 +1,13 @@
 {
   "id": "biologistTaxons",
   "scope": "value",
-  "propertyId": ["P106"],
-  "valueId": ["Q2487799", "Q2374149"],
+  "propertyId": [
+    "P106"
+  ],
+  "valueId": [
+    "Q2487799",
+    "Q2374149"
+  ],
   "template": [
     "#defaultView:Graph",
     "SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage WHERE {",

@@ -1,38 +1,38 @@
 {
-  "id": "artistTimeline",
-  "scope": "value",
-  "propertyId": [
-    "P106"
-  ],
-  "valueId": [
-    "Q1028181"
-  ],
-  "template": [
-    "#defaultView:Timeline",
-    "SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
-    "  {",
-    "    ?item wdt:P170 wd:{itemQid}.",
-    "    OPTIONAL { ?item wdt:P571 ?date. }",
-    "    BIND(\"Artwork\" AS ?edgeLabel)",
-    "  }",
-    "  UNION",
-    "  {",
-    "    BIND(wd:{itemQid} AS ?item)",
-    "    wd:{itemQid} wdt:P569 ?date.",
-    "    BIND(\"Birth\" AS ?edgeLabel)",
-    "  }",
-    "  UNION",
-    "  {",
-    "    BIND(wd:{itemQid} AS ?item)",
-    "    wd:{itemQid} wdt:P570 ?date.",
-    "    BIND(\"Death\" AS ?edgeLabel)",
-    "  }",
-    "  FILTER(BOUND(?date))",
-    "}"
-  ],
-  "emoji": "📅",
-  "toolhint": "Timeline of this painter's works, birth and death",
-  "popupTitle": "Timeline of {itemLabel}",
-  "enabled": true
+    "id": "artistTimeline",
+    "scope": "value",
+    "propertyId": [
+        "P106"
+    ],
+    "valueId": [
+        "Q1028181"
+    ],
+    "template": [
+        "#defaultView:Timeline",
+        "SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {",
+        "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+        "  {",
+        "    ?item wdt:P170 wd:{itemQid}.",
+        "    OPTIONAL { ?item wdt:P571 ?date. }",
+        "    BIND(\"Artwork\" AS ?edgeLabel)",
+        "  }",
+        "  UNION",
+        "  {",
+        "    BIND(wd:{itemQid} AS ?item)",
+        "    wd:{itemQid} wdt:P569 ?date.",
+        "    BIND(\"Birth\" AS ?edgeLabel)",
+        "  }",
+        "  UNION",
+        "  {",
+        "    BIND(wd:{itemQid} AS ?item)",
+        "    wd:{itemQid} wdt:P570 ?date.",
+        "    BIND(\"Death\" AS ?edgeLabel)",
+        "  }",
+        "  FILTER(BOUND(?date))",
+        "}"
+    ],
+    "emoji": "📅",
+    "toolhint": "Timeline of this painter's works, birth and death",
+    "popupTitle": "Timeline of {itemLabel}",
+    "enabled": true
 }
