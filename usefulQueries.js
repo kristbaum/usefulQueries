@@ -55,8 +55,8 @@ $(function () {
     {
       id: "artistTimeline",
       scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
+      propertyId: ["P106"],
+      valueId: ["Q1028181"],
       template: `#defaultView:Timeline
 SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
@@ -87,8 +87,8 @@ SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {
     {
       id: "artworkLocationsMap",
       scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
+      propertyId: ["P106"],
+      valueId: ["Q1028181"],
       template: `#defaultView:Map
 SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
@@ -107,8 +107,8 @@ LIMIT 100`,
     {
       id: "artworks",
       scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
+      propertyId: ["P106"],
+      valueId: ["Q1028181"],
       template: `#defaultView:ImageGrid
 SELECT ?item ?creator ?creatorLabel ?image WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
@@ -122,9 +122,29 @@ LIMIT 100`,
       enabled: true,
     },
     {
+      id: "biologistTaxons",
+      scope: "value",
+      propertyId: ["P106"],
+      valueId: ["Q2487799","Q2374149"],
+      template: `#defaultView:Graph
+SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,mul". }
+  BIND(wd:{itemQid} AS ?node)
+  ?childNode p:P225 ?statement.
+  ?statement pq:P405 ?node.
+  OPTIONAL { ?node wdt:P18 ?nodeImage. }
+  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
+}
+LIMIT 500`,
+      emoji: "🍄",
+      toolhint: "List of taxons (co-)described by {itemLabel}",
+      popupTitle: "All taxons (co-)described by {itemLabel}",
+      enabled: true,
+    },
+    {
       id: "deckenmalareiArtworkMap",
       scope: "property",
-      propertyId: "P10626",
+      propertyId: ["P10626"],
       template: `#defaultView:Map
 SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image ?workDeckenmalareiId ?workDeckenmalareiUrl ?locationDeckenmalareiId ?locationDeckenmalareiUrl WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
@@ -166,7 +186,7 @@ LIMIT 100`,
     {
       id: "employerGraph",
       scope: "value",
-      propertyId: "P108",
+      propertyId: ["P108"],
       valueId: null,
       template: `#defaultView:Graph
 SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {
@@ -221,7 +241,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
     {
       id: "membersCount",
       scope: "property",
-      propertyId: "P2124",
+      propertyId: ["P2124"],
       template: `#defaultView:LineChart
 SELECT ?pit ?s_count WHERE {
   wd:{itemQid} p:P2124 ?statement.
@@ -236,8 +256,8 @@ SELECT ?pit ?s_count WHERE {
     {
       id: "painterPlacesMap",
       scope: "value",
-      propertyId: "P106",
-      valueId: "Q1028181",
+      propertyId: ["P106"],
+      valueId: ["Q1028181"],
       template: `#defaultView:Map
 SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
   # Birth place
@@ -278,7 +298,7 @@ SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
     {
       id: "studentsCount",
       scope: "property",
-      propertyId: "P2196",
+      propertyId: ["P2196"],
       template: `#defaultView:LineChart
 SELECT ?pit ?s_count WHERE {
   wd:{itemQid} p:P2196 ?statement.
@@ -318,8 +338,8 @@ SELECT ?pit ?s_count WHERE {
     {
       id: "scholia",
       scope: "value",
-      propertyId: "P106",
-      valueId: "Q1650915",
+      propertyId: ["P106"],
+      valueId: ["Q1650915"],
       urlTemplate: "https://scholia.toolforge.org/author/{itemQid}",
       emoji: "📚",
       toolhint: "Page on Scholia",
@@ -407,14 +427,11 @@ function convertToQLeverQuery(query) {
     }
 
     const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
-    if (defaultViewMatch) {
-      qleverQuery =
-        defaultViewMatch[1] +
-        prefixDeclarations +
-        qleverQuery.substring(defaultViewMatch[1].length);
-    } else {
-      qleverQuery = prefixDeclarations + qleverQuery;
-    }
+    const defaultViewPrefix = defaultViewMatch?.[1] ?? "";
+    qleverQuery =
+      defaultViewPrefix +
+      prefixDeclarations +
+      qleverQuery.substring(defaultViewPrefix.length);
   }
 
   // Remove the SERVICE wikibase:label block entirely
@@ -698,10 +715,12 @@ function extractValueFromMainsnak(mainsnak) {
  * @returns {boolean} True if matches
  */
 function matchesPropertyId(propertyId, configPropertyId) {
-  if (Array.isArray(configPropertyId)) {
-    return configPropertyId.includes(propertyId);
-  }
-  return propertyId === configPropertyId;
+  return configPropertyId.includes(propertyId);
+}
+
+function matchesValueId(valueId, configValueId) {
+  if (!configValueId || configValueId.length === 0) return true;
+  return configValueId.includes(valueId);
 }
 
 /**
@@ -802,7 +821,7 @@ function processValueFeatures(
       q.scope === "value" &&
       q.enabled !== false &&
       matchesPropertyId(propertyId, q.propertyId) &&
-      (q.valueId === null || q.valueId === valueDetails.value),
+      matchesValueId(valueDetails.value, q.valueId),
   ).forEach((query) => {
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
@@ -823,7 +842,7 @@ function processValueFeatures(
       l.scope === "value" &&
       l.enabled !== false &&
       matchesPropertyId(propertyId, l.propertyId) &&
-      (l.valueId === null || l.valueId === valueDetails.value),
+      matchesValueId(valueDetails.value, l.valueId),
   ).forEach((link) => {
     const url = replacePlaceholders(link.urlTemplate, valueContext);
     createLinkButton($indicatorElement, url, link.emoji, link.toolhint);

@@ -1,8 +1,17 @@
 {
   "id": "membersCount",
   "scope": "property",
-  "propertyId": "P2124",
-  "template": "#defaultView:LineChart\nSELECT ?pit ?s_count WHERE {\n  wd:{itemQid} p:P2124 ?statement.\n  ?statement ps:P2124 ?s_count.\n  OPTIONAL { ?statement pq:P585 ?pit. }\n}",
+  "propertyId": [
+    "P2124"
+  ],
+  "template": [
+    "#defaultView:LineChart",
+    "SELECT ?pit ?s_count WHERE {",
+    "  wd:{itemQid} p:P2124 ?statement.",
+    "  ?statement ps:P2124 ?s_count.",
+    "  OPTIONAL { ?statement pq:P585 ?pit. }",
+    "}"
+  ],
   "emoji": "📊",
   "toolhint": "Members count over time",
   "popupTitle": "Members count of {itemLabel} over time:",

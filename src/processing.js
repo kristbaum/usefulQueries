@@ -7,10 +7,12 @@
  * @returns {boolean} True if matches
  */
 function matchesPropertyId(propertyId, configPropertyId) {
-  if (Array.isArray(configPropertyId)) {
-    return configPropertyId.includes(propertyId);
-  }
-  return propertyId === configPropertyId;
+  return configPropertyId.includes(propertyId);
+}
+
+function matchesValueId(valueId, configValueId) {
+  if (!configValueId || configValueId.length === 0) return true;
+  return configValueId.includes(valueId);
 }
 
 /**
@@ -111,7 +113,7 @@ function processValueFeatures(
       q.scope === "value" &&
       q.enabled !== false &&
       matchesPropertyId(propertyId, q.propertyId) &&
-      (q.valueId === null || q.valueId === valueDetails.value),
+      matchesValueId(valueDetails.value, q.valueId),
   ).forEach((query) => {
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
@@ -132,7 +134,7 @@ function processValueFeatures(
       l.scope === "value" &&
       l.enabled !== false &&
       matchesPropertyId(propertyId, l.propertyId) &&
-      (l.valueId === null || l.valueId === valueDetails.value),
+      matchesValueId(valueDetails.value, l.valueId),
   ).forEach((link) => {
     const url = replacePlaceholders(link.urlTemplate, valueContext);
     createLinkButton($indicatorElement, url, link.emoji, link.toolhint);

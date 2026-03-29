@@ -1,0 +1,81 @@
+// ============================================================
+// usefulQueries — Template Format Reference
+// ============================================================
+// Place query templates in:  templates/queries/<name>.json
+// Place link templates in:   templates/links/<name>.json
+//
+// Both formats share the same base structure. The key differences:
+//   - Query templates have "template" and "popupTitle" fields.
+//   - Link templates have "urlTemplate" instead.
+//
+// SPARQL "template" field: must be an array of lines (joined with \n at build time).
+// ============================================================
+
+// ── QUERY TEMPLATE ──────────────────────────────────────────
+{
+  // Unique identifier for this template (used for deduplication).
+  "id": "myQueryId",
+
+  // Where the button is attached on the page:
+  //   "entity"   → next to the item title (QID)
+  //   "property" → next to a property label (requires propertyId)
+  //   "value"    → next to a specific statement value (requires propertyId + optionally valueId)
+  "scope": "value",
+
+  // Which property labels trigger this template.
+  // Always an array; use multiple IDs to match several properties.
+  "propertyId": ["P106", "P101"],
+
+  // Which value QIDs trigger this template.
+  // Always an array; use multiple IDs to match several values.
+  // Use [] (empty array) or omit to match ALL values of the property.
+  "valueId": ["Q1028181"],
+
+  // The SPARQL query. Available placeholders:
+  //   {itemQid}      — QID of the current entity (e.g. Q762)
+  //   {itemLabel}    — label of the current entity
+  //   {valueQid}     — QID of the matched statement value (scope "value" only)
+  //   {valueLabel}   — label of the matched value (scope "value" only)
+  //   {userLanguage} — user's interface language code (e.g. "en")
+  //
+  // Array form (readable):
+  "template": [
+    "#defaultView:Map",
+    "SELECT ?item ?itemLabel ?coords WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
+    "  ?item wdt:P170 wd:{itemQid}.",
+    "  ?item wdt:P625 ?coords.",
+    "}"
+  ],
+
+  // Emoji shown on the button.
+  "emoji": "🗺️",
+
+  // Tooltip shown on hover.
+  "toolhint": "Map of works by {itemLabel}",
+
+  // Title bar of the popup dialog. Supports same placeholders as template.
+  "popupTitle": "Works by {itemLabel}",
+
+  // Set to false to disable without deleting the file.
+  "enabled": true
+}
+
+// ── LINK TEMPLATE ────────────────────────────────────────────
+{
+  "id": "myLinkId",
+
+  // Same scope/propertyId/valueId rules as query templates.
+  "scope": "property",
+  "propertyId": ["P22", "P25"],
+
+  // URL to open when clicked. Supports same placeholders as query templates.
+  "urlTemplate": "https://www.entitree.com/en/family_tree/{itemQid}",
+
+  "emoji": "🌳",
+  "toolhint": "Family tree on Entitree",
+  "enabled": true
+
+  // Note: link templates do NOT have "template" or "popupTitle".
+  // They open the URL directly in a new tab instead of a popup.
+}

@@ -1,0 +1,22 @@
+{
+  "id": "biologistTaxons",
+  "scope": "value",
+  "propertyId": ["P106"],
+  "valueId": ["Q2487799", "Q2374149"],
+  "template": [
+    "#defaultView:Graph",
+    "SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en,mul\". }",
+    "  BIND(wd:{itemQid} AS ?node)",
+    "  ?childNode p:P225 ?statement.",
+    "  ?statement pq:P405 ?node.",
+    "  OPTIONAL { ?node wdt:P18 ?nodeImage. }",
+    "  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }",
+    "}",
+    "LIMIT 500"
+  ],
+  "emoji": "🍄",
+  "toolhint": "List of taxons (co-)described by {itemLabel}",
+  "popupTitle": "All taxons (co-)described by {itemLabel}",
+  "enabled": true
+}

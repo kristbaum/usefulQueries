@@ -45,14 +45,11 @@ function convertToQLeverQuery(query) {
     }
 
     const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
-    if (defaultViewMatch) {
-      qleverQuery =
-        defaultViewMatch[1] +
-        prefixDeclarations +
-        qleverQuery.substring(defaultViewMatch[1].length);
-    } else {
-      qleverQuery = prefixDeclarations + qleverQuery;
-    }
+    const defaultViewPrefix = defaultViewMatch?.[1] ?? "";
+    qleverQuery =
+      defaultViewPrefix +
+      prefixDeclarations +
+      qleverQuery.substring(defaultViewPrefix.length);
   }
 
   // Remove the SERVICE wikibase:label block entirely

@@ -51,8 +51,8 @@ function formatTemplateEntry(obj, indent) {
 
   for (const [key, value] of Object.entries(obj)) {
     if (key === "template") {
-      // Use backtick template literal for multiline SPARQL
-      const backtickContent = value
+      // "template" must be an array of lines, joined with \n at build time.
+      const backtickContent = value.join("\n")
         .replace(/\\/g, "\\\\")
         .replace(/`/g, "\\`")
         .replace(/\$/g, "\\$");
