@@ -678,6 +678,23 @@ function getStatementIndicatorElement($statementElement) {
 }
 
 /**
+ * Extract the displayed label text from a statement's main value in the DOM
+ * @param {jQuery} $statementElement - The statement element
+ * @returns {string|null} The label text or null if not found
+ */
+function getStatementValueLabel($statementElement) {
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-value a").first();
+  if ($desktop.length) return $desktop.text().trim() || null;
+  // Mobile (wbui2025)
+  const $mobile = $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value .snakValue a")
+    .first();
+  if ($mobile.length) return $mobile.text().trim() || null;
+  return null;
+}
+
+/**
  * Extract value details from a claim's mainsnak
  * @param {Object} mainsnak - The mainsnak object from the claim
  * @returns {{value: string|null, label: string|null}} Value details
@@ -863,6 +880,9 @@ function processClaim(propertyId, claim, context) {
   if (!$indicatorElement) return;
 
   const valueDetails = extractValueFromMainsnak(claim.mainsnak);
+  if (valueDetails.label === null) {
+    valueDetails.label = getStatementValueLabel($statementElement);
+  }
   processValueFeatures(propertyId, valueDetails, $indicatorElement, context);
 }
 

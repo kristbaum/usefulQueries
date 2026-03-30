@@ -188,7 +188,10 @@ assembled = assembled.replace(/\n{3,}/g, "\n\n");
 
 // Write the assembled output
 await writeFile(outputPath, assembled, "utf8");
-console.log(`[assemble] Wrote ${path.relative(repoRoot, outputPath)}`);
+const assembledBytes = Buffer.byteLength(assembled, "utf8");
+console.log(
+  `[assemble] Wrote ${path.relative(repoRoot, outputPath)} (${assembled.length} chars, ${(assembledBytes / 1024).toFixed(1)} KB)`,
+);
 
 // Minify
 let header = "";
@@ -215,4 +218,8 @@ if (!result.code) {
 }
 
 await writeFile(minifiedPath, header + result.code + "\n", "utf8");
-console.log(`[assemble] Wrote ${path.relative(repoRoot, minifiedPath)}`);
+const minified = header + result.code + "\n";
+const minifiedBytes = Buffer.byteLength(minified, "utf8");
+console.log(
+  `[assemble] Wrote ${path.relative(repoRoot, minifiedPath)} (${minified.length} chars, ${(minifiedBytes / 1024).toFixed(1)} KB)`,
+);

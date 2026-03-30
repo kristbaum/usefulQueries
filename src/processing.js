@@ -155,6 +155,9 @@ function processClaim(propertyId, claim, context) {
   if (!$indicatorElement) return;
 
   const valueDetails = extractValueFromMainsnak(claim.mainsnak);
+  if (valueDetails.label === null) {
+    valueDetails.label = getStatementValueLabel($statementElement);
+  }
   processValueFeatures(propertyId, valueDetails, $indicatorElement, context);
 }
 
