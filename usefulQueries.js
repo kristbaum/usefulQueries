@@ -405,11 +405,17 @@ function convertToQLeverQuery(query) {
     !qleverQuery.includes("PREFIX wdt:") && qleverQuery.includes("wdt:");
   const needsWdPrefix =
     !qleverQuery.includes("PREFIX wd:") && qleverQuery.includes("wd:");
+  const needsPPrefix =
+    !qleverQuery.includes("PREFIX p:") && qleverQuery.includes("p:");
+  const needsPqPrefix =
+    !qleverQuery.includes("PREFIX pq:") && qleverQuery.includes("pq:");
 
   if (
     needsRdfsPrefix ||
     needsWdtPrefix ||
     needsWdPrefix ||
+    needsPPrefix ||
+    needsPqPrefix ||
     qleverQuery.match(/\?(\w+Label)\b/)
   ) {
     let prefixDeclarations = "";
@@ -424,6 +430,12 @@ function convertToQLeverQuery(query) {
     }
     if (needsWdPrefix) {
       prefixDeclarations += "PREFIX wd: <http://www.wikidata.org/entity/>\n";
+    }
+    if (needsPPrefix) {
+      prefixDeclarations += "PREFIX p: <http://www.wikidata.org/prop/>\n";
+    }
+    if (needsPqPrefix) {
+      prefixDeclarations += "PREFIX pq: <http://www.wikidata.org/prop/qualifier/>\n";
     }
 
     const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
