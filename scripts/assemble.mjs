@@ -52,7 +52,8 @@ function formatTemplateEntry(obj, indent) {
   for (const [key, value] of Object.entries(obj)) {
     if (key === "template") {
       // "template" must be an array of lines, joined with \n at build time.
-      const backtickContent = value.join("\n")
+      const backtickContent = value
+        .join("\n")
         .replace(/\\/g, "\\\\")
         .replace(/`/g, "\\`")
         .replace(/\$/g, "\\$");
