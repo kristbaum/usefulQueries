@@ -50,6 +50,7 @@ npm run lint
 ## Todo
 
 - Make it Wikibase neutral
+- Single vue app
 
 ## Example Items
 
