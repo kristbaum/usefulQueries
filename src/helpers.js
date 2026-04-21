@@ -8,9 +8,9 @@
    */
   function replacePlaceholders(template, replacements) {
     let result = template;
-    Object.entries(replacements).forEach(([key, value]) => {
-      result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value || "");
-    });
+    for (const [key, value] of Object.entries(replacements)) {
+      result = result.replaceAll(`{${key}}`, value || "");
+    }
     return result;
   }
 
