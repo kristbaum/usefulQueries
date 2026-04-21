@@ -11,7 +11,7 @@
     "P3448",
     "P8810"
   ],
-  "urlTemplate": "https://www.entitree.com/en/family_tree/{itemQid}?0u0=u&0u1=u",
+  "urlTemplate": "https://entitree.com/{userLanguage}/family_tree/{itemQid}",
   "emoji": "🌳",
   "toolhint": "Family tree on Entitree",
   "enabled": true
