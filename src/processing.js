@@ -1,14 +1,31 @@
 // ===== PROCESSING FUNCTIONS =====
 
-/**
- * Check if a property ID matches a query/link configuration
- * @param {string} propertyId - The property ID to check
- * @param {string|string[]} configPropertyId - The configured property ID(s)
- * @returns {boolean} True if matches
- */
-function matchesPropertyId(propertyId, configPropertyId) {
-  return configPropertyId.includes(propertyId);
-}
+// Pre-built lookup indexes — avoids full-array scans on every property/claim.
+// Built once at script load; keys are "<scope>:<propertyId>".
+const _templateIndex = (function () {
+  function buildIndex(templates) {
+    const entity = [];
+    const byKey = new Map();
+    for (const t of templates) {
+      if (t.enabled === false) continue;
+      if (t.scope === "entity") {
+        entity.push(t);
+      } else {
+        const ids = Array.isArray(t.propertyId) ? t.propertyId : [t.propertyId];
+        for (const id of ids) {
+          const key = t.scope + ":" + id;
+          if (!byKey.has(key)) byKey.set(key, []);
+          byKey.get(key).push(t);
+        }
+      }
+    }
+    return { entity, byKey };
+  }
+  return {
+    queries: buildIndex(USEFUL_QUERIES),
+    links: buildIndex(USEFUL_LINKS),
+  };
+})();
 
 function matchesValueId(valueId, configValueId) {
   if (!configValueId || configValueId.length === 0) return true;
@@ -22,13 +39,10 @@ function matchesValueId(valueId, configValueId) {
  */
 function processEntityFeatures($titleElement, context) {
   // Process entity-level queries
-  USEFUL_QUERIES.filter(
-    (q) => q.scope === "entity" && q.enabled !== false,
-  ).forEach((query) => {
+  for (const query of _templateIndex.queries.entity) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
     const popupTitle = replacePlaceholders(query.popupTitle, context);
-
     createQueryPopup(
       $titleElement,
       queryString,
@@ -36,15 +50,13 @@ function processEntityFeatures($titleElement, context) {
       query.toolhint,
       popupTitle,
     );
-  });
+  }
 
   // Process entity-level links
-  USEFUL_LINKS.filter(
-    (l) => l.scope === "entity" && l.enabled !== false,
-  ).forEach((link) => {
+  for (const link of _templateIndex.links.entity) {
     const url = replacePlaceholders(link.urlTemplate, context);
     createLinkButton($titleElement, url, link.emoji, link.toolhint);
-  });
+  }
 }
 
 /**
@@ -54,17 +66,13 @@ function processEntityFeatures($titleElement, context) {
  * @param {Object} context - Context with itemQid, itemLabel, userLanguage
  */
 function processPropertyFeatures(propertyId, $propertyElement, context) {
+  const propKey = "property:" + propertyId;
+
   // Process property-level queries
-  USEFUL_QUERIES.filter(
-    (q) =>
-      q.scope === "property" &&
-      q.enabled !== false &&
-      matchesPropertyId(propertyId, q.propertyId),
-  ).forEach((query) => {
+  for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
     const popupTitle = replacePlaceholders(query.popupTitle, context);
-
     createQueryPopup(
       $propertyElement,
       queryString,
@@ -72,18 +80,13 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
       query.toolhint,
       popupTitle,
     );
-  });
+  }
 
   // Process property-level links
-  USEFUL_LINKS.filter(
-    (l) =>
-      l.scope === "property" &&
-      l.enabled !== false &&
-      matchesPropertyId(propertyId, l.propertyId),
-  ).forEach((link) => {
+  for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
     const url = replacePlaceholders(link.urlTemplate, context);
     createLinkButton($propertyElement, url, link.emoji, link.toolhint);
-  });
+  }
 }
 
 /**
@@ -107,18 +110,14 @@ function processValueFeatures(
     valueLabel: valueDetails.label || valueDetails.value,
   };
 
+  const valueKey = "value:" + propertyId;
+
   // Process value-level queries
-  USEFUL_QUERIES.filter(
-    (q) =>
-      q.scope === "value" &&
-      q.enabled !== false &&
-      matchesPropertyId(propertyId, q.propertyId) &&
-      matchesValueId(valueDetails.value, q.valueId),
-  ).forEach((query) => {
+  for (const query of (_templateIndex.queries.byKey.get(valueKey) ?? [])) {
+    if (!matchesValueId(valueDetails.value, query.valueId)) continue;
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
     const popupTitle = replacePlaceholders(query.popupTitle, valueContext);
-
     createQueryPopup(
       $indicatorElement,
       queryString,
@@ -126,19 +125,14 @@ function processValueFeatures(
       query.toolhint,
       popupTitle,
     );
-  });
+  }
 
   // Process value-level links
-  USEFUL_LINKS.filter(
-    (l) =>
-      l.scope === "value" &&
-      l.enabled !== false &&
-      matchesPropertyId(propertyId, l.propertyId) &&
-      matchesValueId(valueDetails.value, l.valueId),
-  ).forEach((link) => {
+  for (const link of (_templateIndex.links.byKey.get(valueKey) ?? [])) {
+    if (!matchesValueId(valueDetails.value, link.valueId)) continue;
     const url = replacePlaceholders(link.urlTemplate, valueContext);
     createLinkButton($indicatorElement, url, link.emoji, link.toolhint);
-  });
+  }
 }
 
 /**

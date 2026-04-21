@@ -65,8 +65,8 @@ function createQueryPopup(
 
     mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
 
-    const widthWithMin = Math.max(
-      Math.min(window.screen.width, window.innerWidth / 2),
+    const widthWithMin = Math.min(
+      Math.max(window.innerWidth - 40, 400),
       800,
     );
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
@@ -117,7 +117,7 @@ function createQueryPopup(
             :title="toplabel"
             :use-close-button="true"
             class="usefulqueries-popover"
-            style="z-index: 9999;"
+            style="z-index: 999;"
           >
             <div>
               <div v-if="qleverHref" style="padding: 10px; border-bottom: 1px solid;">
