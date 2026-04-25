@@ -1,0 +1,19 @@
+{
+  "id": "artworkLocationsMap",
+  "scope": "value",
+  "propertyId": "P17",
+  "template": [
+    "PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>",
+    "PREFIX rs: <https://resanode.wikibase.cloud/entity/>",
+    "#defaultView:Map",
+    "SELECT ?work ?workLabel ?coordinate WHERE {",
+    "  rs:{itemQid} rst:P17 ?work.",
+    "  ?work rst:P7 ?coordinate.",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de\". }",
+    "}"
+  ],
+  "emoji": "📍",
+  "toolhint": "Visualisierung aller Wirkungsorte einer Person über die Lokalisierung der Kunstwerke",
+  "popupTitle": "Lokalisierung der Kunstwerke von {itemLabel}",
+  "enabled": true
+}

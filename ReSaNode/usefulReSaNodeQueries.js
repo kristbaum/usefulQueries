@@ -76,25 +76,7 @@ SELECT ?work ?workLabel ?coordinate WHERE {
 
   /** @type {UsefulLink[]} */
   const USEFUL_LINKS = [
-    {
-      id: "entitree",
-      scope: "property",
-      propertyId: ["P22","P25","P3373","P26","P40","P1038","P3448","P8810"],
-      urlTemplate: "https://www.entitree.com/en/family_tree/{itemQid}?0u0=u&0u1=u",
-      emoji: "🌳",
-      toolhint: "Family tree on Entitree",
-      enabled: true,
-    },
-    {
-      id: "scholia",
-      scope: "value",
-      propertyId: "P106",
-      valueId: "Q1650915",
-      urlTemplate: "https://scholia.toolforge.org/author/{itemQid}",
-      emoji: "📚",
-      toolhint: "Page on Scholia",
-      enabled: true,
-    },
+
   ];
 
   // ===== GLOBAL SETTINGS =====
@@ -115,9 +97,9 @@ SELECT ?work ?workLabel ?coordinate WHERE {
    */
   function replacePlaceholders(template, replacements) {
     let result = template;
-    Object.entries(replacements).forEach(([key, value]) => {
-      result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value || "");
-    });
+    for (const [key, value] of Object.entries(replacements)) {
+      result = result.replaceAll(`{${key}}`, value || "");
+    }
     return result;
   }
 
@@ -195,7 +177,12 @@ function createQueryPopup(
     const mountPoint = document.createElement("span");
     $(element).append(mountPoint);
 
-    const widthWithMin = Math.max(window.screen.width / 2, 800);
+    mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+
+    const widthWithMin = Math.min(
+      Math.max(window.innerWidth - 40, 400),
+      800,
+    );
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
     const qleverHref = null;
 
@@ -234,11 +221,12 @@ function createQueryPopup(
             v-if="anchorEl"
             v-model:open="open"
             :anchor="anchorEl"
-            placement="bottom-start"
+            placement="bottom"
             :render-in-place="false"
             :title="toplabel"
             :use-close-button="true"
-            style="z-index: 9999;"
+            class="usefulqueries-popover"
+            style="z-index: 999;"
           >
             <div>
               <div v-if="qleverHref" style="padding: 10px; border-bottom: 1px solid;">
@@ -273,6 +261,7 @@ function createQueryPopup(
  * @returns {jQuery|null} The property label element or null if not found
  */
 function getPropertyElement(propertyId) {
+  // Desktop
   const $propertyLink = $(
     '.wikibase-statementgroupview-property-label a[title="Property:' +
       propertyId +
@@ -280,6 +269,15 @@ function getPropertyElement(propertyId) {
   );
   if ($propertyLink.length) {
     return $propertyLink.closest(".wikibase-statementgroupview-property-label");
+  }
+  // Mobile (wbui2025): only match the heading row, not property names inside references
+  const $mobileLink = $(
+    '.wikibase-wbui2025-statement-heading .wikibase-wbui2025-property-name-link[data-property-id="' +
+      propertyId +
+      '"]',
+  );
+  if ($mobileLink.length) {
+    return $mobileLink.closest(".wikibase-wbui2025-property-name");
   }
   return null;
 }
@@ -300,7 +298,30 @@ function getStatementElement(statementId) {
  * @returns {jQuery|null} The indicator element or null if not found
  */
 function getStatementIndicatorElement($statementElement) {
-  return $statementElement.find(".wikibase-snakview-indicators").first();
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-indicators").first();
+  if ($desktop.length) return $desktop;
+  // Mobile (wbui2025)
+  return $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value")
+    .first();
+}
+
+/**
+ * Extract the displayed label text from a statement's main value in the DOM
+ * @param {jQuery} $statementElement - The statement element
+ * @returns {string|null} The label text or null if not found
+ */
+function getStatementValueLabel($statementElement) {
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-value a").first();
+  if ($desktop.length) return $desktop.text().trim() || null;
+  // Mobile (wbui2025)
+  const $mobile = $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value .snakValue a")
+    .first();
+  if ($mobile.length) return $mobile.text().trim() || null;
+  return null;
 }
 
 /**
@@ -334,17 +355,36 @@ function extractValueFromMainsnak(mainsnak) {
 
 // ===== PROCESSING FUNCTIONS =====
 
-/**
- * Check if a property ID matches a query/link configuration
- * @param {string} propertyId - The property ID to check
- * @param {string|string[]} configPropertyId - The configured property ID(s)
- * @returns {boolean} True if matches
- */
-function matchesPropertyId(propertyId, configPropertyId) {
-  if (Array.isArray(configPropertyId)) {
-    return configPropertyId.includes(propertyId);
+// Pre-built lookup indexes — avoids full-array scans on every property/claim.
+// Built once at script load; keys are "<scope>:<propertyId>".
+const _templateIndex = (function () {
+  function buildIndex(templates) {
+    const entity = [];
+    const byKey = new Map();
+    for (const t of templates) {
+      if (t.enabled === false) continue;
+      if (t.scope === "entity") {
+        entity.push(t);
+      } else {
+        const ids = Array.isArray(t.propertyId) ? t.propertyId : [t.propertyId];
+        for (const id of ids) {
+          const key = t.scope + ":" + id;
+          if (!byKey.has(key)) byKey.set(key, []);
+          byKey.get(key).push(t);
+        }
+      }
+    }
+    return { entity, byKey };
   }
-  return propertyId === configPropertyId;
+  return {
+    queries: buildIndex(USEFUL_QUERIES),
+    links: buildIndex(USEFUL_LINKS),
+  };
+})();
+
+function matchesValueId(valueId, configValueId) {
+  if (!configValueId || configValueId.length === 0) return true;
+  return configValueId.includes(valueId);
 }
 
 /**
@@ -354,13 +394,10 @@ function matchesPropertyId(propertyId, configPropertyId) {
  */
 function processEntityFeatures($titleElement, context) {
   // Process entity-level queries
-  USEFUL_QUERIES.filter(
-    (q) => q.scope === "entity" && q.enabled !== false,
-  ).forEach((query) => {
+  for (const query of _templateIndex.queries.entity) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
     const popupTitle = replacePlaceholders(query.popupTitle, context);
-
     createQueryPopup(
       $titleElement,
       queryString,
@@ -368,15 +405,13 @@ function processEntityFeatures($titleElement, context) {
       query.toolhint,
       popupTitle,
     );
-  });
+  }
 
   // Process entity-level links
-  USEFUL_LINKS.filter(
-    (l) => l.scope === "entity" && l.enabled !== false,
-  ).forEach((link) => {
+  for (const link of _templateIndex.links.entity) {
     const url = replacePlaceholders(link.urlTemplate, context);
     createLinkButton($titleElement, url, link.emoji, link.toolhint);
-  });
+  }
 }
 
 /**
@@ -386,17 +421,13 @@ function processEntityFeatures($titleElement, context) {
  * @param {Object} context - Context with itemQid, itemLabel, userLanguage
  */
 function processPropertyFeatures(propertyId, $propertyElement, context) {
+  const propKey = "property:" + propertyId;
+
   // Process property-level queries
-  USEFUL_QUERIES.filter(
-    (q) =>
-      q.scope === "property" &&
-      q.enabled !== false &&
-      matchesPropertyId(propertyId, q.propertyId),
-  ).forEach((query) => {
+  for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
     const popupTitle = replacePlaceholders(query.popupTitle, context);
-
     createQueryPopup(
       $propertyElement,
       queryString,
@@ -404,18 +435,13 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
       query.toolhint,
       popupTitle,
     );
-  });
+  }
 
   // Process property-level links
-  USEFUL_LINKS.filter(
-    (l) =>
-      l.scope === "property" &&
-      l.enabled !== false &&
-      matchesPropertyId(propertyId, l.propertyId),
-  ).forEach((link) => {
+  for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
     const url = replacePlaceholders(link.urlTemplate, context);
     createLinkButton($propertyElement, url, link.emoji, link.toolhint);
-  });
+  }
 }
 
 /**
@@ -439,18 +465,14 @@ function processValueFeatures(
     valueLabel: valueDetails.label || valueDetails.value,
   };
 
+  const valueKey = "value:" + propertyId;
+
   // Process value-level queries
-  USEFUL_QUERIES.filter(
-    (q) =>
-      q.scope === "value" &&
-      q.enabled !== false &&
-      matchesPropertyId(propertyId, q.propertyId) &&
-      (q.valueId === null || q.valueId === valueDetails.value),
-  ).forEach((query) => {
+  for (const query of (_templateIndex.queries.byKey.get(valueKey) ?? [])) {
+    if (!matchesValueId(valueDetails.value, query.valueId)) continue;
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
     const popupTitle = replacePlaceholders(query.popupTitle, valueContext);
-
     createQueryPopup(
       $indicatorElement,
       queryString,
@@ -458,19 +480,14 @@ function processValueFeatures(
       query.toolhint,
       popupTitle,
     );
-  });
+  }
 
   // Process value-level links
-  USEFUL_LINKS.filter(
-    (l) =>
-      l.scope === "value" &&
-      l.enabled !== false &&
-      matchesPropertyId(propertyId, l.propertyId) &&
-      (l.valueId === null || l.valueId === valueDetails.value),
-  ).forEach((link) => {
+  for (const link of (_templateIndex.links.byKey.get(valueKey) ?? [])) {
+    if (!matchesValueId(valueDetails.value, link.valueId)) continue;
     const url = replacePlaceholders(link.urlTemplate, valueContext);
     createLinkButton($indicatorElement, url, link.emoji, link.toolhint);
-  });
+  }
 }
 
 /**
@@ -487,6 +504,9 @@ function processClaim(propertyId, claim, context) {
   if (!$indicatorElement) return;
 
   const valueDetails = extractValueFromMainsnak(claim.mainsnak);
+  if (valueDetails.label === null) {
+    valueDetails.label = getStatementValueLabel($statementElement);
+  }
   processValueFeatures(propertyId, valueDetails, $indicatorElement, context);
 }
 
@@ -517,13 +537,13 @@ function processWikibaseEntityPage() {
       return;
     }
 
-    const itemLabel = $(".wikibase-title")
-      .first()
-      .find(".wikibase-title-label")
-      .text();
-    const $titleElement = $(".wikibase-title")
-      .first()
-      .find(".wikibase-title-id");
+    const itemLabel =
+      $(".wikibase-title").first().find(".wikibase-title-label").text() ||
+      $("h2.wb-ui-label--primary").first().text();
+    let $titleElement = $(".wikibase-title").first().find(".wikibase-title-id");
+    if (!$titleElement.length) {
+      $titleElement = $("h2.wb-ui-label--primary").first();
+    }
     const userLanguage = mw.config.get("wgUserLanguage");
 
     const context = {

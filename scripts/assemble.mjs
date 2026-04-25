@@ -5,12 +5,27 @@ import { minify } from "terser";
 
 const repoRoot = path.resolve(process.cwd());
 const frameworkPath = path.join(repoRoot, "framework.js");
-const settingsPath = path.join(repoRoot, "src", "settings.json");
 const srcDir = path.join(repoRoot, "src");
-const queriesDir = path.join(repoRoot, "templates", "queries");
-const linksDir = path.join(repoRoot, "templates", "links");
-const outputPath = path.join(repoRoot, "usefulQueries.js");
-const minifiedPath = path.join(repoRoot, "minified_version.js");
+
+// --custom <Name> switches settings, templates and output into a named subfolder
+const customIdx = process.argv.indexOf("--custom");
+const customName = customIdx !== -1 ? process.argv[customIdx + 1] : null;
+
+let settingsPath, queriesDir, linksDir, outputPath, minifiedPath;
+if (customName) {
+  const customDir = path.join(repoRoot, customName);
+  settingsPath = path.join(customDir, "settings.json");
+  queriesDir = path.join(customDir, "templates", "queries");
+  linksDir = path.join(customDir, "templates", "links");
+  outputPath = path.join(customDir, `useful${customName}Queries.js`);
+  minifiedPath = path.join(customDir, `minified_${customName}_version.js`);
+} else {
+  settingsPath = path.join(repoRoot, "src", "settings.json");
+  queriesDir = path.join(repoRoot, "templates", "queries");
+  linksDir = path.join(repoRoot, "templates", "links");
+  outputPath = path.join(repoRoot, "usefulQueries.js");
+  minifiedPath = path.join(repoRoot, "minified_version.js");
+}
 
 // Source files to include, in dependency order
 const SRC_FILES = [

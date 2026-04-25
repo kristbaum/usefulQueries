@@ -142,6 +142,33 @@ npm install
 npm run build
 ```
 
+### Custom builds with `--custom`
+
+For a self-contained variant (e.g. targeting a different Wikibase), you can keep all configuration, templates and output inside a named subfolder using the `--custom <Name>` flag.
+
+**Expected folder layout for a custom build named `MyQueries`:**
+
+```bash
+MyQueries/
+├── settings.json          # Same format as src/settings.json
+└── templates/
+    ├── queries/           # Query template JSON files
+    └── links/             # Link template JSON files
+```
+
+**Build command:**
+
+```bash
+node scripts/assemble.mjs --custom MyQueries
+```
+
+The build will read `MyQueries/settings.json`, load templates from `MyQueries/templates/queries/` and `MyQueries/templates/links/`, and write the output files into the same subfolder:
+
+- `MyQueries/usefulMyQueriesQueries.js` — readable output
+- `MyQueries/minified_MyQueries_version.js` — minified output for upload
+
+Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per variant.
+
 ## Development
 
 ```bash
@@ -156,7 +183,6 @@ npm run lint
 ## Todo
 
 - Make it Wikibase neutral
-- Single vue app
 
 ## Example Items
 
