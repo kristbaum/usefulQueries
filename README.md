@@ -182,7 +182,7 @@ npm run lint
 
 ## Todo
 
-- Make it Wikibase neutral
+- Make it Wikibase agnostic
 
 ## Example Items
 
