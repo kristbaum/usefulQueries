@@ -2,5 +2,6 @@
   "queryServiceUrl": "https://resanode.wikibase.cloud/query/",
   "queryEmbedUrl": "https://resanode.wikibase.cloud/query/embed.html",
   "enableQLever": false,
-  "qleverUrl": "https://qlever.cs.uni-freiburg.de/wikidata/"
+  "qleverUrl": "https://qlever.cs.uni-freiburg.de/wikidata/",
+  "allowedNamespace": 120
 }

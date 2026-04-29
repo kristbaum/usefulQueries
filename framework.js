@@ -12,8 +12,10 @@
 $(function () {
   "use strict";
 
+  /* __SETTINGS__ */
+
   // Exit the script if we're not in the main namespace (article namespace).
-  if (mw.config.get("wgNamespaceNumber") !== 0) {
+  if (mw.config.get("wgNamespaceNumber") !== SETTINGS.allowedNamespace) {
     return;
   }
 
@@ -62,8 +64,6 @@ $(function () {
   const USEFUL_LINKS = [
     /* __USEFUL_LINKS__ */
   ];
-
-  /* __SETTINGS__ */
 
   /* __HELPERS__ */
 

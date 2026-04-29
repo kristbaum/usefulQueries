@@ -12,8 +12,17 @@
 $(function () {
   "use strict";
 
+  // ===== GLOBAL SETTINGS =====
+  const SETTINGS = {
+    queryServiceUrl: "https://resanode.wikibase.cloud/query/",
+    queryEmbedUrl: "https://resanode.wikibase.cloud/query/embed.html",
+    enableQLever: false,
+    qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
+    allowedNamespace: 120,
+  };
+
   // Exit the script if we're not in the main namespace (article namespace).
-  if (mw.config.get("wgNamespaceNumber") !== 0) {
+  if (mw.config.get("wgNamespaceNumber") !== SETTINGS.allowedNamespace) {
     return;
   }
 
@@ -78,14 +87,6 @@ SELECT ?work ?workLabel ?coordinate WHERE {
   const USEFUL_LINKS = [
 
   ];
-
-  // ===== GLOBAL SETTINGS =====
-  const SETTINGS = {
-    queryServiceUrl: "https://resanode.wikibase.cloud/query/",
-    queryEmbedUrl: "https://resanode.wikibase.cloud/query/embed.html",
-    enableQLever: false,
-    qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
-  };
 
   // ===== HELPER FUNCTIONS =====
 

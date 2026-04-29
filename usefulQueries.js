@@ -12,8 +12,17 @@
 $(function () {
   "use strict";
 
+  // ===== GLOBAL SETTINGS =====
+  const SETTINGS = {
+    queryServiceUrl: "https://query.wikidata.org/",
+    queryEmbedUrl: "https://query.wikidata.org/embed.html",
+    enableQLever: true,
+    qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
+    allowedNamespace: 0,
+  };
+
   // Exit the script if we're not in the main namespace (article namespace).
-  if (mw.config.get("wgNamespaceNumber") !== 0) {
+  if (mw.config.get("wgNamespaceNumber") !== SETTINGS.allowedNamespace) {
     return;
   }
 
@@ -346,14 +355,6 @@ SELECT ?pit ?s_count WHERE {
       enabled: true,
     },
   ];
-
-  // ===== GLOBAL SETTINGS =====
-  const SETTINGS = {
-    queryServiceUrl: "https://query.wikidata.org/",
-    queryEmbedUrl: "https://query.wikidata.org/embed.html",
-    enableQLever: true,
-    qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
-  };
 
   // ===== HELPER FUNCTIONS =====
 
