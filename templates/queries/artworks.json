@@ -17,7 +17,5 @@
     "LIMIT 100"
   ],
   "emoji": "🖼️",
-  "toolhint": "Artworks by this painter in Wikimedia Commons",
-  "popupTitle": "Artworks by {itemLabel}",
-  "enabled": true
+  "title": "Artworks by {itemLabel} on Commons"
 }

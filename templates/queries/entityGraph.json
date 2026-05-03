@@ -30,7 +30,5 @@
     "}"
   ],
   "emoji": "🔗",
-  "toolhint": "Entity graph",
-  "popupTitle": "Entity Graph of {itemLabel}",
-  "enabled": true
+  "title": "Entity Graph of {itemLabel}"
 }

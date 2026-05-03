@@ -13,7 +13,5 @@
     "}"
   ],
   "emoji": "📊",
-  "toolhint": "Members count over time",
-  "popupTitle": "Members count of {itemLabel} over time:",
-  "enabled": true
+  "title": "Members count of {itemLabel} over time"
 }

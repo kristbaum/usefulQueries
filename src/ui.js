@@ -5,9 +5,9 @@
  * @param {jQuery} element - The element to append the button to
  * @param {string} url - The URL to open when clicked
  * @param {string} buttonLabel - The label (emoji/text) for the button
- * @param {string} toolhint - The tooltip for the button
+ * @param {string} title - The tooltip for the button
  */
-function createLinkButton(element, url, buttonLabel, toolhint) {
+function createLinkButton(element, url, buttonLabel, title) {
   mw.loader.using("@wikimedia/codex").then(function (require) {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
@@ -18,11 +18,11 @@ function createLinkButton(element, url, buttonLabel, toolhint) {
     const app = Vue.createMwApp({
       name: "UsefulQueriesLinkButton",
       data: function () {
-        return { url, buttonLabel, toolhint };
+        return { url, buttonLabel, title };
       },
       template: `
-          <a :href="url" target="_blank" rel="noopener noreferrer" :title="toolhint" style="text-decoration: none;">
-            <cdx-button weight="quiet" action="progressive" :aria-label="toolhint">
+          <a :href="url" target="_blank" rel="noopener noreferrer" :title="title" style="text-decoration: none;">
+            <cdx-button weight="quiet" action="progressive" :aria-label="title">
               {{ buttonLabel }}
             </cdx-button>
           </a>
@@ -39,15 +39,13 @@ function createLinkButton(element, url, buttonLabel, toolhint) {
  * @param {jQuery} element - The element to append the popup button to
  * @param {string} querystring - The encoded query string
  * @param {string} buttonLabel - The label (emoji/text) for the button
- * @param {string} toolhint - The tooltip for the button
- * @param {string} toplabel - The title for the popup
+ * @param {string} title - The tooltip and popup heading
  */
 function createQueryPopup(
   element,
   querystring,
   buttonLabel,
-  toolhint,
-  toplabel,
+  title,
 ) {
   const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
 
@@ -58,7 +56,7 @@ function createQueryPopup(
     if (!Codex.CdxPopover) {
       // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
       // fall back to a plain link button to avoid rendering the component inline.
-      createLinkButton(element, queryServiceHref, buttonLabel, toolhint);
+      createLinkButton(element, queryServiceHref, buttonLabel, title);
       return;
     }
 
@@ -83,8 +81,7 @@ function createQueryPopup(
           open: false,
           anchorEl: null,
           buttonLabel,
-          toolhint,
-          toplabel,
+          title,
           queryServiceHref,
           embedHref,
           qleverHref,
@@ -114,8 +111,8 @@ function createQueryPopup(
             <cdx-button
               weight="quiet"
               action="progressive"
-              :aria-label="toolhint"
-              :title="toolhint"
+              :aria-label="title"
+              :title="title"
               @click="$event.preventDefault(); open = !open"
             >
               {{ buttonLabel }}
@@ -128,7 +125,7 @@ function createQueryPopup(
             :anchor="anchorEl"
             placement="bottom"
             :render-in-place="false"
-            :title="toplabel"
+            :title="title"
             :use-close-button="true"
             :use-bottom-sheet="true"
             :primary-action="primaryAction"

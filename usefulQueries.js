@@ -89,9 +89,7 @@ SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {
   FILTER(BOUND(?date))
 }`,
       emoji: "📅",
-      toolhint: "Timeline of this painter's works, birth and death",
-      popupTitle: "Timeline of {itemLabel}",
-      enabled: true,
+      title: "Timeline of {itemLabel}",
     },
     {
       id: "artworkLocationsMap",
@@ -109,9 +107,7 @@ SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfL
 }
 LIMIT 100`,
       emoji: "📍",
-      toolhint: "Map showing locations of this painter's artworks",
-      popupTitle: "Artwork locations of {itemLabel}",
-      enabled: true,
+      title: "Artwork locations of {itemLabel}",
     },
     {
       id: "artworks",
@@ -126,9 +122,7 @@ SELECT ?item ?creator ?creatorLabel ?image WHERE {
 }
 LIMIT 100`,
       emoji: "🖼️",
-      toolhint: "Artworks by this painter in Wikimedia Commons",
-      popupTitle: "Artworks by {itemLabel}",
-      enabled: true,
+      title: "Artworks by {itemLabel} on Commons",
     },
     {
       id: "biologistTaxons",
@@ -146,9 +140,7 @@ SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNod
 }
 LIMIT 500`,
       emoji: "🍄",
-      toolhint: "List of taxons (co-)described by {itemLabel}",
-      popupTitle: "All taxons (co-)described by {itemLabel}",
-      enabled: true,
+      title: "All taxons (co-)described by {itemLabel}",
     },
     {
       id: "deckenmalareiArtworkMap",
@@ -188,9 +180,7 @@ SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfL
 }
 LIMIT 100`,
       emoji: "🎨",
-      toolhint: "Map of artworks and locations with deckenmalerei.eu connections",
-      popupTitle: "Artworks and locations related to {itemLabel} with deckenmalerei.eu data",
-      enabled: true,
+      title: "Artworks and locations related to {itemLabel} with deckenmalerei.eu data",
     },
     {
       id: "employerGraph",
@@ -209,9 +199,7 @@ SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHER
 }
 LIMIT 100`,
       emoji: "👥",
-      toolhint: "Other employees of this organization as graph",
-      popupTitle: "100 other employees of {valueLabel}",
-      enabled: true,
+      title: "100 other employees of {valueLabel}",
     },
     {
       id: "entityGraph",
@@ -243,9 +231,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
 }`,
       emoji: "🔗",
-      toolhint: "Entity graph",
-      popupTitle: "Entity Graph of {itemLabel}",
-      enabled: true,
+      title: "Entity Graph of {itemLabel}",
     },
     {
       id: "membersCount",
@@ -258,9 +244,7 @@ SELECT ?pit ?s_count WHERE {
   OPTIONAL { ?statement pq:P585 ?pit. }
 }`,
       emoji: "📊",
-      toolhint: "Members count over time",
-      popupTitle: "Members count of {itemLabel} over time:",
-      enabled: true,
+      title: "Members count of {itemLabel} over time",
     },
     {
       id: "painterPlacesMap",
@@ -300,9 +284,7 @@ SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }`,
       emoji: "🗺️",
-      toolhint: "Map of places related to this painter",
-      popupTitle: "Places related to {itemLabel}",
-      enabled: true,
+      title: "Places related to {itemLabel}",
     },
     {
       id: "studentsCount",
@@ -315,9 +297,7 @@ SELECT ?pit ?s_count WHERE {
   OPTIONAL { ?statement pq:P585 ?pit. }
 }`,
       emoji: "📊",
-      toolhint: "Students count over time",
-      popupTitle: "Students count of \"{itemLabel}\" over time:",
-      enabled: true,
+      title: "Students count of {itemLabel} over time",
     },
   ];
 
@@ -332,8 +312,7 @@ SELECT ?pit ?s_count WHERE {
       propertyId: ["P22","P25","P3373","P26","P40","P1038","P3448","P8810"],
       urlTemplate: "https://entitree.com/{userLanguage}/family_tree/{itemQid}",
       emoji: "🌳",
-      toolhint: "Family tree on Entitree",
-      enabled: true,
+      title: "Family tree on Entitree",
     },
     {
       id: "entitree",
@@ -341,8 +320,7 @@ SELECT ?pit ?s_count WHERE {
       propertyId: ["P1066","P802"],
       urlTemplate: "https://entitree.com/{userLanguage}/student/{itemQid}",
       emoji: "🎓",
-      toolhint: "Academic lineage on Entitree",
-      enabled: true,
+      title: "Academic lineage on Entitree",
     },
     {
       id: "scholia",
@@ -351,8 +329,7 @@ SELECT ?pit ?s_count WHERE {
       valueId: ["Q1650915"],
       urlTemplate: "https://scholia.toolforge.org/author/{itemQid}",
       emoji: "📚",
-      toolhint: "Page on Scholia",
-      enabled: true,
+      title: "Page on Scholia",
     },
   ];
 
@@ -502,9 +479,9 @@ function getQLeverUrl(querystring) {
  * @param {jQuery} element - The element to append the button to
  * @param {string} url - The URL to open when clicked
  * @param {string} buttonLabel - The label (emoji/text) for the button
- * @param {string} toolhint - The tooltip for the button
+ * @param {string} title - The tooltip for the button
  */
-function createLinkButton(element, url, buttonLabel, toolhint) {
+function createLinkButton(element, url, buttonLabel, title) {
   mw.loader.using("@wikimedia/codex").then(function (require) {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
@@ -515,11 +492,11 @@ function createLinkButton(element, url, buttonLabel, toolhint) {
     const app = Vue.createMwApp({
       name: "UsefulQueriesLinkButton",
       data: function () {
-        return { url, buttonLabel, toolhint };
+        return { url, buttonLabel, title };
       },
       template: `
-          <a :href="url" target="_blank" rel="noopener noreferrer" :title="toolhint" style="text-decoration: none;">
-            <cdx-button weight="quiet" action="progressive" :aria-label="toolhint">
+          <a :href="url" target="_blank" rel="noopener noreferrer" :title="title" style="text-decoration: none;">
+            <cdx-button weight="quiet" action="progressive" :aria-label="title">
               {{ buttonLabel }}
             </cdx-button>
           </a>
@@ -536,15 +513,13 @@ function createLinkButton(element, url, buttonLabel, toolhint) {
  * @param {jQuery} element - The element to append the popup button to
  * @param {string} querystring - The encoded query string
  * @param {string} buttonLabel - The label (emoji/text) for the button
- * @param {string} toolhint - The tooltip for the button
- * @param {string} toplabel - The title for the popup
+ * @param {string} title - The tooltip and popup heading
  */
 function createQueryPopup(
   element,
   querystring,
   buttonLabel,
-  toolhint,
-  toplabel,
+  title,
 ) {
   const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
 
@@ -555,7 +530,7 @@ function createQueryPopup(
     if (!Codex.CdxPopover) {
       // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
       // fall back to a plain link button to avoid rendering the component inline.
-      createLinkButton(element, queryServiceHref, buttonLabel, toolhint);
+      createLinkButton(element, queryServiceHref, buttonLabel, title);
       return;
     }
 
@@ -575,8 +550,7 @@ function createQueryPopup(
           open: false,
           anchorEl: null,
           buttonLabel,
-          toolhint,
-          toplabel,
+          title,
           queryServiceHref,
           embedHref,
           qleverHref,
@@ -606,8 +580,8 @@ function createQueryPopup(
             <cdx-button
               weight="quiet"
               action="progressive"
-              :aria-label="toolhint"
-              :title="toolhint"
+              :aria-label="title"
+              :title="title"
               @click="$event.preventDefault(); open = !open"
             >
               {{ buttonLabel }}
@@ -620,7 +594,7 @@ function createQueryPopup(
             :anchor="anchorEl"
             placement="bottom"
             :render-in-place="false"
-            :title="toplabel"
+            :title="title"
             :use-close-button="true"
             :use-bottom-sheet="true"
             :primary-action="primaryAction"
@@ -757,7 +731,6 @@ const _templateIndex = (function () {
     const entity = [];
     const byKey = new Map();
     for (const t of templates) {
-      if (t.enabled === false) continue;
       if (t.scope === "entity") {
         entity.push(t);
       } else {
@@ -792,20 +765,18 @@ function processEntityFeatures($titleElement, context) {
   for (const query of _templateIndex.queries.entity) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, context);
     createQueryPopup(
       $titleElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, context),
     );
   }
 
   // Process entity-level links
   for (const link of _templateIndex.links.entity) {
     const url = replacePlaceholders(link.urlTemplate, context);
-    createLinkButton($titleElement, url, link.emoji, link.toolhint);
+    createLinkButton($titleElement, url, link.emoji, link.title);
   }
 }
 
@@ -822,20 +793,18 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
   for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, context);
     createQueryPopup(
       $propertyElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, context),
     );
   }
 
   // Process property-level links
   for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
     const url = replacePlaceholders(link.urlTemplate, context);
-    createLinkButton($propertyElement, url, link.emoji, link.toolhint);
+    createLinkButton($propertyElement, url, link.emoji, link.title);
   }
 }
 
@@ -867,13 +836,11 @@ function processValueFeatures(
     if (!matchesValueId(valueDetails.value, query.valueId)) continue;
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, valueContext);
     createQueryPopup(
       $indicatorElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, valueContext),
     );
   }
 
@@ -881,7 +848,7 @@ function processValueFeatures(
   for (const link of (_templateIndex.links.byKey.get(valueKey) ?? [])) {
     if (!matchesValueId(valueDetails.value, link.valueId)) continue;
     const url = replacePlaceholders(link.urlTemplate, valueContext);
-    createLinkButton($indicatorElement, url, link.emoji, link.toolhint);
+    createLinkButton($indicatorElement, url, link.emoji, link.title);
   }
 }
 

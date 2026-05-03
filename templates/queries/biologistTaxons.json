@@ -21,7 +21,5 @@
     "LIMIT 500"
   ],
   "emoji": "🍄",
-  "toolhint": "List of taxons (co-)described by {itemLabel}",
-  "popupTitle": "All taxons (co-)described by {itemLabel}",
-  "enabled": true
+  "title": "All taxons (co-)described by {itemLabel}"
 }

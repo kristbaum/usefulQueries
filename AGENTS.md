@@ -61,11 +61,9 @@ Controls when a SPARQL query button appears and what it runs.
 | `valueId` | string[] \| null | Entity QIDs that the property value must match (required for `value`) |
 | `template` | string[] | Lines of the SPARQL query; joined with `\n` at build time |
 | `emoji` | string | Button label (usually an emoji) |
-| `toolhint` | string | Tooltip text |
-| `popupTitle` | string | Popup heading; supports `{itemLabel}`, `{itemQid}` placeholders |
-| `enabled` | boolean | Set `false` to disable without deleting the file |
+| `title` | string | Button tooltip and popup heading; supports `{itemLabel}`, `{itemQid}` placeholders |
 
-Runtime placeholders replaced in `template` and `popupTitle`:
+Runtime placeholders replaced in `template` and `title`:
 - `{itemQid}` — QID of the current item (e.g. `Q454172`)
 - `{itemLabel}` — display label of the current item
 - `{valueQid}` — QID of the matched property value (scope `value` only)
@@ -84,8 +82,7 @@ Controls when an external URL button appears.
 | `valueId` | string[] | Entity QIDs the value must match (`value` scope only) |
 | `urlTemplate` | string | URL pattern; supports `{itemQid}` placeholder |
 | `emoji` | string | Button label |
-| `toolhint` | string | Tooltip text |
-| `enabled` | boolean | Set `false` to disable |
+| `title` | string | Button tooltip text |
 
 ## Adding a new query or link
 

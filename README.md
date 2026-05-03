@@ -45,9 +45,7 @@ A query template is a JSON file that describes when a button should appear and w
     "}"
   ],
   "emoji": "🔗",
-  "toolhint": "Graph of linked entities",
-  "popupTitle": "Connections of {itemLabel}",
-  "enabled": true
+  "title": "Connections of {itemLabel}"
 }
 ```
 
@@ -67,9 +65,7 @@ A query template is a JSON file that describes when a button should appear and w
     "}"
   ],
   "emoji": "📊",
-  "toolhint": "Members count over time",
-  "popupTitle": "Members count of {itemLabel} over time:",
-  "enabled": true
+  "title": "Members count of {itemLabel} over time"
 }
 ```
 
@@ -90,9 +86,7 @@ A query template is a JSON file that describes when a button should appear and w
     "LIMIT 100"
   ],
   "emoji": "🖼️",
-  "toolhint": "Artworks by this painter",
-  "popupTitle": "Artworks by {itemLabel}",
-  "enabled": true
+  "title": "Artworks by {itemLabel}"
 }
 ```
 
@@ -111,8 +105,7 @@ A link template adds a button that opens an external URL instead of running a SP
   "propertyId": ["P22", "P25", "P26", "P40", "P3373", "P1038", "P3448", "P8810"],
   "urlTemplate": "https://www.entitree.com/en/family_tree/{itemQid}",
   "emoji": "🌳",
-  "toolhint": "Family tree on Entitree",
-  "enabled": true
+  "title": "Family tree on Entitree"
 }
 ```
 
@@ -126,8 +119,7 @@ A link template adds a button that opens an external URL instead of running a SP
   "valueId": ["Q1650915"],
   "urlTemplate": "https://scholia.toolforge.org/author/{itemQid}",
   "emoji": "📚",
-  "toolhint": "Page on Scholia",
-  "enabled": true
+  "title": "Page on Scholia"
 }
 ```
 

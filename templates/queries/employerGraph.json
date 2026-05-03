@@ -19,7 +19,5 @@
     "LIMIT 100"
   ],
   "emoji": "👥",
-  "toolhint": "Other employees of this organization as graph",
-  "popupTitle": "100 other employees of {valueLabel}",
-  "enabled": true
+  "title": "100 other employees of {valueLabel}"
 }

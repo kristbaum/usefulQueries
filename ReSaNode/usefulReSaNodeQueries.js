@@ -74,9 +74,7 @@ SELECT ?work ?workLabel ?coordinate WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
 }`,
       emoji: "📍",
-      toolhint: "Visualisierung aller Wirkungsorte einer Person über die Lokalisierung der Kunstwerke",
-      popupTitle: "Lokalisierung der Kunstwerke von {itemLabel}",
-      enabled: true,
+      title: "Lokalisierung der Kunstwerke von {itemLabel}",
     },
   ];
 
@@ -120,9 +118,9 @@ SELECT ?work ?workLabel ?coordinate WHERE {
  * @param {jQuery} element - The element to append the button to
  * @param {string} url - The URL to open when clicked
  * @param {string} buttonLabel - The label (emoji/text) for the button
- * @param {string} toolhint - The tooltip for the button
+ * @param {string} title - The tooltip for the button
  */
-function createLinkButton(element, url, buttonLabel, toolhint) {
+function createLinkButton(element, url, buttonLabel, title) {
   mw.loader.using("@wikimedia/codex").then(function (require) {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
@@ -133,11 +131,11 @@ function createLinkButton(element, url, buttonLabel, toolhint) {
     const app = Vue.createMwApp({
       name: "UsefulQueriesLinkButton",
       data: function () {
-        return { url, buttonLabel, toolhint };
+        return { url, buttonLabel, title };
       },
       template: `
-          <a :href="url" target="_blank" rel="noopener noreferrer" :title="toolhint" style="text-decoration: none;">
-            <cdx-button weight="quiet" action="progressive" :aria-label="toolhint">
+          <a :href="url" target="_blank" rel="noopener noreferrer" :title="title" style="text-decoration: none;">
+            <cdx-button weight="quiet" action="progressive" :aria-label="title">
               {{ buttonLabel }}
             </cdx-button>
           </a>
@@ -154,15 +152,13 @@ function createLinkButton(element, url, buttonLabel, toolhint) {
  * @param {jQuery} element - The element to append the popup button to
  * @param {string} querystring - The encoded query string
  * @param {string} buttonLabel - The label (emoji/text) for the button
- * @param {string} toolhint - The tooltip for the button
- * @param {string} toplabel - The title for the popup
+ * @param {string} title - The tooltip and popup heading
  */
 function createQueryPopup(
   element,
   querystring,
   buttonLabel,
-  toolhint,
-  toplabel,
+  title,
 ) {
   const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
 
@@ -173,7 +169,7 @@ function createQueryPopup(
     if (!Codex.CdxPopover) {
       // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
       // fall back to a plain link button to avoid rendering the component inline.
-      createLinkButton(element, queryServiceHref, buttonLabel, toolhint);
+      createLinkButton(element, queryServiceHref, buttonLabel, title);
       return;
     }
 
@@ -193,8 +189,7 @@ function createQueryPopup(
           open: false,
           anchorEl: null,
           buttonLabel,
-          toolhint,
-          toplabel,
+          title,
           queryServiceHref,
           embedHref,
           qleverHref,
@@ -224,8 +219,8 @@ function createQueryPopup(
             <cdx-button
               weight="quiet"
               action="progressive"
-              :aria-label="toolhint"
-              :title="toolhint"
+              :aria-label="title"
+              :title="title"
               @click="$event.preventDefault(); open = !open"
             >
               {{ buttonLabel }}
@@ -238,7 +233,7 @@ function createQueryPopup(
             :anchor="anchorEl"
             placement="bottom"
             :render-in-place="false"
-            :title="toplabel"
+            :title="title"
             :use-close-button="true"
             :use-bottom-sheet="true"
             :primary-action="primaryAction"
@@ -375,7 +370,6 @@ const _templateIndex = (function () {
     const entity = [];
     const byKey = new Map();
     for (const t of templates) {
-      if (t.enabled === false) continue;
       if (t.scope === "entity") {
         entity.push(t);
       } else {
@@ -410,20 +404,18 @@ function processEntityFeatures($titleElement, context) {
   for (const query of _templateIndex.queries.entity) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, context);
     createQueryPopup(
       $titleElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, context),
     );
   }
 
   // Process entity-level links
   for (const link of _templateIndex.links.entity) {
     const url = replacePlaceholders(link.urlTemplate, context);
-    createLinkButton($titleElement, url, link.emoji, link.toolhint);
+    createLinkButton($titleElement, url, link.emoji, link.title);
   }
 }
 
@@ -440,20 +432,18 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
   for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, context);
     createQueryPopup(
       $propertyElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, context),
     );
   }
 
   // Process property-level links
   for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
     const url = replacePlaceholders(link.urlTemplate, context);
-    createLinkButton($propertyElement, url, link.emoji, link.toolhint);
+    createLinkButton($propertyElement, url, link.emoji, link.title);
   }
 }
 
@@ -485,13 +475,11 @@ function processValueFeatures(
     if (!matchesValueId(valueDetails.value, query.valueId)) continue;
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, valueContext);
     createQueryPopup(
       $indicatorElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, valueContext),
     );
   }
 
@@ -499,7 +487,7 @@ function processValueFeatures(
   for (const link of (_templateIndex.links.byKey.get(valueKey) ?? [])) {
     if (!matchesValueId(valueDetails.value, link.valueId)) continue;
     const url = replacePlaceholders(link.urlTemplate, valueContext);
-    createLinkButton($indicatorElement, url, link.emoji, link.toolhint);
+    createLinkButton($indicatorElement, url, link.emoji, link.title);
   }
 }
 

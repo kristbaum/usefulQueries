@@ -42,7 +42,5 @@
     "}"
   ],
   "emoji": "🗺️",
-  "toolhint": "Map of places related to this painter",
-  "popupTitle": "Places related to {itemLabel}",
-  "enabled": true
+  "title": "Places related to {itemLabel}"
 }

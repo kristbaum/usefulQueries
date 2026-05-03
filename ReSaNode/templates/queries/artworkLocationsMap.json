@@ -13,7 +13,5 @@
     "}"
   ],
   "emoji": "📍",
-  "toolhint": "Visualisierung aller Wirkungsorte einer Person über die Lokalisierung der Kunstwerke",
-  "popupTitle": "Lokalisierung der Kunstwerke von {itemLabel}",
-  "enabled": true
+  "title": "Lokalisierung der Kunstwerke von {itemLabel}"
 }

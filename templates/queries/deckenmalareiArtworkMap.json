@@ -40,7 +40,5 @@
     "LIMIT 100"
   ],
   "emoji": "🎨",
-  "toolhint": "Map of artworks and locations with deckenmalerei.eu connections",
-  "popupTitle": "Artworks and locations related to {itemLabel} with deckenmalerei.eu data",
-  "enabled": true
+  "title": "Artworks and locations related to {itemLabel} with deckenmalerei.eu data"
 }

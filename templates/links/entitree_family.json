@@ -13,6 +13,5 @@
   ],
   "urlTemplate": "https://entitree.com/{userLanguage}/family_tree/{itemQid}",
   "emoji": "🌳",
-  "toolhint": "Family tree on Entitree",
-  "enabled": true
+  "title": "Family tree on Entitree"
 }

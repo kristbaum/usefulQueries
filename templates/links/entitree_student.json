@@ -7,6 +7,5 @@
   ],
   "urlTemplate": "https://entitree.com/{userLanguage}/student/{itemQid}",
   "emoji": "🎓",
-  "toolhint": "Academic lineage on Entitree",
-  "enabled": true
+  "title": "Academic lineage on Entitree"
 }

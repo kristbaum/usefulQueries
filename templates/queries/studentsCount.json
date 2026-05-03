@@ -13,7 +13,5 @@
     "}"
   ],
   "emoji": "📊",
-  "toolhint": "Students count over time",
-  "popupTitle": "Students count of \"{itemLabel}\" over time:",
-  "enabled": true
+  "title": "Students count of {itemLabel} over time"
 }

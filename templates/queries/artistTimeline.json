@@ -32,7 +32,5 @@
         "}"
     ],
     "emoji": "📅",
-    "toolhint": "Timeline of this painter's works, birth and death",
-    "popupTitle": "Timeline of {itemLabel}",
-    "enabled": true
+    "title": "Timeline of {itemLabel}"
 }

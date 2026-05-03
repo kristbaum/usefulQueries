@@ -20,7 +20,5 @@
     "LIMIT 100"
   ],
   "emoji": "📍",
-  "toolhint": "Map showing locations of this painter's artworks",
-  "popupTitle": "Artwork locations of {itemLabel}",
-  "enabled": true
+  "title": "Artwork locations of {itemLabel}"
 }

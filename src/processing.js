@@ -7,7 +7,6 @@ const _templateIndex = (function () {
     const entity = [];
     const byKey = new Map();
     for (const t of templates) {
-      if (t.enabled === false) continue;
       if (t.scope === "entity") {
         entity.push(t);
       } else {
@@ -42,20 +41,18 @@ function processEntityFeatures($titleElement, context) {
   for (const query of _templateIndex.queries.entity) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, context);
     createQueryPopup(
       $titleElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, context),
     );
   }
 
   // Process entity-level links
   for (const link of _templateIndex.links.entity) {
     const url = replacePlaceholders(link.urlTemplate, context);
-    createLinkButton($titleElement, url, link.emoji, link.toolhint);
+    createLinkButton($titleElement, url, link.emoji, link.title);
   }
 }
 
@@ -72,20 +69,18 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
   for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
     const queryText = replacePlaceholders(query.template, context);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, context);
     createQueryPopup(
       $propertyElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, context),
     );
   }
 
   // Process property-level links
   for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
     const url = replacePlaceholders(link.urlTemplate, context);
-    createLinkButton($propertyElement, url, link.emoji, link.toolhint);
+    createLinkButton($propertyElement, url, link.emoji, link.title);
   }
 }
 
@@ -117,13 +112,11 @@ function processValueFeatures(
     if (!matchesValueId(valueDetails.value, query.valueId)) continue;
     const queryText = replacePlaceholders(query.template, valueContext);
     const queryString = encodeQueryString(queryText);
-    const popupTitle = replacePlaceholders(query.popupTitle, valueContext);
     createQueryPopup(
       $indicatorElement,
       queryString,
       query.emoji,
-      query.toolhint,
-      popupTitle,
+      replacePlaceholders(query.title, valueContext),
     );
   }
 
@@ -131,7 +124,7 @@ function processValueFeatures(
   for (const link of (_templateIndex.links.byKey.get(valueKey) ?? [])) {
     if (!matchesValueId(valueDetails.value, link.valueId)) continue;
     const url = replacePlaceholders(link.urlTemplate, valueContext);
-    createLinkButton($indicatorElement, url, link.emoji, link.toolhint);
+    createLinkButton($indicatorElement, url, link.emoji, link.title);
   }
 }
 
