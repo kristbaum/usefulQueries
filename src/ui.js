@@ -60,6 +60,13 @@ function createQueryPopup(
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
 
+    if (!Codex.CdxPopover) {
+      // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
+      // fall back to a plain link button to avoid rendering the component inline.
+      createLinkButton(element, queryServiceHref, buttonLabel, toolhint);
+      return;
+    }
+
     const mountPoint = document.createElement("span");
     $(element).append(mountPoint);
 
