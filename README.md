@@ -142,6 +142,9 @@ npm install
 npm run build
 ```
 
+> **Wikibase Cloud / MediaWiki version compatibility:**
+> The popup feature relies on `CdxPopover` from the [Codex](https://doc.wikimedia.org/codex/) design system, which is not available on every Wikibase Version. The script detects this at runtime and automatically falls back to opening the query as a plain link in a new tab instead of showing an inline popup.
+
 ### Custom builds with `--custom`
 
 For a self-contained variant (e.g. targeting a different Wikibase), you can keep all configuration, templates and output inside a named subfolder using the `--custom <Name>` flag.
