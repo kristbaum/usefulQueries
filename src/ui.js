@@ -51,11 +51,6 @@ function createQueryPopup(
 ) {
   const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
 
-  if (window.innerWidth < 900) {
-    createLinkButton(element, queryServiceHref, buttonLabel, toolhint);
-    return;
-  }
-
   mw.loader.using("@wikimedia/codex").then(function (require) {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
@@ -72,10 +67,7 @@ function createQueryPopup(
 
     mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
 
-    const widthWithMin = Math.min(
-      Math.max(window.innerWidth - 40, 400),
-      800,
-    );
+    const widthWithMin = Math.min(Math.max(window.innerWidth - 40, 400), 800);
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
     /* __IF_QLEVER__ */
     const qleverHref = getQLeverUrl(querystring);
@@ -97,10 +89,25 @@ function createQueryPopup(
           embedHref,
           qleverHref,
           iframeSize: widthWithMin,
+          primaryAction: {
+            label: "Open in query service",
+            actionType: "progressive",
+          },
+          defaultAction: qleverHref ? { label: "Open in QLever" } : null,
         };
       },
       mounted: function () {
         this.anchorEl = this.$refs.triggerEl || null;
+      },
+      methods: {
+        openQueryService: function () {
+          window.open(this.queryServiceHref, "_blank", "noopener,noreferrer");
+        },
+        openQLever: function () {
+          if (this.qleverHref) {
+            window.open(this.qleverHref, "_blank", "noopener,noreferrer");
+          }
+        },
       },
       template: `
           <span ref="triggerEl">
@@ -123,24 +130,22 @@ function createQueryPopup(
             :render-in-place="false"
             :title="toplabel"
             :use-close-button="true"
+            :use-bottom-sheet="true"
+            :primary-action="primaryAction"
+            :default-action="defaultAction"
             class="usefulqueries-popover"
             style="z-index: 999;"
+            @primary="openQueryService"
+            @default="openQLever"
           >
-            <div>
-              <div v-if="qleverHref" style="padding: 10px; border-bottom: 1px solid;">
-                <a :href="qleverHref" target="_blank" rel="noopener noreferrer">
-                  Run query on QLever (alternative query service)
-                </a>
-              </div>
-              <iframe
-                v-if="open"
-                scrolling="yes"
-                frameborder="0"
-                :src="embedHref"
-                :width="iframeSize"
-                :height="iframeSize"
-              ></iframe>
-            </div>
+            <iframe
+              v-if="open"
+              scrolling="yes"
+              frameborder="0"
+              :src="embedHref"
+              :width="iframeSize"
+              :height="iframeSize"
+            ></iframe>
           </cdx-popover>
         `,
     });
