@@ -1,0 +1,24 @@
+{
+  "id": "personNetwork",
+  "scope": "property",
+  "propertyId": [
+    "P35"
+  ],
+  "template": [
+    "PREFIX rs: <https://resanode.wikibase.cloud/entity/>",
+    "PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>",
+    "",
+    "#defaultView:Graph",
+    "",
+    "SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WHERE {",
+    "  rs:{itemQid} rst:P35 ?event.",
+    "  ?event rst:P38 ?person.",
+    "  OPTIONAL {",
+    "    ?person ( rst:P14 | rst:P29 ) ?fieldofwork.",
+    "  }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de\". }",
+    "}"
+  ],
+  "emoji": "🕸️",
+  "title": "Personennetzwerk von {itemLabel} über Ereignisse"
+}
