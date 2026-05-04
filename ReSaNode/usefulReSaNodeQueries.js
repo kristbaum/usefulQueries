@@ -538,8 +538,10 @@ function processWikibaseEntityPage() {
       return;
     }
 
+    const $labelEl = $(".wikibase-title").first().find(".wikibase-title-label");
     const itemLabel =
-      $(".wikibase-title").first().find(".wikibase-title-label").text() ||
+      $labelEl.find("span[lang]").first().text() ||
+      $labelEl.clone().find(".wb-language-fallback-indicator").remove().end().text().trim() ||
       $("h2.wb-ui-label--primary").first().text();
     let $titleElement = $(".wikibase-title").first().find(".wikibase-title-id");
     if (!$titleElement.length) {
