@@ -10,7 +10,7 @@
     "Q6625963"
   ],
   "template": [
-    "#defaultView:ImageGrid",
+    "#defaultView:Table",
     "SELECT ?work ?workLabel ?publication_date ?image WHERE {",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?work wdt:P50 wd:{itemQid}.",

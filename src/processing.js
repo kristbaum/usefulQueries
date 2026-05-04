@@ -46,6 +46,7 @@ function processEntityFeatures($titleElement, context) {
       queryString,
       query.emoji,
       replacePlaceholders(query.title, context),
+      "entity",
     );
   }
 
@@ -74,6 +75,7 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
       queryString,
       query.emoji,
       replacePlaceholders(query.title, context),
+      "property",
     );
   }
 
@@ -117,6 +119,7 @@ function processValueFeatures(
       queryString,
       query.emoji,
       replacePlaceholders(query.title, valueContext),
+      "value",
     );
   }
 

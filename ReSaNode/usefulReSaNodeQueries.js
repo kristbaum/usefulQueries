@@ -173,12 +173,14 @@ function createLinkButton(element, url, buttonLabel, title) {
  * @param {string} querystring - The encoded query string
  * @param {string} buttonLabel - The label (emoji/text) for the button
  * @param {string} title - The tooltip and popup heading
+ * @param {string} scope - Template scope ("entity", "property", or "value")
  */
 function createQueryPopup(
   element,
   querystring,
   buttonLabel,
   title,
+  scope,
 ) {
   const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
 
@@ -198,6 +200,8 @@ function createQueryPopup(
 
     mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
 
+    const placement = (scope === "value") ? "bottom" : "bottom-start";
+
     const widthWithMin = Math.min(Math.max(window.innerWidth - 40, 400), 800);
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
     const qleverHref = null;
@@ -214,6 +218,7 @@ function createQueryPopup(
           embedHref,
           qleverHref,
           iframeSize: widthWithMin,
+          placement,
           primaryAction: {
             label: "Open in query service",
             actionType: "progressive",
@@ -251,7 +256,7 @@ function createQueryPopup(
             v-if="anchorEl"
             v-model:open="open"
             :anchor="anchorEl"
-            placement="bottom"
+            :placement="placement"
             :render-in-place="false"
             :title="title"
             :use-close-button="true"
@@ -429,6 +434,7 @@ function processEntityFeatures($titleElement, context) {
       queryString,
       query.emoji,
       replacePlaceholders(query.title, context),
+      "entity",
     );
   }
 
@@ -457,6 +463,7 @@ function processPropertyFeatures(propertyId, $propertyElement, context) {
       queryString,
       query.emoji,
       replacePlaceholders(query.title, context),
+      "property",
     );
   }
 
@@ -500,6 +507,7 @@ function processValueFeatures(
       queryString,
       query.emoji,
       replacePlaceholders(query.title, valueContext),
+      "value",
     );
   }
 
