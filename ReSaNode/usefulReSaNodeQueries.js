@@ -63,8 +63,8 @@ $(function () {
   const USEFUL_QUERIES = [
     {
       id: "artworkLocationsMap",
-      scope: "value",
-      propertyId: "P17",
+      scope: "property",
+      propertyId: ["P17"],
       template: `PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>
 PREFIX rs: <https://resanode.wikibase.cloud/entity/>
 #defaultView:Map
