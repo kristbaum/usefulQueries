@@ -1,0 +1,25 @@
+{
+  "id": "authorWorks",
+  "scope": "value",
+  "propertyId": [
+    "P106"
+  ],
+  "valueId": [
+    "Q18844224",
+    "Q36180",
+    "Q6625963"
+  ],
+  "template": [
+    "#defaultView:ImageGrid",
+    "SELECT ?work ?workLabel ?publication_date ?image WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "  ?work wdt:P50 wd:{itemQid}.",
+    "  ?work wdt:P31 wd:Q7725634.",
+    "  OPTIONAL { ?work wdt:P577 ?publication_date. }",
+    "  OPTIONAL { ?work wdt:P18 ?image. }",
+    "}",
+    "LIMIT 10000"
+  ],
+  "emoji": "📖",
+  "title": "Literary works by {itemLabel}"
+}

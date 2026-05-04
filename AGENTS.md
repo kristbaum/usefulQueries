@@ -8,7 +8,7 @@ This file helps AI agents understand the project structure, build system, and co
 
 ## Repository layout
 
-```
+```bash
 usefulQueries/
 ├── src/                      # Source JavaScript modules (not executable directly)
 │   ├── main.js               # Entry point: hooks into wikibase.entityPage.entityLoaded
@@ -37,6 +37,7 @@ npm run lint    # ESLint check
 ```
 
 `assemble.mjs` does the following in order:
+
 1. Reads `framework.js` (the outer `$(function(){ "use strict"; … })` wrapper).
 2. Injects `src/settings.json` as a `const SETTINGS = …` literal.
 3. Injects all `templates/queries/*.json` files as a `const USEFUL_QUERIES = […]` literal.
@@ -54,7 +55,7 @@ npm run lint    # ESLint check
 Controls when a SPARQL query button appears and what it runs.
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `id` | string | Unique identifier |
 | `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
 | `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`) |
@@ -64,6 +65,7 @@ Controls when a SPARQL query button appears and what it runs.
 | `title` | string | Button tooltip and popup heading; supports `{itemLabel}`, `{itemQid}` placeholders |
 
 Runtime placeholders replaced in `template` and `title`:
+
 - `{itemQid}` — QID of the current item (e.g. `Q454172`)
 - `{itemLabel}` — display label of the current item
 - `{valueQid}` — QID of the matched property value (scope `value` only)
@@ -75,7 +77,7 @@ Runtime placeholders replaced in `template` and `title`:
 Controls when an external URL button appears.
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `id` | string | Unique identifier |
 | `scope` | `"property"` \| `"value"` | When to show the button |
 | `propertyId` | string[] | Property IDs that trigger the button |

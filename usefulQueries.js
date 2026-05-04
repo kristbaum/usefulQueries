@@ -125,6 +125,23 @@ LIMIT 100`,
       title: "Artworks by {itemLabel} on Commons",
     },
     {
+      id: "authorWorks",
+      scope: "value",
+      propertyId: ["P106"],
+      valueId: ["Q18844224","Q36180","Q6625963"],
+      template: `#defaultView:ImageGrid
+SELECT ?work ?workLabel ?publication_date ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?work wdt:P50 wd:{itemQid}.
+  ?work wdt:P31 wd:Q7725634.
+  OPTIONAL { ?work wdt:P577 ?publication_date. }
+  OPTIONAL { ?work wdt:P18 ?image. }
+}
+LIMIT 10000`,
+      emoji: "📖",
+      title: "Literary works by {itemLabel}",
+    },
+    {
       id: "biologistTaxons",
       scope: "value",
       propertyId: ["P106"],
@@ -287,6 +304,24 @@ SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
       title: "Places related to {itemLabel}",
     },
     {
+      id: "positionTimeline",
+      scope: "property",
+      propertyId: ["P1308"],
+      template: `#defaultView:Timeline
+SELECT ?positionHolder ?positionHolderLabel ?startTime ?endTime ?seriesOrdinal ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  wd:{itemQid} p:P1308 ?statement.
+  ?statement ps:P1308 ?positionHolder;
+    pq:P580 ?startTime;
+    pq:P1545 ?seriesOrdinal.
+  OPTIONAL { ?statement pq:P582 ?endTime. }
+  OPTIONAL { ?positionHolder wdt:P18 ?image. }
+}
+ORDER BY (xsd:integer(?seriesOrdinal))`,
+      emoji: "🏛️",
+      title: "Officeholders of {itemLabel}",
+    },
+    {
       id: "studentsCount",
       scope: "property",
       propertyId: ["P2196"],
@@ -387,6 +422,8 @@ function convertToQLeverQuery(query) {
     !qleverQuery.includes("PREFIX p:") && qleverQuery.includes("p:");
   const needsPqPrefix =
     !qleverQuery.includes("PREFIX pq:") && qleverQuery.includes("pq:");
+  const needsPsPrefix =
+    !qleverQuery.includes("PREFIX ps:") && qleverQuery.includes("ps:");
 
   if (
     needsRdfsPrefix ||
@@ -394,6 +431,7 @@ function convertToQLeverQuery(query) {
     needsWdPrefix ||
     needsPPrefix ||
     needsPqPrefix ||
+    needsPsPrefix ||
     qleverQuery.match(/\?(\w+Label)\b/)
   ) {
     let prefixDeclarations = "";
@@ -414,6 +452,9 @@ function convertToQLeverQuery(query) {
     }
     if (needsPqPrefix) {
       prefixDeclarations += "PREFIX pq: <http://www.wikidata.org/prop/qualifier/>\n";
+    }
+    if (needsPsPrefix) {
+      prefixDeclarations += "PREFIX ps: <http://www.wikidata.org/prop/statement/>\n";
     }
 
     const defaultViewMatch = qleverQuery.match(/^(#defaultView:[^\n]*\n)?/);
