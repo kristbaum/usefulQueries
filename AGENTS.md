@@ -34,7 +34,14 @@ usefulQueries/
 ```bash
 npm run build   # runs scripts/assemble.mjs → writes usefulQueries.js + minified_version.js
 npm run lint    # ESLint check
+npm test        # checks the built output files are valid, runnable JS
 ```
+
+**Run tests on changes:** after editing anything in `src/` or `templates/`, run
+`npm run build && npm test`. The test suite (`test/build-output.test.mjs`, Node's
+built-in runner — no extra deps) verifies that both `usefulQueries.js` and
+`minified_version.js` exist, parse as valid JavaScript, and execute their
+top-level IIFE without throwing. Keep them green before committing.
 
 `assemble.mjs` does the following in order:
 
