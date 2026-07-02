@@ -9,11 +9,12 @@
     ],
     "template": [
         "#defaultView:Timeline",
-        "SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {",
+        "SELECT DISTINCT ?item ?itemLabel ?date ?year ?edgeLabel ?image WHERE {",
         "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
         "  {",
         "    ?item wdt:P170 wd:{itemQid}.",
         "    OPTIONAL { ?item wdt:P571 ?date. }",
+        "    OPTIONAL { ?item wdt:P18 ?image. }",
         "    BIND(\"Artwork\" AS ?edgeLabel)",
         "  }",
         "  UNION",
@@ -29,6 +30,7 @@
         "    BIND(\"Death\" AS ?edgeLabel)",
         "  }",
         "  FILTER(BOUND(?date))",
+        "  BIND(STR(YEAR(?date)) AS ?year)",
         "}"
     ],
     "emoji": "📅",

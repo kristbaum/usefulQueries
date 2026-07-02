@@ -67,11 +67,12 @@ $(function () {
       propertyId: ["P106"],
       valueId: ["Q1028181"],
       template: `#defaultView:Timeline
-SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {
+SELECT DISTINCT ?item ?itemLabel ?date ?year ?edgeLabel ?image WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
   {
     ?item wdt:P170 wd:{itemQid}.
     OPTIONAL { ?item wdt:P571 ?date. }
+    OPTIONAL { ?item wdt:P18 ?image. }
     BIND("Artwork" AS ?edgeLabel)
   }
   UNION
@@ -87,6 +88,7 @@ SELECT DISTINCT ?item ?itemLabel ?date ?edgeLabel WHERE {
     BIND("Death" AS ?edgeLabel)
   }
   FILTER(BOUND(?date))
+  BIND(STR(YEAR(?date)) AS ?year)
 }`,
       emoji: "📅",
       title: "Timeline of {itemLabel}",
@@ -306,18 +308,26 @@ SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
     {
       id: "positionTimeline",
       scope: "property",
-      propertyId: ["P1308"],
+      propertyId: ["P1308","P488","P6","P35","P169","P1037"],
       template: `#defaultView:Timeline
-SELECT ?positionHolder ?positionHolderLabel ?startTime ?endTime ?seriesOrdinal ?image WHERE {
+SELECT ?positionHolder ?positionHolderLabel ?roleLabel ?startTime ?endTime ?image WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
-  wd:{itemQid} p:P1308 ?statement.
-  ?statement ps:P1308 ?positionHolder;
-    pq:P580 ?startTime;
-    pq:P1545 ?seriesOrdinal.
+  VALUES (?p ?ps) {
+    (p:P1308 ps:P1308)
+    (p:P488 ps:P488)
+    (p:P6 ps:P6)
+    (p:P35 ps:P35)
+    (p:P169 ps:P169)
+    (p:P1037 ps:P1037)
+  }
+  wd:{itemQid} ?p ?statement.
+  ?statement ?ps ?positionHolder;
+    pq:P580 ?startTime.
+  ?role wikibase:claim ?p.
   OPTIONAL { ?statement pq:P582 ?endTime. }
   OPTIONAL { ?positionHolder wdt:P18 ?image. }
 }
-ORDER BY (xsd:integer(?seriesOrdinal))`,
+ORDER BY ?startTime`,
       emoji: "🏛️",
       title: "Officeholders of {itemLabel}",
     },

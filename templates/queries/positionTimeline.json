@@ -2,20 +2,33 @@
   "id": "positionTimeline",
   "scope": "property",
   "propertyId": [
-    "P1308"
+    "P1308",
+    "P488",
+    "P6",
+    "P35",
+    "P169",
+    "P1037"
   ],
   "template": [
     "#defaultView:Timeline",
-    "SELECT ?positionHolder ?positionHolderLabel ?startTime ?endTime ?seriesOrdinal ?image WHERE {",
+    "SELECT ?positionHolder ?positionHolderLabel ?roleLabel ?startTime ?endTime ?image WHERE {",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
-    "  wd:{itemQid} p:P1308 ?statement.",
-    "  ?statement ps:P1308 ?positionHolder;",
-    "    pq:P580 ?startTime;",
-    "    pq:P1545 ?seriesOrdinal.",
+    "  VALUES (?p ?ps) {",
+    "    (p:P1308 ps:P1308)",
+    "    (p:P488 ps:P488)",
+    "    (p:P6 ps:P6)",
+    "    (p:P35 ps:P35)",
+    "    (p:P169 ps:P169)",
+    "    (p:P1037 ps:P1037)",
+    "  }",
+    "  wd:{itemQid} ?p ?statement.",
+    "  ?statement ?ps ?positionHolder;",
+    "    pq:P580 ?startTime.",
+    "  ?role wikibase:claim ?p.",
     "  OPTIONAL { ?statement pq:P582 ?endTime. }",
     "  OPTIONAL { ?positionHolder wdt:P18 ?image. }",
     "}",
-    "ORDER BY (xsd:integer(?seriesOrdinal))"
+    "ORDER BY ?startTime"
   ],
   "emoji": "🏛️",
   "title": "Officeholders of {itemLabel}"
