@@ -2,6 +2,7 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { minify } from "terser";
+import { assertTemplatesValid } from "./validate-templates.mjs";
 
 const repoRoot = path.resolve(process.cwd());
 const frameworkPath = path.join(repoRoot, "framework.js");
@@ -38,9 +39,12 @@ const SRC_FILES = [
 ];
 
 /**
- * Read all JSON files from a directory and return parsed objects sorted by filename.
+ * Read all JSON files from a directory, validate them, and return the parsed
+ * objects sorted by filename. Throws if any file is malformed or invalid.
+ * @param {string} dir - Directory to read
+ * @param {"query"|"link"} kind - Which template schema to validate against
  */
-async function loadTemplates(dir) {
+async function loadTemplates(dir, kind) {
   let entries;
   try {
     entries = await readdir(dir);
@@ -48,12 +52,22 @@ async function loadTemplates(dir) {
     return [];
   }
   const jsonFiles = entries.filter((f) => f.endsWith(".json")).sort();
-  const templates = [];
+  const loaded = [];
   for (const file of jsonFiles) {
     const content = await readFile(path.join(dir, file), "utf8");
-    templates.push(JSON.parse(content));
+    let data;
+    try {
+      data = JSON.parse(content);
+    } catch (err) {
+      throw new Error(
+        `${path.relative(repoRoot, path.join(dir, file))} is not valid JSON: ${err.message}`,
+      );
+    }
+    loaded.push({ file, data });
   }
-  return templates;
+
+  assertTemplatesValid(loaded, kind, path.relative(repoRoot, dir));
+  return loaded.map(({ data }) => data);
 }
 
 /**
@@ -145,10 +159,17 @@ console.log(
   `[assemble] Target: ${isWikidata ? "Wikidata" : "non-Wikidata"}, QLever: ${includeQLever ? "included" : "omitted"}`,
 );
 
-// Load framework and templates
+// Load framework and templates. A malformed template is an authoring mistake,
+// so report it plainly instead of dumping a stack trace.
 const framework = await readFile(frameworkPath, "utf8");
-const queries = await loadTemplates(queriesDir);
-const links = await loadTemplates(linksDir);
+let queries, links;
+try {
+  queries = await loadTemplates(queriesDir, "query");
+  links = await loadTemplates(linksDir, "link");
+} catch (err) {
+  console.error(`[assemble] ${err.message}`);
+  process.exit(1);
+}
 
 console.log(
   `[assemble] Loaded ${queries.length} query template(s) and ${links.length} link template(s)`,

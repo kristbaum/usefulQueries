@@ -35,25 +35,22 @@ $(function () {
    *   - "entity": Attaches to the entity title (entity-wide query)
    *   - "property": Attaches to a property label
    *   - "value": Attaches to a specific property+value combination
-   * @property {string} [propertyId] - Property ID to match (required for "property" and "value" scope)
-   * @property {string} [valueId] - Value entity ID to match (required for "value" scope)
+   * @property {string[]} [propertyId] - Property IDs to match (required for "property" and "value" scope)
+   * @property {string[]|null} [valueId] - Value entity IDs to match ("value" scope; null matches any value)
    * @property {string} template - SPARQL query template with placeholders
    * @property {string} emoji - Emoji/text label for the button
-   * @property {string} toolhint - Tooltip text
-   * @property {string} popupTitle - Title for the popup (supports {itemLabel} placeholder)
-   * @property {boolean} [enabled=true] - Whether this query is enabled
+   * @property {string} title - Button tooltip and popup heading (supports {itemLabel}, {itemQid} placeholders)
    */
 
   /**
    * @typedef {Object} UsefulLink
    * @property {string} id - Unique identifier for the link
    * @property {"entity"|"property"|"value"} scope - Where to attach the link button
-   * @property {string|string[]} [propertyId] - Property ID(s) to match (for "property" scope, can be array)
-   * @property {string} [valueId] - Value entity ID to match (required for "value" scope)
+   * @property {string[]} [propertyId] - Property IDs to match (required for "property" and "value" scope)
+   * @property {string[]|null} [valueId] - Value entity IDs to match ("value" scope; null matches any value)
    * @property {string} urlTemplate - URL template with placeholders ({itemQid}, {valueQid})
    * @property {string} emoji - Emoji/text label for the button
-   * @property {string} toolhint - Tooltip text
-   * @property {boolean} [enabled=true] - Whether this link is enabled
+   * @property {string} title - Button tooltip text
    */
 
   // ===== USEFUL QUERIES CONFIGURATION =====

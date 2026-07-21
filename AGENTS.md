@@ -22,7 +22,8 @@ usefulQueries/
 │   ├── queries/              # One JSON file per query button (see template format below)
 │   └── links/                # One JSON file per external link button
 ├── scripts/
-│   └── assemble.mjs          # Build script: assembles src + templates → output files
+│   ├── assemble.mjs          # Build script: assembles src + templates → output files
+│   └── validate-templates.mjs # Template schema checks, run by the build
 ├── framework.js              # Outer IIFE wrapper injected by the build
 ├── usefulQueries.js          # Built readable output (do not edit directly)
 ├── minified_version.js       # Built minified output — the file uploaded to Wikidata
@@ -38,10 +39,16 @@ npm test        # checks the built output files are valid, runnable JS
 ```
 
 **Run tests on changes:** after editing anything in `src/` or `templates/`, run
-`npm run build && npm test`. The test suite (`test/build-output.test.mjs`, Node's
-built-in runner — no extra deps) verifies that both `usefulQueries.js` and
-`minified_version.js` exist, parse as valid JavaScript, and execute their
-top-level IIFE without throwing. Keep them green before committing.
+`npm run build && npm test`. The test suite (Node's built-in runner — no extra
+deps) covers two things:
+
+- `test/build-output.test.mjs` verifies that both `usefulQueries.js` and
+  `minified_version.js` exist, parse as valid JavaScript, and execute their
+  top-level IIFE without throwing.
+- `test/validate-templates.test.mjs` checks every shipped template against the
+  schema and pins the rejection cases.
+
+Keep them green before committing.
 
 `assemble.mjs` does the following in order:
 
@@ -49,6 +56,9 @@ top-level IIFE without throwing. Keep them green before committing.
 2. Injects `src/settings.json` as a `const SETTINGS = …` literal.
 3. Injects all `templates/queries/*.json` files as a `const USEFUL_QUERIES = […]` literal.
 4. Injects all `templates/links/*.json` files as a `const USEFUL_LINKS = […]` literal.
+
+   Steps 3 and 4 validate each file first (`scripts/validate-templates.mjs`) and
+   abort the build, listing every problem found, if any template is malformed.
 5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
 7. Writes `usefulQueries.js` (readable) and `minified_version.js` (terser-minified).
@@ -65,8 +75,8 @@ Controls when a SPARQL query button appears and what it runs.
 | ------- | ------ | ------------- |
 | `id` | string | Unique identifier |
 | `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
-| `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`) |
-| `valueId` | string[] \| null | Entity QIDs that the property value must match (required for `value`) |
+| `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`, forbidden for `entity`) |
+| `valueId` | string[] \| null | Entity QIDs that the property value must match (`value` scope only; omit or `null` to match any value) |
 | `template` | string[] | Lines of the SPARQL query; joined with `\n` at build time |
 | `emoji` | string | Button label (usually an emoji) |
 | `title` | string | Button tooltip and popup heading; supports `{itemLabel}`, `{itemQid}` placeholders |
@@ -86,12 +96,31 @@ Controls when an external URL button appears.
 | Field | Type | Description |
 | ------- | ------ | ------------- |
 | `id` | string | Unique identifier |
-| `scope` | `"property"` \| `"value"` | When to show the button |
-| `propertyId` | string[] | Property IDs that trigger the button |
-| `valueId` | string[] | Entity QIDs the value must match (`value` scope only) |
-| `urlTemplate` | string | URL pattern; supports `{itemQid}` placeholder |
+| `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
+| `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`, forbidden for `entity`) |
+| `valueId` | string[] \| null | Entity QIDs the value must match (`value` scope only; omit or `null` to match any value) |
+| `urlTemplate` | string | Absolute `http(s)` URL pattern; supports the same placeholders as `title` |
 | `emoji` | string | Button label |
 | `title` | string | Button tooltip text |
+
+### Validation
+
+`npm run build` validates every template before assembling and fails with a list
+of problems rather than silently shipping a button that never appears. The rules
+are in `scripts/validate-templates.mjs`:
+
+- Unknown fields are rejected — this is what catches typos and the field names
+  from older revisions (`popupTitle`, `toolhint`, `enabled` are all gone).
+- `scope` must be one of the three values; `propertyId` / `valueId` must be
+  present or absent as the tables above describe, and must look like `P123` /
+  `Q123`.
+- `template` must be an array of strings (a bare string is a common mistake and
+  would be joined character-by-character); `urlTemplate` must be absolute.
+- Every `{placeholder}` must be one of the known names, and `{valueQid}` /
+  `{valueLabel}` are only allowed on `value`-scope templates.
+
+Note that `id` is documentation only — nothing reads it at runtime, and the two
+`entitree` link templates deliberately share one.
 
 ## Adding a new query or link
 
