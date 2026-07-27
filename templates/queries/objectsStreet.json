@@ -13,7 +13,7 @@
     "    ?number pq:P670 ?housenumber.",
     "  }",
     "}",
-    "LIMIT 100",
+    "LIMIT 100"
   ],
   "emoji": "📍",
   "title": "Objets on {itemLabel}"

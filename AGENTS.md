@@ -16,7 +16,7 @@ usefulQueries/
 │   ├── ui.js                 # Vue/Codex components: popup and link buttons
 │   ├── dom.js                # DOM helpers: locates property/statement/indicator elements
 │   ├── helpers.js            # Pure utilities: replacePlaceholders(), encodeQueryString()
-│   ├── qlever.js             # Converts Wikidata SPARQL to QLever-compatible format
+│   ├── qlever.js             # Builds "To QLever" links (conversion happens in that tool)
 │   └── settings.json         # Runtime config: query service URLs, QLever toggle
 ├── templates/
 │   ├── queries/              # One JSON file per query button (see template format below)
@@ -134,7 +134,7 @@ Note that `id` is documentation only — nothing reads it at runtime, and the tw
 - The script only runs on namespace 0 (item pages). See `framework.js`.
 - Template matching is done via pre-built lookup indexes in `processing.js` (`_templateIndex`). These are built once at script load from `USEFUL_QUERIES` and `USEFUL_LINKS`.
 - On viewports narrower than 900 px the popup is replaced with a plain link button (no iframe).
-- The QLever integration is toggled by `enableQLever` in `src/settings.json`. The build strips the inactive branch entirely.
+- The QLever integration is toggled by `enableQLever` in `src/settings.json`. The build strips the inactive branch entirely. The popup's QLever action just hands the WDQS URL to the [To QLever](https://to-qlever.toolforge.org/) Toolforge tool, which converts the query server-side and redirects to QLever — the script does no SPARQL rewriting itself.
 - The script uses Wikimedia Codex (Vue 3 components) loaded via `mw.loader`. Do not import external libraries.
 
 ## Settings (`src/settings.json`)
@@ -144,7 +144,7 @@ Note that `id` is documentation only — nothing reads it at runtime, and the tw
   "queryServiceUrl": "https://query.wikidata.org/",       // Base URL for query links
   "queryEmbedUrl":   "https://query.wikidata.org/embed.html", // URL for iframe embeds
   "enableQLever":    true,                                 // Include QLever links in popups
-  "qleverUrl":       "https://qlever.cs.uni-freiburg.de/wikidata/"
+  "toQLeverUrl":     "https://to-qlever.toolforge.org/to-qlever"
 }
 ```
 

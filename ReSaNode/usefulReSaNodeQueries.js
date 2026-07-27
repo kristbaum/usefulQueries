@@ -17,7 +17,7 @@ $(function () {
     queryServiceUrl: "https://resanode.wikibase.cloud/query/",
     queryEmbedUrl: "https://resanode.wikibase.cloud/query/embed.html",
     enableQLever: false,
-    qleverUrl: "https://qlever.cs.uni-freiburg.de/wikidata/",
+    toQLeverUrl: "https://to-qlever.toolforge.org/to-qlever",
     allowedNamespace: 120,
   };
 
