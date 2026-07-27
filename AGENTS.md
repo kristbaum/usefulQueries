@@ -74,6 +74,7 @@ Controls when a SPARQL query button appears and what it runs.
 | Field | Type | Description |
 | ------- | ------ | ------------- |
 | `id` | string | Unique identifier |
+| `example` | string | QID of an item this template can be tried out on (debugging aid, build-time only) |
 | `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
 | `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`, forbidden for `entity`) |
 | `valueId` | string[] \| null | Entity QIDs that the property value must match (`value` scope only; omit or `null` to match any value) |
@@ -96,6 +97,7 @@ Controls when an external URL button appears.
 | Field | Type | Description |
 | ------- | ------ | ------------- |
 | `id` | string | Unique identifier |
+| `example` | string | QID of an item this template can be tried out on (debugging aid, build-time only) |
 | `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
 | `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`, forbidden for `entity`) |
 | `valueId` | string[] \| null | Entity QIDs the value must match (`value` scope only; omit or `null` to match any value) |
@@ -118,6 +120,10 @@ are in `scripts/validate-templates.mjs`:
   would be joined character-by-character); `urlTemplate` must be absolute.
 - Every `{placeholder}` must be one of the known names, and `{valueQid}` /
   `{valueLabel}` are only allowed on `value`-scope templates.
+
+- `example` is mandatory on every template and must be a QID (an item on the
+  target Wikibase where the button actually appears, so the query can be tried
+  out). It is stripped by `assemble.mjs` and never reaches the shipped script.
 
 Note that `id` is documentation only — nothing reads it at runtime, and the two
 `entitree` link templates deliberately share one.

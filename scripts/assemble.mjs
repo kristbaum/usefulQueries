@@ -70,6 +70,10 @@ async function loadTemplates(dir, kind) {
   return loaded.map(({ data }) => data);
 }
 
+// Authoring-only fields: kept in the JSON for humans, dropped from the shipped
+// script because nothing reads them at runtime.
+const BUILD_ONLY_FIELDS = ["example"];
+
 /**
  * Format a single template object as a JS object literal string (indented for readability).
  * SPARQL templates use backtick template literals for multiline strings.
@@ -79,6 +83,9 @@ function formatTemplateEntry(obj, indent) {
   lines.push(`${indent}{`);
 
   for (const [key, value] of Object.entries(obj)) {
+    if (BUILD_ONLY_FIELDS.includes(key)) {
+      continue;
+    }
     if (key === "template") {
       // "template" must be an array of lines, joined with \n at build time.
       const backtickContent = value

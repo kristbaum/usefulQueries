@@ -1,5 +1,6 @@
 {
   "id": "biologistTaxons",
+  "example": "Q1043",
   "scope": "value",
   "propertyId": [
     "P106"

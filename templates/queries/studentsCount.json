@@ -1,5 +1,6 @@
 {
   "id": "studentsCount",
+  "example": "Q55038",
   "scope": "property",
   "propertyId": [
     "P2196"

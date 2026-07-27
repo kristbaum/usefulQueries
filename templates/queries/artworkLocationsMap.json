@@ -1,5 +1,6 @@
 {
   "id": "artworkLocationsMap",
+  "example": "Q5598",
   "scope": "value",
   "propertyId": [
     "P106"

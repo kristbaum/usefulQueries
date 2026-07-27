@@ -1,5 +1,6 @@
 {
   "id": "scholia",
+  "example": "Q20895241",
   "scope": "value",
   "propertyId": ["P106"],
   "valueId": ["Q1650915"],

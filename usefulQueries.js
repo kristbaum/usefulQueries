@@ -268,7 +268,7 @@ SELECT ?pit ?s_count WHERE {
       propertyId: ["P669"],
       template: `SELECT ?item ?housenumber WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
-  ?item wdt:P669 wd:{itemQid}.
+  ?item wdt:P669 wd:{valueQid}.
   OPTIONAL {
     ?item p:P669 ?number.
     ?number pq:P670 ?housenumber.
@@ -276,7 +276,7 @@ SELECT ?pit ?s_count WHERE {
 }
 LIMIT 100`,
       emoji: "📍",
-      title: "Objets on {itemLabel}",
+      title: "Other objects on {itemLabel}",
     },
     {
       id: "painterPlacesMap",

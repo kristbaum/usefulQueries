@@ -23,6 +23,7 @@ function validQuery(overrides = {}) {
   return withOverrides(
     {
       id: "example",
+      example: "Q42",
       scope: "property",
       propertyId: ["P106"],
       template: ["SELECT ?x WHERE { wd:{itemQid} wdt:P31 ?x. }"],
@@ -37,6 +38,7 @@ function validLink(overrides = {}) {
   return withOverrides(
     {
       id: "example",
+      example: "Q42",
       scope: "property",
       propertyId: ["P106"],
       urlTemplate: "https://example.org/{itemQid}",
@@ -174,6 +176,13 @@ test("links need an absolute http(s) urlTemplate", () => {
     "link",
     "http",
   );
+});
+
+test("example must be a QID and is mandatory", () => {
+  assertRejected(validQuery({ example: undefined }), "query", '"example"');
+  assertRejected(validLink({ example: undefined }), "link", '"example"');
+  assertRejected(validQuery({ example: "P42" }), "query", "Q123");
+  assertRejected(validQuery({ example: ["Q42"] }), "query", '"example"');
 });
 
 test("emoji and title must be present", () => {

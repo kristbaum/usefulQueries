@@ -1,5 +1,6 @@
 {
   "id": "employerGraph",
+  "example": "Q937",
   "scope": "value",
   "propertyId": [
     "P108"

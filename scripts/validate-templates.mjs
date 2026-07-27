@@ -17,6 +17,7 @@ const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 
 const COMMON_FIELDS = [
   "id",
+  "example",
   "scope",
   "propertyId",
   "valueId",
@@ -60,6 +61,13 @@ export function validateTemplate(tpl, kind) {
   // --- id ---
   if (!isNonEmptyString(tpl.id)) {
     errors.push('"id" must be a non-empty string');
+  }
+
+  // --- example: an item this template can be tried out on, for debugging ---
+  if (typeof tpl.example !== "string" || !/^Q\d+$/.test(tpl.example)) {
+    errors.push(
+      '"example" must be an item ID (Q123) where this template can be tested',
+    );
   }
 
   // --- scope ---

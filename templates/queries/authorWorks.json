@@ -1,5 +1,6 @@
 {
   "id": "authorWorks",
+  "example": "Q42",
   "scope": "value",
   "propertyId": [
     "P106"
