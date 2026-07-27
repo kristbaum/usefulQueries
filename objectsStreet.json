@@ -1,0 +1,20 @@
+{
+  "id": "objectsStreet",
+  "scope": "value",
+  "propertyId": [
+    "P669"
+  ],
+  "template": [
+    "SELECT ?item ?housenumber WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "  ?item wdt:P669 wd:{itemQid}.",
+    "  OPTIONAL {",
+    "    ?item p:P669 ?number.",
+    "    ?number pq:P670 ?housenumber.",
+    "  }",
+    "}",
+    "LIMIT 100",
+  ],
+  "emoji": "📍",
+  "title": "Objets on {itemLabel}"
+}
