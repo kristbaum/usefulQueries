@@ -7,7 +7,7 @@
   "template": [
     "SELECT ?item ?housenumber WHERE {",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
-    "  ?item wdt:P669 wd:{itemQid}.",
+    "  ?item wdt:P669 wd:{valueQid}.",
     "  OPTIONAL {",
     "    ?item p:P669 ?number.",
     "    ?number pq:P670 ?housenumber.",
@@ -16,5 +16,5 @@
     "LIMIT 100"
   ],
   "emoji": "📍",
-  "title": "Objets on {itemLabel}"
+  "title": "Other objects on {itemLabel}"
 }
