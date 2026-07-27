@@ -1,0 +1,97 @@
+[[File:UsefulQueriesALW2026.webm|thumb|Presentation about the usefulQueries Tool at [[:de:Wikipedia:Art_History_Loves_Wiki|ALW2026]] (In German)]]
+'''usefulQueries''' is a user script that adds small buttons to Wikidata item pages. Each button opens a link or runs a pre-written (and hopefully useful) SPARQL query tailored to the item you are currently viewing, opening the result directly in the Wikidata Query Service. The script detects which properties and values an item has and only shows buttons that are relevant, so a painter gets different buttons than a university.
+
+Try it on {{Q|Q454172}} or {{Q|Q155354}}.
+
+== How to use it ==
+
+Add the following line to your [[Special:MyPage/common.js|common.js]]:
+<syntaxhighlight lang="js">
+mw.loader.load("//www.wikidata.org/w/index.php?title=User:Kristbaum/usefulQueries.js&action=raw&ctype=text/javascript");
+</syntaxhighlight>
+After saving, reload any Wikidata item page -> A small icon buttons will appear on the page page (if there are any relevant queries for the item in question). 
+
+The source code is available [https://github.com/kristbaum/usefulQueries/ on GitHub].
+
+== Available queries ==
+
+The buttons below appear automatically when the current item meets the listed conditions.<ref>The reason all these buttons are emoji is not exclusively AI slop, but that loading codex icons in a user script is surprisingly hard...</ref>
+
+=== For painters ({{P|P106}} → {{Q|Q1028181}}) ===
+
+* 🖼️ '''Artworks''' - shows an image grid of up to 100 works attributed to this painter in Wikidata. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworks.json source])
+* 🗓️ '''Artist timeline''' - displays a timeline of the painter's artworks together with their birth and death dates. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artistTimeline.json source])
+* 📍 '''Artwork locations map''' - shows a map pinpointing where the painter's works are currently held. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworkLocationsMap.json source])
+* 🗺️ '''Places map''' - maps the painter's birth place, death place, and work locations. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/painterPlacesMap.json source])
+
+=== For researchers / academics ({{P|P106}} → {{Q|Q1650915}}) ===
+
+* 📚 '''Scholia link''' - opens the researcher's profile on [https://scholia.toolforge.org/ Scholia], which aggregates their publications and co-authors. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/links/scholia.json source])
+
+=== For biologists ({{P|P106}} → {{Q|Q2487799}} or {{Q|Q2374149}}) ===
+
+* 🍄 '''Taxons described''' - shows a graph of all taxons that this biologist (co-)described. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/biologistTaxons.json source])
+
+=== For organizations with member counts ({{P|P2124}}) ===
+
+* 📊 '''Members over time''' - draws a line chart of recorded membership numbers. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/membersCount.json source])
+
+=== For educational institutions with student counts ({{P|P2196}}) ===
+
+* 📊 '''Students over time''' - draws a line chart of recorded student numbers. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/studentsCount.json source])
+
+=== For items with an employer link ({{P|P108}}) ===
+
+* 👥 '''Co-employees graph''' - shows a graph of up to 100 people who share the same employer. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/employerGraph.json source])
+
+=== For items with a Deckenmalerei.eu ID ({{P|P10626}}) ===
+
+* 🗺️ '''Artwork locations map (Deckenmalerei)''' - maps works linked through the Deckenmalerei.eu database. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/deckenmalareiArtworkMap.json source])
+
+=== For all items ===
+
+* 🔗 '''Entity graph''' - shows a graph of all Wikidata items directly linked from this item, giving a visual overview of its connections. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/entityGraph.json source])
+
+== usefulLinks ==
+
+Besides running SPARQL queries, the script also adds direct links to external tools that can visualize Wikidata data in richer ways. These links appear alongside the query buttons whenever the item carries the relevant properties.
+
+The currently available links are:
+
+=== 🌳 Family tree on Entitree ===
+
+Appears when the item has at least one of: {{P|P22}} (father), {{P|P25}} (mother), {{P|P26}} (spouse), {{P|P40}} (child), {{P|P3373}} (sibling), {{P|P1038}} (relative), {{P|P3448}} (stepparent), {{P|P8810}} (partner).
+
+Opens an interactive, navigable family tree on [https://www.entitree.com/ Entitree], centred on the current item. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_family.json source])
+
+=== 🎓 Academic lineage on Entitree ===
+
+Appears when the item has {{P|P1066}} (doctoral advisor) or {{P|P802}} (doctoral student).
+
+Opens the advisor/student tree on Entitree, showing the available academic genealogy of the person on Wikidata. ([https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_student.json source])
+
+=== 📚 Scholia ===
+
+Appears when the item has occupation {{Q|Q1650915}} (researcher). Opens the person's profile on [https://scholia.toolforge.org/ Scholia], which aggregates their publications, co-authors, and citing works (As far as they are available on Wikidata). ([https://github.com/kristbaum/usefulQueries/blob/main/templates/links/scholia.json source])
+
+== QLever integration ==
+
+For every query that is compatible, the popup also offers a link to run the same query on [https://qlever.cs.uni-freiburg.de/wikidata/ QLever]. QLever is an alternative SPARQL engine that is often significantly faster than the standard Wikidata Query Service, which is useful for large result sets. The script automatically adapts queries where needed (for example by removing <code>SERVICE</code> tags that QLever does not support).
+
+== Add your own queries ==
+
+You can add your own query templates to the project by following the [https://github.com/kristbaum/usefulQueries#adding-your-own-queries tutorial on GitHub]. It requires installing {{Q|Q7067518}} (npm), but the process is straightforward: copy an existing JSON template, fill in your query, rebuild, and upload.
+
+== Run on another Wikibase ==
+
+The script can run on any MediaWiki/Wikibase installation. Adjust the endpoint URLs in <code>src/settings.json</code> and rebuild. Note that on non-Wikidata wikis, links to Scholia and Entitree are disabled because those services only index Wikidata items, and QLever integration is not available.
+
+See the [https://github.com/kristbaum/usefulQueries#run-on-another-wikibase technical documentation] for details.
+
+== Suggestions ==
+
+Ideas for additional queries are welcome:
+* List works for items with occupation author
+* Add your own via [https://github.com/kristbaum/usefulQueries/issues GitHub Issues] or [[User_talk:Kristbaum/usefulQueries|the talk page]]
+
+== Comments ==
