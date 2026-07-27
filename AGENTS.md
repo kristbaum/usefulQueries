@@ -23,10 +23,10 @@ usefulQueries/
 │   └── links/                # One JSON file per external link button
 ├── scripts/
 │   ├── assemble.mjs          # Build script: assembles src + templates → output files
-│   ├── generate-wiki.mjs     # Regenerates the query overview in usefulQueries.wiki
+│   ├── generate-wiki.mjs     # Regenerates the query/link overviews in usefulQueries.wiki
 │   └── validate-templates.mjs # Template schema checks, run by the build
 ├── framework.js              # Outer IIFE wrapper injected by the build
-├── usefulQueries.wiki        # On-wiki documentation; its query overview is generated
+├── usefulQueries.wiki        # On-wiki documentation; its overview sections are generated
 ├── usefulQueries.js          # Built readable output (do not edit directly)
 ├── minified_version.js       # Built minified output — the file uploaded to Wikidata
 └── package.json              # npm scripts; only dev dependency is terser
@@ -49,8 +49,8 @@ deps) covers two things:
   top-level IIFE without throwing.
 - `test/validate-templates.test.mjs` checks every shipped template against the
   schema and pins the rejection cases.
-- `test/wiki-overview.test.mjs` fails if the generated query overview in
-  `usefulQueries.wiki` is stale (i.e. templates changed without a rebuild).
+- `test/wiki-overview.test.mjs` fails if the generated overviews in
+  `usefulQueries.wiki` are stale (i.e. templates changed without a rebuild).
 
 Keep them green before committing.
 
@@ -66,11 +66,11 @@ Keep them green before committing.
 5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
 7. Writes `usefulQueries.js` (readable) and `minified_version.js` (terser-minified).
-8. Regenerates the `== Query overview ==` section of `usefulQueries.wiki` from
-   the query templates (`scripts/generate-wiki.mjs`). Everything from that
-   heading up to the next top-level heading is replaced, so the rest of the page
-   is safe to edit by hand; if the heading is missing it is appended. Custom
-   builds without a matching `.wiki` file skip this step.
+8. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
+   `usefulQueries.wiki` from the templates (`scripts/generate-wiki.mjs`).
+   Everything from a managed heading up to the next top-level heading is
+   replaced, so the rest of the page is safe to edit by hand; a missing heading
+   is appended. Custom builds without a matching `.wiki` file skip this step.
 
 **Always run `npm run build` after changing any file in `src/` or `templates/`.**
 

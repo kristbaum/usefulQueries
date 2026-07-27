@@ -271,11 +271,11 @@ console.log(
   `[assemble] Wrote ${path.relative(repoRoot, minifiedPath)} (${minified.length} chars, ${(minifiedBytes / 1024).toFixed(1)} KB)`,
 );
 
-// Keep the on-wiki documentation in sync with the shipped query templates.
+// Keep the on-wiki documentation in sync with the shipped templates.
 // Builds without a .wiki page (custom variants) are skipped silently.
-const wikiResult = await updateWikiPage(wikiPath, queriesDir);
+const wikiResult = await updateWikiPage(wikiPath, queriesDir, linksDir);
 if (wikiResult !== "skipped") {
   console.log(
-    `[assemble] Query overview in ${path.relative(repoRoot, wikiPath)}: ${wikiResult}`,
+    `[assemble] Generated sections in ${path.relative(repoRoot, wikiPath)}: ${wikiResult}`,
   );
 }
