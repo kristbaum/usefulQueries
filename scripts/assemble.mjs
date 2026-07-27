@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import { minify } from "terser";
 import { assertTemplatesValid } from "./validate-templates.mjs";
+import { updateWikiPage } from "./generate-wiki.mjs";
 
 const repoRoot = path.resolve(process.cwd());
 const frameworkPath = path.join(repoRoot, "framework.js");
@@ -12,7 +13,7 @@ const srcDir = path.join(repoRoot, "src");
 const customIdx = process.argv.indexOf("--custom");
 const customName = customIdx !== -1 ? process.argv[customIdx + 1] : null;
 
-let settingsPath, queriesDir, linksDir, outputPath, minifiedPath;
+let settingsPath, queriesDir, linksDir, outputPath, minifiedPath, wikiPath;
 if (customName) {
   const customDir = path.join(repoRoot, customName);
   settingsPath = path.join(customDir, "settings.json");
@@ -20,12 +21,14 @@ if (customName) {
   linksDir = path.join(customDir, "templates", "links");
   outputPath = path.join(customDir, `useful${customName}Queries.js`);
   minifiedPath = path.join(customDir, `minified_${customName}_version.js`);
+  wikiPath = path.join(customDir, `useful${customName}Queries.wiki`);
 } else {
   settingsPath = path.join(repoRoot, "src", "settings.json");
   queriesDir = path.join(repoRoot, "templates", "queries");
   linksDir = path.join(repoRoot, "templates", "links");
   outputPath = path.join(repoRoot, "usefulQueries.js");
   minifiedPath = path.join(repoRoot, "minified_version.js");
+  wikiPath = path.join(repoRoot, "usefulQueries.wiki");
 }
 
 // Source files to include, in dependency order
@@ -267,3 +270,12 @@ const minifiedBytes = Buffer.byteLength(minified, "utf8");
 console.log(
   `[assemble] Wrote ${path.relative(repoRoot, minifiedPath)} (${minified.length} chars, ${(minifiedBytes / 1024).toFixed(1)} KB)`,
 );
+
+// Keep the on-wiki documentation in sync with the shipped query templates.
+// Builds without a .wiki page (custom variants) are skipped silently.
+const wikiResult = await updateWikiPage(wikiPath, queriesDir);
+if (wikiResult !== "skipped") {
+  console.log(
+    `[assemble] Query overview in ${path.relative(repoRoot, wikiPath)}: ${wikiResult}`,
+  );
+}

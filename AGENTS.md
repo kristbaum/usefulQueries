@@ -23,8 +23,10 @@ usefulQueries/
 │   └── links/                # One JSON file per external link button
 ├── scripts/
 │   ├── assemble.mjs          # Build script: assembles src + templates → output files
+│   ├── generate-wiki.mjs     # Regenerates the query overview in usefulQueries.wiki
 │   └── validate-templates.mjs # Template schema checks, run by the build
 ├── framework.js              # Outer IIFE wrapper injected by the build
+├── usefulQueries.wiki        # On-wiki documentation; its query overview is generated
 ├── usefulQueries.js          # Built readable output (do not edit directly)
 ├── minified_version.js       # Built minified output — the file uploaded to Wikidata
 └── package.json              # npm scripts; only dev dependency is terser
@@ -47,6 +49,8 @@ deps) covers two things:
   top-level IIFE without throwing.
 - `test/validate-templates.test.mjs` checks every shipped template against the
   schema and pins the rejection cases.
+- `test/wiki-overview.test.mjs` fails if the generated query overview in
+  `usefulQueries.wiki` is stale (i.e. templates changed without a rebuild).
 
 Keep them green before committing.
 
@@ -62,6 +66,11 @@ Keep them green before committing.
 5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
 7. Writes `usefulQueries.js` (readable) and `minified_version.js` (terser-minified).
+8. Regenerates the `== Query overview ==` section of `usefulQueries.wiki` from
+   the query templates (`scripts/generate-wiki.mjs`). Everything from that
+   heading up to the next top-level heading is replaced, so the rest of the page
+   is safe to edit by hand; if the heading is missing it is appended. Custom
+   builds without a matching `.wiki` file skip this step.
 
 **Always run `npm run build` after changing any file in `src/` or `templates/`.**
 
@@ -123,7 +132,8 @@ are in `scripts/validate-templates.mjs`:
 
 - `example` is mandatory on every template and must be a QID (an item on the
   target Wikibase where the button actually appears, so the query can be tried
-  out). It is stripped by `assemble.mjs` and never reaches the shipped script.
+  out). It is stripped by `assemble.mjs` and never reaches the shipped script,
+  but it is shown in the generated wiki overview.
 
 Note that `id` is documentation only — nothing reads it at runtime, and the two
 `entitree` link templates deliberately share one.
