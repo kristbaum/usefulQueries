@@ -88,7 +88,7 @@ SELECT DISTINCT ?item ?itemLabel ?date ?year ?edgeLabel ?image WHERE {
   BIND(STR(YEAR(?date)) AS ?year)
 }`,
       emoji: "📅",
-      title: "Timeline of {itemLabel}",
+      title: "Artistic timeline of {itemLabel}",
     },
     {
       id: "artworkLocationsMap",
@@ -215,7 +215,7 @@ SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHER
 }
 LIMIT 100`,
       emoji: "👥",
-      title: "100 other employees of {valueLabel}",
+      title: "Other employees of {valueLabel}",
     },
     {
       id: "entityGraph",
@@ -266,7 +266,7 @@ SELECT ?pit ?s_count WHERE {
       id: "objectsStreet",
       scope: "value",
       propertyId: ["P669"],
-      template: `SELECT ?item ?housenumber WHERE {
+      template: `SELECT ?itemLabel ?item ?housenumber WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
   ?item wdt:P669 wd:{valueQid}.
   OPTIONAL {
@@ -321,7 +321,7 @@ SELECT DISTINCT ?place ?placeLabel ?coords ?layer WHERE {
     {
       id: "positionTimeline",
       scope: "property",
-      propertyId: ["P1308","P488","P6","P35","P169","P1037"],
+      propertyId: ["P1308","P488","P6","P35","P169","P1037","P210"],
       template: `#defaultView:Timeline
 SELECT ?positionHolder ?positionHolderLabel ?roleLabel ?startTime ?endTime ?image WHERE {
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }

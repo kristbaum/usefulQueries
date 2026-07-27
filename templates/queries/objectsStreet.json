@@ -1,12 +1,12 @@
 {
   "id": "objectsStreet",
-  "example": "Q3006253",
+  "example": "Q2319704",
   "scope": "value",
   "propertyId": [
     "P669"
   ],
   "template": [
-    "SELECT ?item ?housenumber WHERE {",
+    "SELECT ?itemLabel ?item ?housenumber WHERE {",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?item wdt:P669 wd:{valueQid}.",
     "  OPTIONAL {",

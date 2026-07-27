@@ -20,5 +20,5 @@
     "LIMIT 100"
   ],
   "emoji": "👥",
-  "title": "100 other employees of {valueLabel}"
+  "title": "Other employees of {valueLabel}"
 }
