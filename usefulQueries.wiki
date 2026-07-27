@@ -54,13 +54,11 @@ These buttons appear when the item has at least one of the listed properties, wh
 {| class="wikitable sortable"
 ! Button !! Title !! Triggering property !! View !! Example item !! Template
 |-
+| 📊 || Population, members and students of {itemLabel} over time || {{P|P1082}}, {{P|P2124}}, {{P|P2196}} || LineChart || {{Q|Q64}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/countsOverTime.json countsOverTime.json]
+|-
 | 🎨 || Artworks and locations related to {itemLabel} with deckenmalerei.eu data || {{P|P10626}} || Map || {{Q|Q46507847}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/deckenmalareiArtworkMap.json deckenmalareiArtworkMap.json]
 |-
-| 📊 || Members count of {itemLabel} over time || {{P|P2124}} || LineChart || {{Q|Q275441}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/membersCount.json membersCount.json]
-|-
 | 🏛️ || Officeholders of {itemLabel} || {{P|P1308}}, {{P|P488}}, {{P|P6}}, {{P|P35}}, {{P|P169}}, {{P|P1037}}, {{P|P210}} || Timeline || {{Q|Q64}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/positionTimeline.json positionTimeline.json]
-|-
-| 📊 || Students count of {itemLabel} over time || {{P|P2196}} || LineChart || {{Q|Q55038}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/studentsCount.json studentsCount.json]
 |}
 
 === Queries triggered by a property value ===

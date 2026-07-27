@@ -159,6 +159,37 @@ LIMIT 500`,
       title: "All taxons (co-)described by {itemLabel}",
     },
     {
+      id: "countsOverTime",
+      scope: "property",
+      propertyId: ["P1082","P2124","P2196"],
+      template: `#defaultView:LineChart
+SELECT ?pit ?count ?series WHERE {
+  {
+    VALUES (?prop ?value ?series) {
+      (p:P1082 ps:P1082 "Population")
+      (p:P2124 ps:P2124 "Members")
+      (p:P2196 ps:P2196 "Students")
+    }
+    wd:{itemQid} ?prop ?statement.
+    ?statement ?value ?count.
+  }
+  UNION
+  {
+    # Male and female population are qualifiers on the population statement.
+    VALUES (?qualifier ?series) {
+      (pq:P1540 "Male population")
+      (pq:P1539 "Female population")
+    }
+    wd:{itemQid} p:P1082 ?statement.
+    ?statement ?qualifier ?count.
+  }
+  OPTIONAL { ?statement pq:P585 ?pit. }
+}
+ORDER BY ?series ?pit`,
+      emoji: "📊",
+      title: "Population, members and students of {itemLabel} over time",
+    },
+    {
       id: "deckenmalareiArtworkMap",
       scope: "property",
       propertyId: ["P10626"],
@@ -250,19 +281,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
       title: "Entity Graph of {itemLabel}",
     },
     {
-      id: "membersCount",
-      scope: "property",
-      propertyId: ["P2124"],
-      template: `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  wd:{itemQid} p:P2124 ?statement.
-  ?statement ps:P2124 ?s_count.
-  OPTIONAL { ?statement pq:P585 ?pit. }
-}`,
-      emoji: "📊",
-      title: "Members count of {itemLabel} over time",
-    },
-    {
       id: "objectsStreet",
       scope: "value",
       propertyId: ["P669"],
@@ -343,19 +361,6 @@ SELECT ?positionHolder ?positionHolderLabel ?roleLabel ?startTime ?endTime ?imag
 ORDER BY ?startTime`,
       emoji: "🏛️",
       title: "Officeholders of {itemLabel}",
-    },
-    {
-      id: "studentsCount",
-      scope: "property",
-      propertyId: ["P2196"],
-      template: `#defaultView:LineChart
-SELECT ?pit ?s_count WHERE {
-  wd:{itemQid} p:P2196 ?statement.
-  ?statement ps:P2196 ?s_count.
-  OPTIONAL { ?statement pq:P585 ?pit. }
-}`,
-      emoji: "📊",
-      title: "Students count of {itemLabel} over time",
     },
   ];
 

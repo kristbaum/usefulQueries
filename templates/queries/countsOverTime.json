@@ -1,0 +1,38 @@
+{
+  "id": "countsOverTime",
+  "example": "Q64",
+  "scope": "property",
+  "propertyId": [
+    "P1082",
+    "P2124",
+    "P2196"
+  ],
+  "template": [
+    "#defaultView:LineChart",
+    "SELECT ?pit ?count ?series WHERE {",
+    "  {",
+    "    VALUES (?prop ?value ?series) {",
+    "      (p:P1082 ps:P1082 \"Population\")",
+    "      (p:P2124 ps:P2124 \"Members\")",
+    "      (p:P2196 ps:P2196 \"Students\")",
+    "    }",
+    "    wd:{itemQid} ?prop ?statement.",
+    "    ?statement ?value ?count.",
+    "  }",
+    "  UNION",
+    "  {",
+    "    # Male and female population are qualifiers on the population statement.",
+    "    VALUES (?qualifier ?series) {",
+    "      (pq:P1540 \"Male population\")",
+    "      (pq:P1539 \"Female population\")",
+    "    }",
+    "    wd:{itemQid} p:P1082 ?statement.",
+    "    ?statement ?qualifier ?count.",
+    "  }",
+    "  OPTIONAL { ?statement pq:P585 ?pit. }",
+    "}",
+    "ORDER BY ?series ?pit"
+  ],
+  "emoji": "📊",
+  "title": "Population, members and students of {itemLabel} over time"
+}
