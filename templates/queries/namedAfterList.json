@@ -1,0 +1,21 @@
+{
+  "id": "namedAfterList",
+  "example": "Q2319704",
+  "scope": "value",
+  "propertyId": [
+    "P138"
+  ],
+  "valueId": null,
+  "template": [
+    "SELECT DISTINCT ?item ?itemLabel ?typeLabel ?countryLabel ?image WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "  ?item wdt:P138 wd:{valueQid}.",
+    "  OPTIONAL { ?item wdt:P31 ?type. }",
+    "  OPTIONAL { ?item wdt:P17 ?country. }",
+    "  OPTIONAL { ?item wdt:P18 ?image. }",
+    "}",
+    "LIMIT 1000"
+  ],
+  "emoji": "📋",
+  "title": "Everything named after {valueLabel}"
+}

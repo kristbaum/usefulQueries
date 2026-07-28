@@ -59,6 +59,82 @@ $(function () {
   /** @type {UsefulQuery[]} */
   const USEFUL_QUERIES = [
     {
+      id: "architectWorksMap",
+      scope: "value",
+      propertyId: ["P84"],
+      valueId: null,
+      template: `#defaultView:Map
+SELECT DISTINCT ?building ?buildingLabel ?coordinates ?inception ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?building wdt:P84 wd:{valueQid};
+    wdt:P625 ?coordinates.
+  OPTIONAL { ?building wdt:P571 ?inception. }
+  OPTIONAL { ?building wdt:P18 ?image. }
+}
+LIMIT 1000`,
+      emoji: "🏛️",
+      title: "Map of buildings designed by {valueLabel}",
+    },
+    {
+      id: "architectWorksMapOccupation",
+      scope: "value",
+      propertyId: ["P106"],
+      valueId: ["Q42973"],
+      template: `#defaultView:Map
+SELECT DISTINCT ?building ?buildingLabel ?coordinates ?inception ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?building wdt:P84 wd:{itemQid};
+    wdt:P625 ?coordinates.
+  OPTIONAL { ?building wdt:P571 ?inception. }
+  OPTIONAL { ?building wdt:P18 ?image. }
+}
+LIMIT 1000`,
+      emoji: "🏛️",
+      title: "Map of buildings designed by {itemLabel}",
+    },
+    {
+      id: "architectWorksTimeline",
+      scope: "value",
+      propertyId: ["P84"],
+      valueId: null,
+      template: `#defaultView:Timeline
+SELECT DISTINCT ?building ?buildingLabel ?date ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?building wdt:P84 wd:{valueQid}.
+  # Inception, falling back to the date the building opened.
+  OPTIONAL { ?building wdt:P571 ?inception. }
+  OPTIONAL { ?building wdt:P1619 ?opening. }
+  BIND(COALESCE(?inception, ?opening) AS ?date)
+  FILTER(BOUND(?date))
+  OPTIONAL { ?building wdt:P18 ?image. }
+}
+ORDER BY ?date
+LIMIT 1000`,
+      emoji: "📅",
+      title: "Timeline of buildings designed by {valueLabel}",
+    },
+    {
+      id: "architectWorksTimelineOccupation",
+      scope: "value",
+      propertyId: ["P106"],
+      valueId: ["Q42973"],
+      template: `#defaultView:Timeline
+SELECT DISTINCT ?building ?buildingLabel ?date ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?building wdt:P84 wd:{itemQid}.
+  # Inception, falling back to the date the building opened.
+  OPTIONAL { ?building wdt:P571 ?inception. }
+  OPTIONAL { ?building wdt:P1619 ?opening. }
+  BIND(COALESCE(?inception, ?opening) AS ?date)
+  FILTER(BOUND(?date))
+  OPTIONAL { ?building wdt:P18 ?image. }
+}
+ORDER BY ?date
+LIMIT 1000`,
+      emoji: "📅",
+      title: "Timeline of buildings designed by {itemLabel}",
+    },
+    {
       id: "artistTimeline",
       scope: "value",
       propertyId: ["P106"],
@@ -141,6 +217,25 @@ LIMIT 10000`,
       title: "Literary works by {itemLabel}",
     },
     {
+      id: "awardWinnersTimeline",
+      scope: "value",
+      propertyId: ["P166"],
+      valueId: null,
+      template: `#defaultView:Timeline
+SELECT DISTINCT ?laureate ?laureateLabel ?date ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  # The date of the award lives on the statement, not on the laureate.
+  ?laureate p:P166 ?statement.
+  ?statement ps:P166 wd:{valueQid};
+    pq:P585 ?date.
+  OPTIONAL { ?laureate wdt:P18 ?image. }
+}
+ORDER BY ?date
+LIMIT 1000`,
+      emoji: "🏅",
+      title: "Everyone who received {valueLabel}, over time",
+    },
+    {
       id: "biologistTaxons",
       scope: "value",
       propertyId: ["P106"],
@@ -157,6 +252,40 @@ SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNod
 LIMIT 500`,
       emoji: "🍄",
       title: "All taxons (co-)described by {itemLabel}",
+    },
+    {
+      id: "birthPlacePeople",
+      scope: "value",
+      propertyId: ["P19"],
+      valueId: null,
+      template: `#defaultView:ImageGrid
+SELECT ?person ?personLabel ?image ?sitelinks WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?person wdt:P19 wd:{valueQid};
+    wdt:P18 ?image;
+    wikibase:sitelinks ?sitelinks.
+}
+ORDER BY DESC(?sitelinks)
+LIMIT 100`,
+      emoji: "👶",
+      title: "Best-known people born in {valueLabel}",
+    },
+    {
+      id: "collectionHighlightsMap",
+      scope: "value",
+      propertyId: ["P195"],
+      valueId: null,
+      template: `#defaultView:ImageGrid
+SELECT ?work ?workLabel ?creatorLabel ?inception ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?work wdt:P195 wd:{valueQid};
+    wdt:P18 ?image.
+  OPTIONAL { ?work wdt:P170 ?creator. }
+  OPTIONAL { ?work wdt:P571 ?inception. }
+}
+LIMIT 100`,
+      emoji: "🏺",
+      title: "Illustrated works in the collection of {valueLabel}",
     },
     {
       id: "countsOverTime",
@@ -256,7 +385,6 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   {
     BIND(wd:{itemQid} AS ?node)
     ?node ?p ?i.
-    OPTIONAL { ?node wdt:P18 ?nodeImage. }
     ?childNode ?x ?p.
     ?childNode rdf:type wikibase:Property.
     FILTER(STRSTARTS(STR(?i), "http://www.wikidata.org/entity/Q"))
@@ -266,19 +394,66 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   {
     BIND("EFFBD8" AS ?rgb)
     wd:{itemQid} ?p ?childNode.
-    OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
     ?node ?x ?p.
     ?node rdf:type wikibase:Property.
     FILTER(STRSTARTS(STR(?childNode), "http://www.wikidata.org/entity/Q"))
   }
-  OPTIONAL {
-    ?node wdt:P18 ?nodeImage.
-    ?childNode wdt:P18 ?childNodeImage.
-  }
+  OPTIONAL { ?node wdt:P18 ?nodeImage. }
+  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
 }`,
       emoji: "🔗",
       title: "Entity Graph of {itemLabel}",
+    },
+    {
+      id: "heritageMonumentsMap",
+      scope: "value",
+      propertyId: ["P2817"],
+      valueId: null,
+      template: `#defaultView:Map
+SELECT DISTINCT ?monument ?monumentLabel ?coordinates ?heritageStatusLabel ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?monument wdt:P2817 wd:{valueQid};
+    wdt:P625 ?coordinates.
+  OPTIONAL { ?monument wdt:P1435 ?heritageStatus. }
+  OPTIONAL { ?monument wdt:P18 ?image. }
+}
+LIMIT 2000`,
+      emoji: "🏰",
+      title: "Map of all monuments on {valueLabel}",
+    },
+    {
+      id: "namedAfterList",
+      scope: "value",
+      propertyId: ["P138"],
+      valueId: null,
+      template: `SELECT DISTINCT ?item ?itemLabel ?typeLabel ?countryLabel ?image WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?item wdt:P138 wd:{valueQid}.
+  OPTIONAL { ?item wdt:P31 ?type. }
+  OPTIONAL { ?item wdt:P17 ?country. }
+  OPTIONAL { ?item wdt:P18 ?image. }
+}
+LIMIT 1000`,
+      emoji: "📋",
+      title: "Everything named after {valueLabel}",
+    },
+    {
+      id: "namedAfterMap",
+      scope: "value",
+      propertyId: ["P138"],
+      valueId: null,
+      template: `#defaultView:Map
+SELECT DISTINCT ?item ?itemLabel ?coordinates ?image ?countryLabel WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+  ?item wdt:P138 wd:{valueQid};
+    wdt:P625 ?coordinates.
+  OPTIONAL { ?item wdt:P17 ?country. }
+  OPTIONAL { ?item wdt:P18 ?image. }
+}
+LIMIT 1000`,
+      emoji: "🗺️",
+      title: "Map of places named after {valueLabel}",
     },
     {
       id: "objectsStreet",
@@ -393,6 +568,15 @@ ORDER BY ?startTime`,
       urlTemplate: "https://scholia.toolforge.org/author/{itemQid}",
       emoji: "📚",
       title: "Page on Scholia",
+    },
+    {
+      id: "wikishootme",
+      scope: "value",
+      propertyId: ["P625"],
+      valueId: null,
+      urlTemplate: "https://wikishootme.toolforge.org/#lat={valueLat}&lng={valueLon}&zoom=19",
+      emoji: "📷",
+      title: "Items in the immediate surroundings on WikiShootMe",
     },
   ];
 
@@ -676,7 +860,7 @@ function getStatementValueLabel($statementElement) {
 /**
  * Extract value details from a claim's mainsnak
  * @param {Object} mainsnak - The mainsnak object from the claim
- * @returns {{value: string|null, label: string|null}} Value details
+ * @returns {{value: string|null, label: string|null, latitude?: string, longitude?: string}} Value details
  */
 function extractValueFromMainsnak(mainsnak) {
   if (!mainsnak || mainsnak.snaktype !== "value" || !mainsnak.datavalue) {
@@ -697,6 +881,18 @@ function extractValueFromMainsnak(mainsnak) {
       return { value: datavalue.value.amount, label: datavalue.value.amount };
     case "string":
       return { value: '"' + datavalue.value + '"', label: datavalue.value };
+    case "globecoordinate": {
+      // Kept as strings so that a latitude/longitude of exactly 0 survives the
+      // falsy check in replacePlaceholders().
+      const lat = String(datavalue.value.latitude);
+      const lon = String(datavalue.value.longitude);
+      return {
+        value: '"Point(' + lon + " " + lat + ')"^^geo:wktLiteral',
+        label: lat + ", " + lon,
+        latitude: lat,
+        longitude: lon,
+      };
+    }
     default:
       return { value: null, label: null };
   }
@@ -809,6 +1005,9 @@ function processValueFeatures(
     ...context,
     valueQid: valueDetails.value,
     valueLabel: valueDetails.label || valueDetails.value,
+    // Only set for globe-coordinate values (e.g. P625); empty elsewhere.
+    valueLat: valueDetails.latitude || "",
+    valueLon: valueDetails.longitude || "",
   };
 
   const valueKey = "value:" + propertyId;

@@ -1,0 +1,22 @@
+{
+  "id": "heritageMonumentsMap",
+  "example": "Q2319704",
+  "scope": "value",
+  "propertyId": [
+    "P2817"
+  ],
+  "valueId": null,
+  "template": [
+    "#defaultView:Map",
+    "SELECT DISTINCT ?monument ?monumentLabel ?coordinates ?heritageStatusLabel ?image WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "  ?monument wdt:P2817 wd:{valueQid};",
+    "    wdt:P625 ?coordinates.",
+    "  OPTIONAL { ?monument wdt:P1435 ?heritageStatus. }",
+    "  OPTIONAL { ?monument wdt:P18 ?image. }",
+    "}",
+    "LIMIT 2000"
+  ],
+  "emoji": "🏰",
+  "title": "Map of all monuments on {valueLabel}"
+}

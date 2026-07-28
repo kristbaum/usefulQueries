@@ -90,7 +90,7 @@ A query template is a JSON file that describes when a button should appear and w
 }
 ```
 
-The placeholders `{itemQid}`, `{itemLabel}`, `{valueQid}`, and `{valueLabel}` are replaced at runtime with the current item's data.
+The placeholders `{itemQid}`, `{itemLabel}`, `{valueQid}`, and `{valueLabel}` are replaced at runtime with the current item's data. On `value`-scope templates, `{valueLat}` and `{valueLon}` additionally expose the coordinates of a globe-coordinate value such as `P625`.
 
 ### Link template structure (`templates/links/*.json`)
 

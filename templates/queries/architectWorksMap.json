@@ -1,0 +1,22 @@
+{
+  "id": "architectWorksMap",
+  "example": "Q457453",
+  "scope": "value",
+  "propertyId": [
+    "P84"
+  ],
+  "valueId": null,
+  "template": [
+    "#defaultView:Map",
+    "SELECT DISTINCT ?building ?buildingLabel ?coordinates ?inception ?image WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "  ?building wdt:P84 wd:{valueQid};",
+    "    wdt:P625 ?coordinates.",
+    "  OPTIONAL { ?building wdt:P571 ?inception. }",
+    "  OPTIONAL { ?building wdt:P18 ?image. }",
+    "}",
+    "LIMIT 1000"
+  ],
+  "emoji": "🏛️",
+  "title": "Map of buildings designed by {valueLabel}"
+}

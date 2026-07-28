@@ -1,0 +1,24 @@
+{
+  "id": "awardWinnersTimeline",
+  "example": "Q937",
+  "scope": "value",
+  "propertyId": [
+    "P166"
+  ],
+  "valueId": null,
+  "template": [
+    "#defaultView:Timeline",
+    "SELECT DISTINCT ?laureate ?laureateLabel ?date ?image WHERE {",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "  # The date of the award lives on the statement, not on the laureate.",
+    "  ?laureate p:P166 ?statement.",
+    "  ?statement ps:P166 wd:{valueQid};",
+    "    pq:P585 ?date.",
+    "  OPTIONAL { ?laureate wdt:P18 ?image. }",
+    "}",
+    "ORDER BY ?date",
+    "LIMIT 1000"
+  ],
+  "emoji": "🏅",
+  "title": "Everyone who received {valueLabel}, over time"
+}

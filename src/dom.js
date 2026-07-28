@@ -72,7 +72,7 @@ function getStatementValueLabel($statementElement) {
 /**
  * Extract value details from a claim's mainsnak
  * @param {Object} mainsnak - The mainsnak object from the claim
- * @returns {{value: string|null, label: string|null}} Value details
+ * @returns {{value: string|null, label: string|null, latitude?: string, longitude?: string}} Value details
  */
 function extractValueFromMainsnak(mainsnak) {
   if (!mainsnak || mainsnak.snaktype !== "value" || !mainsnak.datavalue) {
@@ -93,6 +93,18 @@ function extractValueFromMainsnak(mainsnak) {
       return { value: datavalue.value.amount, label: datavalue.value.amount };
     case "string":
       return { value: '"' + datavalue.value + '"', label: datavalue.value };
+    case "globecoordinate": {
+      // Kept as strings so that a latitude/longitude of exactly 0 survives the
+      // falsy check in replacePlaceholders().
+      const lat = String(datavalue.value.latitude);
+      const lon = String(datavalue.value.longitude);
+      return {
+        value: '"Point(' + lon + " " + lat + ')"^^geo:wktLiteral',
+        label: lat + ", " + lon,
+        latitude: lat,
+        longitude: lon,
+      };
+    }
     default:
       return { value: null, label: null };
   }

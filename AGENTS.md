@@ -97,6 +97,7 @@ Runtime placeholders replaced in `template` and `title`:
 - `{itemLabel}` — display label of the current item
 - `{valueQid}` — QID of the matched property value (scope `value` only)
 - `{valueLabel}` — label of the matched property value (scope `value` only)
+- `{valueLat}` / `{valueLon}` — latitude/longitude of the matched value (scope `value` only, and only non-empty when the value is a globe coordinate such as `P625`)
 - `{userLanguage}` — the user's MediaWiki language code
 
 ### Link template (`templates/links/*.json`)
@@ -165,3 +166,45 @@ Note that `id` is documentation only — nothing reads it at runtime, and the tw
 ```
 
 Changing `queryServiceUrl` / `queryEmbedUrl` to another Wikibase endpoint is the main way to run the script on a non-Wikidata wiki. Set `enableQLever: false` for non-Wikidata installs.
+
+## Writing queries that run on both WDQS and QLever
+
+Templates here are also converted for QLever (to-qlever.toolforge.org). Both
+engines speak SPARQL 1.1, but they plan it very differently, so a query can be
+instant on one and time out on the other. Two rules cover almost all of it.
+
+**Never put two unconnected patterns in one `OPTIONAL`.** If the patterns in an
+`OPTIONAL` body share no variable with each other, write one `OPTIONAL` per
+pattern:
+
+```sparql
+    # times out on QLever - cross product of two 6M-row relations
+    OPTIONAL { ?node wdt:P18 ?nodeImage. ?childNode wdt:P18 ?childImage. }
+
+    # fine on both
+    OPTIONAL { ?node wdt:P18 ?nodeImage. }
+    OPTIONAL { ?childNode wdt:P18 ?childImage. }
+```
+
+Blazegraph evaluates the block per row of the left side, so the joint form costs
+it nothing. QLever evaluates the body as its own subtree first and materialises
+the product. The two forms are not equivalent — the joint one is all-or-nothing
+— so pick the split form deliberately, and only when binding either variable on
+its own is acceptable. It usually is.
+
+**Hoist shared lookups out of `UNION` arms.** If each arm carries its own
+`OPTIONAL` for the same lookup, move one copy below the `UNION` instead. It
+covers every arm, halves the pattern count, and removes the temptation to bolt a
+joint `OPTIONAL` on the end to fill the gaps.
+
+Also worth keeping in mind:
+
+- Keep `SERVICE wikibase:label` as the last line of the WHERE clause. The
+  converter rewrites it into `OPTIONAL { ?x rdfs:label ?xLabel. FILTER(LANG(...)) }`
+  blocks and places them well only when it can see what binds each variable.
+- Constrain the subject before an unbounded `?s ?p ?o` scan. An entity with many
+  statements can push such a query past the WDQS 60 s limit even when QLever
+  answers in milliseconds — check new templates against both endpoints, not
+  just the one you happen to be using.
+- Test the `example` value, not just the template. A template that is correct
+  for a small item can still time out on the example shipped with it.

@@ -105,6 +105,9 @@ function processValueFeatures(
     ...context,
     valueQid: valueDetails.value,
     valueLabel: valueDetails.label || valueDetails.value,
+    // Only set for globe-coordinate values (e.g. P625); empty elsewhere.
+    valueLat: valueDetails.latitude || "",
+    valueLon: valueDetails.longitude || "",
   };
 
   const valueKey = "value:" + propertyId;

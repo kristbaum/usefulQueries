@@ -9,7 +9,9 @@ const SCOPES = ["entity", "property", "value"];
 // Placeholders replaced by replacePlaceholders() in src/helpers.js. Anything
 // else survives into the SPARQL query / URL verbatim and breaks it.
 const BASE_PLACEHOLDERS = ["itemQid", "itemLabel", "userLanguage"];
-const VALUE_PLACEHOLDERS = ["valueQid", "valueLabel"];
+// valueLat / valueLon are only filled for globe-coordinate values (P625 and
+// friends); on any other datatype they resolve to an empty string.
+const VALUE_PLACEHOLDERS = ["valueQid", "valueLabel", "valueLat", "valueLon"];
 
 // Matches {itemQid} but not SPARQL graph patterns like `{ bd:serviceParam … }`,
 // which always contain a space, colon or `?` before the closing brace.

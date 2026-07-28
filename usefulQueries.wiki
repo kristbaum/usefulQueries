@@ -68,6 +68,14 @@ These buttons appear when the item has the listed property set to one of the lis
 {| class="wikitable sortable"
 ! Button !! Title !! Triggering property !! Value !! View !! Example item !! Template
 |-
+| 🏛️ || Map of buildings designed by {valueLabel} || {{P|P84}} || ''any value'' || Map || {{Q|Q457453}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksMap.json architectWorksMap.json]
+|-
+| 🏛️ || Map of buildings designed by {itemLabel} || {{P|P106}} || {{Q|Q42973}} || Map || {{Q|Q41508}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksMapOccupation.json architectWorksMapOccupation.json]
+|-
+| 📅 || Timeline of buildings designed by {valueLabel} || {{P|P84}} || ''any value'' || Timeline || {{Q|Q457453}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksTimeline.json architectWorksTimeline.json]
+|-
+| 📅 || Timeline of buildings designed by {itemLabel} || {{P|P106}} || {{Q|Q42973}} || Timeline || {{Q|Q41508}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksTimelineOccupation.json architectWorksTimelineOccupation.json]
+|-
 | 📅 || Artistic timeline of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Timeline || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artistTimeline.json artistTimeline.json]
 |-
 | 📍 || Artwork locations of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworkLocationsMap.json artworkLocationsMap.json]
@@ -76,9 +84,21 @@ These buttons appear when the item has the listed property set to one of the lis
 |-
 | 📖 || Literary works by {itemLabel} || {{P|P106}} || {{Q|Q18844224}} or {{Q|Q36180}} or {{Q|Q6625963}} || Table || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/authorWorks.json authorWorks.json]
 |-
+| 🏅 || Everyone who received {valueLabel}, over time || {{P|P166}} || ''any value'' || Timeline || {{Q|Q937}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/awardWinnersTimeline.json awardWinnersTimeline.json]
+|-
 | 🍄 || All taxons (co-)described by {itemLabel} || {{P|P106}} || {{Q|Q2487799}} or {{Q|Q2374149}} || Graph || {{Q|Q1043}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/biologistTaxons.json biologistTaxons.json]
 |-
+| 👶 || Best-known people born in {valueLabel} || {{P|P19}} || ''any value'' || ImageGrid || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/birthPlacePeople.json birthPlacePeople.json]
+|-
+| 🏺 || Illustrated works in the collection of {valueLabel} || {{P|P195}} || ''any value'' || ImageGrid || {{Q|Q12418}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/collectionHighlightsMap.json collectionHighlightsMap.json]
+|-
 | 👥 || Other employees of {valueLabel} || {{P|P108}} || ''any value'' || Graph || {{Q|Q937}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/employerGraph.json employerGraph.json]
+|-
+| 🏰 || Map of all monuments on {valueLabel} || {{P|P2817}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/heritageMonumentsMap.json heritageMonumentsMap.json]
+|-
+| 📋 || Everything named after {valueLabel} || {{P|P138}} || ''any value'' || Table || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterList.json namedAfterList.json]
+|-
+| 🗺️ || Map of places named after {valueLabel} || {{P|P138}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterMap.json namedAfterMap.json]
 |-
 | 📍 || Other objects on {itemLabel} || {{P|P669}} || ''any value'' || Table || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsStreet.json objectsStreet.json]
 |-
@@ -99,4 +119,6 @@ These buttons do not run a query; they open an external tool for the current ite
 | 🎓 || Academic lineage on Entitree || {{P|P1066}}, {{P|P802}} || ''any value'' || <code>https://entitree.com/{userLanguage}/student/{itemQid}</code> || {{Q|Q868}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_student.json entitree_student.json]
 |-
 | 📚 || Page on Scholia || {{P|P106}} || {{Q|Q1650915}} || <code>https://scholia.toolforge.org/author/{itemQid}</code> || {{Q|Q20895241}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/scholia.json scholia.json]
+|-
+| 📷 || Items in the immediate surroundings on WikiShootMe || {{P|P625}} || ''any value'' || <code>https://wikishootme.toolforge.org/#lat={valueLat}&lng={valueLon}&zoom=19</code> || {{Q|Q64}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/wikishootme.json wikishootme.json]
 |}
