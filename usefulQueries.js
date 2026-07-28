@@ -462,15 +462,18 @@ LIMIT 1000`,
       id: "objectsStreet",
       scope: "value",
       propertyId: ["P669"],
-      template: `SELECT ?itemLabel ?item ?housenumber WHERE {
+      template: `#defaultView:Map
+SELECT DISTINCT ?item ?itemLabel ?coordinates ?housenumber ?image WHERE {
   ?item wdt:P669 wd:{valueQid}.
+  OPTIONAL { ?item wdt:P625 ?coordinates. }
   OPTIONAL {
     ?item p:P669 ?number.
     ?number pq:P670 ?housenumber.
   }
+  OPTIONAL { ?item wdt:P18 ?image. }
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
-LIMIT 100`,
+LIMIT 1000`,
       emoji: "📍",
       title: "Other objects on {itemLabel}",
     },
