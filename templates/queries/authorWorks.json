@@ -13,11 +13,11 @@
   "template": [
     "#defaultView:Table",
     "SELECT ?work ?workLabel ?publication_date ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?work wdt:P50 wd:{itemQid}.",
     "  ?work wdt:P31 wd:Q7725634.",
     "  OPTIONAL { ?work wdt:P577 ?publication_date. }",
     "  OPTIONAL { ?work wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 10000"
   ],

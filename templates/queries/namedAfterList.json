@@ -8,11 +8,11 @@
   "valueId": null,
   "template": [
     "SELECT DISTINCT ?item ?itemLabel ?typeLabel ?countryLabel ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?item wdt:P138 wd:{valueQid}.",
     "  OPTIONAL { ?item wdt:P31 ?type. }",
     "  OPTIONAL { ?item wdt:P17 ?country. }",
     "  OPTIONAL { ?item wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 1000"
   ],

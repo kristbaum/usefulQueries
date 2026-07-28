@@ -231,10 +231,10 @@ test("SPARQL braces are not mistaken for placeholders", () => {
   const sparqlHeavy = validQuery({
     template: [
       "SELECT ?item WHERE {",
-      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }',
       "  ?item wdt:P170 wd:{itemQid}.",
       "  OPTIONAL { ?item wdt:P18 ?image. }",
       "  VALUES ?org { wd:Q42 }",
+      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }',
       "}",
     ],
   });

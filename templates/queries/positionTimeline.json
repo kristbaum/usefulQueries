@@ -14,7 +14,6 @@
   "template": [
     "#defaultView:Timeline",
     "SELECT ?positionHolder ?positionHolderLabel ?roleLabel ?startTime ?endTime ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  VALUES (?p ?ps) {",
     "    (p:P1308 ps:P1308)",
     "    (p:P488 ps:P488)",
@@ -29,6 +28,7 @@
     "  ?role wikibase:claim ?p.",
     "  OPTIONAL { ?statement pq:P582 ?endTime. }",
     "  OPTIONAL { ?positionHolder wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "ORDER BY ?startTime"
   ],

@@ -9,12 +9,12 @@
   "template": [
     "#defaultView:Timeline",
     "SELECT DISTINCT ?laureate ?laureateLabel ?date ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  # The date of the award lives on the statement, not on the laureate.",
     "  ?laureate p:P166 ?statement.",
     "  ?statement ps:P166 wd:{valueQid};",
     "    pq:P585 ?date.",
     "  OPTIONAL { ?laureate wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "ORDER BY ?date",
     "LIMIT 1000"

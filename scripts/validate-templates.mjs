@@ -4,6 +4,8 @@
 // malformed one produces no build error and no runtime error — the button just
 // silently never appears. These checks turn that into a failed build instead.
 
+import { checkSparql } from "./check-sparql.mjs";
+
 const SCOPES = ["entity", "property", "value"];
 
 // Placeholders replaced by replacePlaceholders() in src/helpers.js. Anything
@@ -144,6 +146,8 @@ export function validateTemplate(tpl, kind) {
       );
     } else {
       texts.push(["template", tpl.template.join("\n")]);
+      // Portability between WDQS and QLever — see AGENTS.md.
+      errors.push(...checkSparql(tpl.template));
     }
   } else {
     if (!isNonEmptyString(tpl.urlTemplate)) {

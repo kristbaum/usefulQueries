@@ -11,7 +11,6 @@
   "template": [
     "#defaultView:Timeline",
     "SELECT DISTINCT ?building ?buildingLabel ?date ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?building wdt:P84 wd:{itemQid}.",
     "  # Inception, falling back to the date the building opened.",
     "  OPTIONAL { ?building wdt:P571 ?inception. }",
@@ -19,6 +18,7 @@
     "  BIND(COALESCE(?inception, ?opening) AS ?date)",
     "  FILTER(BOUND(?date))",
     "  OPTIONAL { ?building wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "ORDER BY ?date",
     "LIMIT 1000"

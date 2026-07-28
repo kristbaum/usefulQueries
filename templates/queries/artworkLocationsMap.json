@@ -11,12 +11,12 @@
   "template": [
     "#defaultView:Map",
     "SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "  ?work wdt:P170 wd:{itemQid};",
     "    wdt:P276 ?location.",
     "  ?location wdt:P625 ?coordinates.",
     "  OPTIONAL {?location wdt:P18 ?imageOfLocation.}",
     "  OPTIONAL {?work wdt:P18 ?image.}",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "LIMIT 100"
   ],

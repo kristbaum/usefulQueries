@@ -24,7 +24,8 @@ usefulQueries/
 ├── scripts/
 │   ├── assemble.mjs          # Build script: assembles src + templates → output files
 │   ├── generate-wiki.mjs     # Regenerates the query/link overviews in usefulQueries.wiki
-│   └── validate-templates.mjs # Template schema checks, run by the build
+│   ├── validate-templates.mjs # Template schema checks, run by the build
+│   └── check-sparql.mjs      # WDQS/QLever portability checks, run by the build
 ├── framework.js              # Outer IIFE wrapper injected by the build
 ├── usefulQueries.wiki        # On-wiki documentation; its overview sections are generated
 ├── usefulQueries.js          # Built readable output (do not edit directly)
@@ -51,6 +52,8 @@ deps) covers two things:
   schema and pins the rejection cases.
 - `test/wiki-overview.test.mjs` fails if the generated overviews in
   `usefulQueries.wiki` are stale (i.e. templates changed without a rebuild).
+- `test/check-sparql.test.mjs` pins the WDQS/QLever portability rules described
+  below, and asserts that every shipped query template still satisfies them.
 
 Keep them green before committing.
 
@@ -172,6 +175,10 @@ Changing `queryServiceUrl` / `queryEmbedUrl` to another Wikibase endpoint is the
 Templates here are also converted for QLever (to-qlever.toolforge.org). Both
 engines speak SPARQL 1.1, but they plan it very differently, so a query can be
 instant on one and time out on the other. Two rules cover almost all of it.
+
+The three syntactic rules below are enforced by `scripts/check-sparql.mjs` and
+fail the build. The judgement calls at the end of the section are not — they
+still need a human and a stopwatch.
 
 **Never put two unconnected patterns in one `OPTIONAL`.** If the patterns in an
 `OPTIONAL` body share no variable with each other, write one `OPTIONAL` per

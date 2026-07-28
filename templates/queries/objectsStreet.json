@@ -7,12 +7,12 @@
   ],
   "template": [
     "SELECT ?itemLabel ?item ?housenumber WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?item wdt:P669 wd:{valueQid}.",
     "  OPTIONAL {",
     "    ?item p:P669 ?number.",
     "    ?number pq:P670 ?housenumber.",
     "  }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 100"
   ],

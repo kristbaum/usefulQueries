@@ -8,7 +8,6 @@
   "template": [
     "#defaultView:Map",
     "SELECT DISTINCT ?work ?workLabel ?location ?locationLabel ?coordinates ?imageOfLocation ?image ?workDeckenmalareiId ?workDeckenmalareiUrl ?locationDeckenmalareiId ?locationDeckenmalareiUrl WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "  ",
     "  # Works related to the entity with deckenmalerei.eu ID",
     "  {",
@@ -37,6 +36,7 @@
     "    ?location wdt:P10626 ?locationDeckenmalareiId.",
     "    BIND(IRI(CONCAT(\"https://www.deckenmalerei.eu/\", ?locationDeckenmalareiId)) AS ?locationDeckenmalareiUrl)",
     "  }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "LIMIT 100"
   ],

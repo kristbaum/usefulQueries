@@ -9,11 +9,11 @@
   "template": [
     "#defaultView:ImageGrid",
     "SELECT ?work ?workLabel ?creatorLabel ?inception ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?work wdt:P195 wd:{valueQid};",
     "    wdt:P18 ?image.",
     "  OPTIONAL { ?work wdt:P170 ?creator. }",
     "  OPTIONAL { ?work wdt:P571 ?inception. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 100"
   ],

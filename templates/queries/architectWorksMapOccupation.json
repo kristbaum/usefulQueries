@@ -11,11 +11,11 @@
   "template": [
     "#defaultView:Map",
     "SELECT DISTINCT ?building ?buildingLabel ?coordinates ?inception ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?building wdt:P84 wd:{itemQid};",
     "    wdt:P625 ?coordinates.",
     "  OPTIONAL { ?building wdt:P571 ?inception. }",
     "  OPTIONAL { ?building wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 1000"
   ],

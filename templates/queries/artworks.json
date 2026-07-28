@@ -11,9 +11,9 @@
   "template": [
     "#defaultView:ImageGrid",
     "SELECT ?item ?creator ?creatorLabel ?image WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
     "  ?item wdt:P170 wd:{itemQid}.",
     "  OPTIONAL { ?item wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
     "}",
     "LIMIT 100"
   ],

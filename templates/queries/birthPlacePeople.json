@@ -9,10 +9,10 @@
   "template": [
     "#defaultView:ImageGrid",
     "SELECT ?person ?personLabel ?image ?sitelinks WHERE {",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "  ?person wdt:P19 wd:{valueQid};",
     "    wdt:P18 ?image;",
     "    wikibase:sitelinks ?sitelinks.",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "ORDER BY DESC(?sitelinks)",
     "LIMIT 100"
