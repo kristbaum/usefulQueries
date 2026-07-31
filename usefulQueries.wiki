@@ -103,6 +103,8 @@ These buttons appear when the item has the listed property set to one of the lis
 | 📍 || Other objects on {itemLabel} || {{P|P669}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsStreet.json objectsStreet.json]
 |-
 | 🗺️ || Places related to {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || {{Q|Q5598}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/painterPlacesMap.json painterPlacesMap.json]
+|-
+| 📖 || Other objects described by source {itemLabel} || {{P|P1343}} || ''any value'' || ImageGrid || {{Q|Q346156}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsDescribedBySource.json objectsDescribedBySource.json]
 |}
 
 == Link overview ==
