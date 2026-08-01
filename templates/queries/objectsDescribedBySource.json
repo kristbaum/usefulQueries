@@ -18,7 +18,7 @@
 	"    ?edition pq:P478 ?volume."
 	"  }"
 	"  OPTIONAL { ?item wdt:P18 ?image. }"
-	"  SERVICE wikibase:label { bd:serviceParam wikibase:language /"[AUTO_LANGUAGE],mul,en/". }"
+	"  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }"
 	"}"
 	"LIMIT 100"
   ],
