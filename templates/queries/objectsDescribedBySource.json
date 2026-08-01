@@ -6,21 +6,21 @@
     "P1343"
   ],
   "template":[
-  	"#defaultView:ImageGrid"
-	"SELECT DISTINCT ?item ?itemLabel ?pagenumber ?image WHERE {"
-	"  ?item wdt:P1343 wd:Q2327579."
-	"  OPTIONAL {"
-	"    ?item p:P1343 ?edition."
-	"    ?edition pq:P304 ?page."
-	"    }"
-	"  OPTIONAL {"
-	"    ?item p:P1343 ?edition."
-	"    ?edition pq:P478 ?volume."
-	"  }"
-	"  OPTIONAL { ?item wdt:P18 ?image. }"
-	"  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }"
-	"}"
-	"LIMIT 100"
+  	"#defaultView:ImageGrid",
+	"SELECT DISTINCT ?item ?itemLabel ?pagenumber ?image WHERE {",
+	"  ?item wdt:P1343 wd:Q2327579.",
+	"  OPTIONAL {",
+	"    ?item p:P1343 ?edition.",
+	"    ?edition pq:P304 ?page.",
+	"    }",
+	"  OPTIONAL {",
+	"    ?item p:P1343 ?edition.",
+	"    ?edition pq:P478 ?volume.",
+	"  }",
+	"  OPTIONAL { ?item wdt:P18 ?image. }",
+	"  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+	"}",
+	"LIMIT 100",
   ],
   "emoji": "📖",
   "title": "Other objects described by source {itemLabel}"
