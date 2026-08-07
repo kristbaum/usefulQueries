@@ -13,7 +13,9 @@ The source code is available [https://github.com/kristbaum/usefulQueries/ on Git
 
 == QLever integration ==
 
-For every query that is compatible, the popup also offers a link to run the same query on [https://qlever.cs.uni-freiburg.de/wikidata/ QLever]. QLever is an alternative SPARQL engine that is often significantly faster than the standard Wikidata Query Service, which is useful for large result sets. The script automatically adapts queries where needed (for example by removing <code>SERVICE</code> tags that QLever does not support).
+On Wikidata, the popup also offers a link to run the same query on [https://qlever.cs.uni-freiburg.de/wikidata/ QLever]. QLever is an alternative SPARQL engine that is often significantly faster than the standard Wikidata Query Service, which is useful for large result sets.
+
+The script hands the Query Service URL to [https://to-qlever.toolforge.org/ To QLever], a Toolforge tool that parses the query, converts the Blazegraph-specific parts (the <code>SERVICE wikibase:label</code> block, named subqueries, query hints, missing prefixes) and redirects to QLever with the converted query. The same tool works on any WDQS link, so it is also handy outside this script.
 
 == Add your own queries ==
 
