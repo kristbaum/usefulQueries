@@ -459,6 +459,24 @@ LIMIT 1000`,
       title: "Map of places named after {valueLabel}",
     },
     {
+      id: "objectsDescribedBySource",
+      scope: "value",
+      propertyId: ["P1343"],
+      valueId: null,
+      template: `SELECT DISTINCT ?item ?itemLabel ?page ?volume ?image WHERE {
+  ?item p:P1343 ?statement.
+  ?statement ps:P1343 wd:{valueQid}.
+  FILTER(?item != wd:{itemQid})
+  OPTIONAL { ?statement pq:P304 ?page. }
+  OPTIONAL { ?statement pq:P478 ?volume. }
+  OPTIONAL { ?item wdt:P18 ?image. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}
+LIMIT 100`,
+      emoji: "📖",
+      title: "Other objects described by {valueLabel}",
+    },
+    {
       id: "objectsStreet",
       scope: "value",
       propertyId: ["P669"],
