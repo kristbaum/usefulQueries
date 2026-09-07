@@ -30,14 +30,14 @@ usefulQueries/
 ├── usefulQueries.wiki        # On-wiki documentation; its overview sections are generated
 ├── usefulQueries.js          # Built readable output (do not edit directly)
 ├── minified_version.js       # Built minified output — the file uploaded to Wikidata
-└── package.json              # npm scripts; only dev dependency is terser
+└── package.json              # npm scripts; dev dependencies are terser + oxlint
 ```
 
 ## Build system
 
 ```bash
 npm run build   # runs scripts/assemble.mjs → writes usefulQueries.js + minified_version.js
-npm run lint    # ESLint check
+npm run lint    # oxlint check (readable build output)
 npm test        # checks the built output files are valid, runnable JS
 ```
 

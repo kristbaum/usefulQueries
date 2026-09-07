@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "browser": true
+  },
+  "globals": {
+    "$": "readonly",
+    "jQuery": "readonly",
+    "mw": "readonly",
+    "Vue": "readonly",
+    "wikibase": "readonly"
+  },
+  "ignorePatterns": [
+    "src/**",
+    "scripts/**",
+    "templates/**",
+    "test/**",
+    "framework.js",
+    "minified_version.js",
+    "**/minified_*_version.js",
+    "ReSaNode/**"
+  ],
+  "rules": {}
+}
