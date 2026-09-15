@@ -1,0 +1,919 @@
+/*
+ * This script provides context-based queries to statements for Wikibase pages.
+ * It creates a popup when you click on certain elements, showing live queries It also provides some some links to projects like entitree and scholia.
+ *
+ * To activate this script, add the line below to your common.js on MediaWiki (go to https://www.wikidata.org/wiki/Special:MyPage/common.js):
+ * mw.loader.load("//www.wikidata.org/w/index.php?title=User:Kristbaum/usefulQueries.js&action=raw&ctype=text/javascript");
+ * The source code in readable form can be found here https://github.com/kristbaum/usefulQueries/
+ *
+ * License: CC0
+ */
+
+$(function () {
+  "use strict";
+
+  // ===== GLOBAL SETTINGS =====
+  const SETTINGS = {
+    queryServiceUrl: "https://query.wikidata.org/",
+    queryEmbedUrl: "https://query.wikidata.org/embed.html",
+    enableQLever: true,
+    toQLeverUrl: "https://to-qlever.toolforge.org/to-qlever",
+    allowedNamespace: 0,
+  };
+
+  // Exit the script if we're not in the main namespace (article namespace).
+  if (mw.config.get("wgNamespaceNumber") !== SETTINGS.allowedNamespace) {
+    return;
+  }
+
+  // ===== CONFIGURATION =====
+
+  /**
+   * @typedef {Object} UsefulQuery
+   * @property {string} id - Unique identifier for the query
+   * @property {"entity"|"property"|"value"} scope - Where to attach the query button
+   *   - "entity": Attaches to the entity title (entity-wide query)
+   *   - "property": Attaches to a property label
+   *   - "value": Attaches to a specific property+value combination
+   * @property {string[]} [propertyId] - Property IDs to match (required for "property" and "value" scope)
+   * @property {string[]|null} [valueId] - Value entity IDs to match ("value" scope; null matches any value)
+   * @property {string} template - SPARQL query template with placeholders
+   * @property {string} emoji - Emoji/text label for the button
+   * @property {string} title - Button tooltip and popup heading (supports {itemLabel}, {itemQid} placeholders)
+   */
+
+  /**
+   * @typedef {Object} UsefulLink
+   * @property {string} id - Unique identifier for the link
+   * @property {"entity"|"property"|"value"} scope - Where to attach the link button
+   * @property {string[]} [propertyId] - Property IDs to match (required for "property" and "value" scope)
+   * @property {string[]|null} [valueId] - Value entity IDs to match ("value" scope; null matches any value)
+   * @property {string} urlTemplate - URL template with placeholders ({itemQid}, {valueQid})
+   * @property {string} emoji - Emoji/text label for the button
+   * @property {string} title - Button tooltip text
+   */
+
+  // ===== USEFUL QUERIES CONFIGURATION =====
+  // Add new queries here - they will automatically be attached to the right places
+
+  /** @type {UsefulQuery[]} */
+  const USEFUL_QUERIES = [
+    {
+      id: "corpusArtistCollaborators",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q5"],
+      template: `#defaultView:Graph
+# CbDD corpus only. Nothing on a painter's item page says who else was at work in
+# the same house. This builds that bipartite graph - the buildings this person
+# painted in, and every other Corpus painter documented in those same buildings -
+# which is how workshops, families and successions become visible.
+# The limit to Corpus works matters here: without it, any painting that happens to
+# hang in a museum drags in that museum's entire collection as false colleagues.
+SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
+  ?ownWork wdt:P10626 [];
+           wdt:P170 wd:{itemQid};
+           wdt:P276 ?node.
+  ?otherWork wdt:P10626 [];
+             wdt:P276 ?node;
+             wdt:P170 ?childNode.
+  BIND(IF(?childNode = wd:{itemQid}, "E8A33D", "7DCEA0") AS ?rgb)
+  OPTIONAL { ?node wdt:P18 ?nodeImage. }
+  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+LIMIT 300`,
+      emoji: "🕸️",
+      title: "CbDD corpus only — painters who worked in the same houses as {itemLabel}",
+    },
+    {
+      id: "corpusArtistItinerary",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q5"],
+      template: `#defaultView:Map
+# CbDD corpus only. Baroque ceiling painters were travelling workshops, but the
+# person page shows only a birthplace and a death place. This plots the sites they
+# actually worked at, how much survives at each, and the span of dates - the
+# working itinerary rather than the biography.
+# The coordinate lookup sits inside the aggregate on purpose. Hoisted out, WDQS
+# stops using the handful of buildings the subquery returns to constrain it and
+# scans every coordinate statement in Wikidata instead - 0.3s becomes a timeout.
+SELECT DISTINCT ?building ?buildingLabel ?coordinates ?buildingImage ?ceilings ?earliest ?latest WHERE {
+  {
+    SELECT ?building ?coordinates (COUNT(DISTINCT ?work) AS ?ceilings) (MIN(?date) AS ?earliest) (MAX(?date) AS ?latest) WHERE {
+      ?work wdt:P10626 [];
+            wdt:P170 wd:{itemQid};
+            wdt:P276 ?building.
+      ?building wdt:P625 ?coordinates.
+      OPTIONAL { ?work wdt:P571 ?date. }
+    }
+    GROUP BY ?building ?coordinates
+  }
+  OPTIONAL { ?building wdt:P18 ?buildingImage. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY DESC(?ceilings)
+LIMIT 200`,
+      emoji: "🗺️",
+      title: "CbDD corpus only — the working itinerary of {itemLabel}",
+    },
+    {
+      id: "corpusBuildingPaintings",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q751876","Q53536964","Q16970","Q879050","Q317557","Q41176","Q23413","Q33506","Q108325","Q16560","Q3947","Q16823155","Q1436181","Q1424449","Q1129743","Q2519340","Q276173","Q44613","Q334383","Q543654","Q10631691","Q615810","Q160742","Q1802963","Q16884952","Q24354","Q811979","Q19860854","Q1516079","Q12292478","Q16147981"],
+      template: `# CbDD corpus only. The building page links out to its region and its heritage
+# status, but never lists the ceilings inside it - the location statement points
+# the other way, from each painting to the building. This inverts that link and
+# reads the decorative programme of the house in one table, oldest first.
+SELECT DISTINCT ?painting ?paintingLabel ?inception ?creator ?creatorLabel ?patron ?patronLabel ?technique ?techniqueLabel ?themes ?deckenmalereiUrl WHERE {
+  {
+    SELECT ?painting ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=", ") AS ?themes) WHERE {
+      ?painting wdt:P10626 ?dmId;
+                wdt:P276 wd:{itemQid}.
+      BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?dmId)) AS ?deckenmalereiUrl)
+      OPTIONAL { ?painting wdt:P1257 ?ic. }
+    }
+    GROUP BY ?painting ?deckenmalereiUrl
+  }
+  OPTIONAL { ?painting wdt:P571 ?inception. }
+  OPTIONAL { ?painting wdt:P170 ?creator. }
+  OPTIONAL { ?painting wdt:P88 ?patron. }
+  OPTIONAL { ?painting wdt:P2079 ?technique. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception ?paintingLabel
+LIMIT 300`,
+      emoji: "🖼️",
+      title: "CbDD corpus only — every documented ceiling inside {itemLabel}",
+    },
+    {
+      id: "corpusIconclassSiblings",
+      scope: "property",
+      propertyId: ["P1257"],
+      template: `#defaultView:Map
+# CbDD corpus only. An Iconclass notation on the item page is an opaque code.
+# This resolves it into a thematic network: every other Corpus ceiling painting
+# in the same Iconclass branch, mapped via the building that holds it.
+# Codes are hierarchical (91E23 -> 91E -> 91), so the first three characters are
+# used as the branch - narrow enough to stay on-theme, wide enough to recover the
+# rest of the cycle (91E is the Ovidian creation and flood myths: Prometheus,
+# Pandora, Deucalion). A painting with several codes in the branch returns one row
+# per code; on a map those land on the same point, which is why this is not
+# aggregated - GROUP_CONCAT here costs more than the duplicate rows do.
+SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?coordinates ?creator ?creatorLabel ?inception WHERE {
+  wd:{itemQid} wdt:P1257 ?ownCode.
+  BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)
+  ?painting wdt:P10626 [];
+            wdt:P1257 ?iconclass;
+            wdt:P276 ?building.
+  FILTER(STRSTARTS(?iconclass, ?branch))
+  FILTER(?painting != wd:{itemQid})
+  ?building wdt:P625 ?coordinates.
+  OPTIONAL { ?painting wdt:P170 ?creator. }
+  OPTIONAL { ?painting wdt:P571 ?inception. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+LIMIT 200`,
+      emoji: "🎭",
+      title: "CbDD corpus only — where else this Iconclass theme appears on a Baroque ceiling",
+    },
+    {
+      id: "corpusNearbySites",
+      scope: "value",
+      propertyId: ["P625"],
+      template: `#defaultView:Map
+# CbDD corpus only. A coordinate on an item page is a dot with no neighbourhood.
+# This turns it into a route: every other site within 30 km that has documented
+# ceiling paintings, ordered by distance and labelled with how many survive there.
+# Requiring a Corpus painting at the place doubles as the Corpus filter, so a site
+# only appears if something there has actually been surveyed.
+# The count is aggregated at the top level rather than in its own subquery on
+# purpose. As a subquery it is unbounded - it groups all ~4,200 Corpus paintings by
+# location before the radius is applied - and WDQS occasionally plans that into a
+# 90s timeout. Grouping here lets wikibase:around bind ?place first and constrain
+# the join, which holds it at a few hundred milliseconds.
+SELECT ?place ?placeLabel ?coordinates ?distanceKm ?placeImage (COUNT(DISTINCT ?painting) AS ?ceilings) WHERE {
+  SERVICE wikibase:around {
+    ?place wdt:P625 ?coordinates.
+    bd:serviceParam wikibase:center "Point({valueLon} {valueLat})"^^geo:wktLiteral.
+    bd:serviceParam wikibase:radius "30".
+    bd:serviceParam wikibase:distance ?distanceKm.
+  }
+  ?painting wdt:P10626 [];
+            wdt:P276 ?place.
+  OPTIONAL { ?place wdt:P18 ?placeImage. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+GROUP BY ?place ?placeLabel ?coordinates ?distanceKm ?placeImage
+ORDER BY ?distanceKm
+LIMIT 100`,
+      emoji: "📍",
+      title: "CbDD corpus only — painted ceilings within 30 km of {itemLabel}",
+    },
+    {
+      id: "corpusPatronCommissions",
+      scope: "property",
+      propertyId: ["P88"],
+      template: `#defaultView:Map
+# CbDD corpus only. Patronage is the connection the item page hides best: the
+# commissioner is one link among many, and nothing shows how far that patron's
+# programme reached. This maps everything else the same patron commissioned in
+# the Corpus, with the painters they hired for each site.
+SELECT DISTINCT ?work ?workLabel ?patron ?patronLabel ?building ?buildingLabel ?coordinates ?inception ?creator ?creatorLabel WHERE {
+  wd:{itemQid} wdt:P88 ?patron.
+  ?work wdt:P10626 [];
+        wdt:P88 ?patron;
+        wdt:P276 ?building.
+  FILTER(?work != wd:{itemQid})
+  ?building wdt:P625 ?coordinates.
+  OPTIONAL { ?work wdt:P571 ?inception. }
+  OPTIONAL { ?work wdt:P170 ?creator. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+LIMIT 300`,
+      emoji: "👑",
+      title: "CbDD corpus only — everything else this patron commissioned",
+    },
+    {
+      id: "corpusSameBuildingProgramme",
+      scope: "property",
+      propertyId: ["P276"],
+      template: `# CbDD corpus only. A ceiling was almost never painted on its own: it belongs to
+# a programme spanning a staircase, a hall or a whole wing. The item page shows a
+# single location link and stops there. This lists the siblings that share that
+# location, so the painting can be read as part of its cycle.
+SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes ?deckenmalereiUrl WHERE {
+  {
+    SELECT ?sibling ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=", ") AS ?themes) WHERE {
+      wd:{itemQid} wdt:P276 ?building.
+      ?sibling wdt:P10626 ?dmId;
+               wdt:P276 ?building.
+      FILTER(?sibling != wd:{itemQid})
+      BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?dmId)) AS ?deckenmalereiUrl)
+      OPTIONAL { ?sibling wdt:P1257 ?ic. }
+    }
+    GROUP BY ?sibling ?deckenmalereiUrl
+  }
+  OPTIONAL { ?sibling wdt:P571 ?inception. }
+  OPTIONAL { ?sibling wdt:P170 ?creator. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception ?siblingLabel
+LIMIT 300`,
+      emoji: "🏛️",
+      title: "CbDD corpus only — the rest of the painted programme around {itemLabel}",
+    },
+    {
+      id: "openCreatorWorks",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q5"],
+      template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# The Corpus itinerary query answers 'where did this painter work on ceilings'.
+# This one answers 'what is recorded of this painter at all': altarpieces, panel
+# paintings, drawings and prints, wherever they now hang. Sorting by ?cbddId
+# separates the documented ceiling work from the rest of the oeuvre.
+SELECT DISTINCT ?work ?workLabel ?kind ?kindLabel ?inception ?location ?locationLabel ?collection ?collectionLabel ?image ?cbddId WHERE {
+  ?work wdt:P170 wd:{itemQid}.
+  OPTIONAL { ?work wdt:P31 ?kind. }
+  OPTIONAL { ?work wdt:P571 ?inception. }
+  OPTIONAL { ?work wdt:P276 ?location. }
+  OPTIONAL { ?work wdt:P195 ?collection. }
+  OPTIONAL { ?work wdt:P18 ?image. }
+  OPTIONAL { ?work wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception
+LIMIT 400`,
+      emoji: "🎨",
+      title: "All of Wikidata — the complete recorded oeuvre of {itemLabel}",
+    },
+    {
+      id: "openIconclassAnywhere",
+      scope: "property",
+      propertyId: ["P1257"],
+      template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# Same Iconclass branch as the Corpus-only query, but with the P10626 filter
+# dropped, so the theme can be followed out of the Baroque ceiling material and
+# into panel paintings, prints and drawings in museum collections worldwide.
+# The ?cbddId column stays empty for everything outside the Corpus, which is the
+# quickest way to see how much of a theme the Corpus actually holds.
+# The branch scan is wrapped in a LIMITed subquery on purpose: STRSTARTS against a
+# runtime prefix cannot use an index and has to walk all ~240k P1257 statements.
+# Capping it there before the OPTIONALs join takes this from a 90s+ timeout to ~8s.
+# For a very common branch the 300 cap bites, and the result is a sample.
+SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?creatorLabel ?collection ?collectionLabel ?inception ?image ?cbddId WHERE {
+  {
+    SELECT ?artwork ?iconclass WHERE {
+      wd:{itemQid} wdt:P1257 ?ownCode.
+      BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)
+      ?artwork wdt:P1257 ?iconclass.
+      FILTER(STRSTARTS(?iconclass, ?branch))
+      FILTER(?artwork != wd:{itemQid})
+    }
+    LIMIT 300
+  }
+  OPTIONAL { ?artwork wdt:P170 ?creator. }
+  OPTIONAL { ?artwork wdt:P195 ?collection. }
+  OPTIONAL { ?artwork wdt:P571 ?inception. }
+  OPTIONAL { ?artwork wdt:P18 ?image. }
+  OPTIONAL { ?artwork wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}`,
+      emoji: "🌍",
+      title: "All of Wikidata — this Iconclass theme beyond the Corpus",
+    },
+    {
+      id: "openNearbyHeritage",
+      scope: "value",
+      propertyId: ["P625"],
+      template: `#defaultView:Map
+# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# The Corpus-only neighbourhood query shows the handful of sites with documented
+# ceilings. This one shows the full protected landscape within 15 km: every listed
+# heritage monument, whether or not anyone has surveyed its interior. Rows with an
+# empty ?cbddId are the candidates the Corpus has not covered yet.
+SELECT DISTINCT ?place ?placeLabel ?placeDescription ?coordinates ?distanceKm ?designation ?designationLabel ?placeImage ?cbddId WHERE {
+  SERVICE wikibase:around {
+    ?place wdt:P625 ?coordinates.
+    bd:serviceParam wikibase:center "Point({valueLon} {valueLat})"^^geo:wktLiteral.
+    bd:serviceParam wikibase:radius "15".
+    bd:serviceParam wikibase:distance ?distanceKm.
+  }
+  ?place wdt:P1435 ?designation.
+  OPTIONAL { ?place wdt:P18 ?placeImage. }
+  OPTIONAL { ?place wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?distanceKm
+LIMIT 250`,
+      emoji: "🧭",
+      title: "All of Wikidata — every listed monument within 15 km of {itemLabel}",
+    },
+    {
+      id: "openPatronCommissions",
+      scope: "property",
+      propertyId: ["P88"],
+      template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# Same patron as the Corpus-only query, but without the P10626 filter the answer
+# stops being a list of ceilings and becomes the shape of a building campaign:
+# the palaces, churches, gardens and monuments the same person paid for.
+SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?creator ?creatorLabel ?location ?locationLabel ?cbddId WHERE {
+  wd:{itemQid} wdt:P88 ?patron.
+  ?work wdt:P88 ?patron.
+  FILTER(?work != wd:{itemQid})
+  OPTIONAL { ?work wdt:P31 ?kind. }
+  OPTIONAL { ?work wdt:P571 ?inception. }
+  OPTIONAL { ?work wdt:P170 ?creator. }
+  OPTIONAL { ?work wdt:P276 ?location. }
+  OPTIONAL { ?work wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception
+LIMIT 400`,
+      emoji: "💰",
+      title: "All of Wikidata — the full building campaign of this patron",
+    },
+  ];
+
+  // ===== USEFUL LINKS CONFIGURATION =====
+  // Add new external links here - they will automatically be attached to the right places
+
+  /** @type {UsefulLink[]} */
+  const USEFUL_LINKS = [
+
+  ];
+
+  // ===== HELPER FUNCTIONS =====
+
+  /**
+   * Replace placeholders in a template string
+   * @param {string} template - Template with placeholders like {itemQid}, {itemLabel}, etc.
+   * @param {Object} replacements - Key-value pairs for replacements
+   * @returns {string} Template with placeholders replaced
+   */
+  function replacePlaceholders(template, replacements) {
+    let result = template;
+    for (const [key, value] of Object.entries(replacements)) {
+      result = result.replaceAll(`{${key}}`, value || "");
+    }
+    return result;
+  }
+
+  /**
+   * Encode a query string for use in URLs
+   * @param {string} query - The SPARQL query
+   * @returns {string} URL-encoded query with # prefix
+   */
+  function encodeQueryString(query) {
+    return "#" + encodeURIComponent(query);
+  }
+
+// ===== QLEVER FUNCTIONS =====
+
+/**
+ * Check if the current Wikibase is Wikidata
+ * @returns {boolean} True if using Wikidata
+ */
+function isWikidata() {
+  return SETTINGS.queryServiceUrl.includes("query.wikidata.org");
+}
+
+/**
+ * Build a "To QLever" link for a query. The Toolforge tool
+ * (https://to-qlever.toolforge.org/) parses the WDQS query, rewrites the
+ * Blazegraph-specific parts (label service, named subqueries, query hints,
+ * missing prefixes) and redirects to QLever with the converted query.
+ * @param {string} querystring - The encoded query string (starts with "#")
+ * @returns {string|null} To QLever URL or null if disabled
+ */
+function getQLeverUrl(querystring) {
+  if (!SETTINGS.enableQLever || !isWikidata()) {
+    return null;
+  }
+  const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
+  return SETTINGS.toQLeverUrl + "?url=" + encodeURIComponent(queryServiceHref);
+}
+
+// ===== UI CREATION FUNCTIONS =====
+
+/**
+ * Create a Codex button with a link
+ * @param {jQuery} element - The element to append the button to
+ * @param {string} url - The URL to open when clicked
+ * @param {string} buttonLabel - The label (emoji/text) for the button
+ * @param {string} title - The tooltip for the button
+ */
+function createLinkButton(element, url, buttonLabel, title) {
+  mw.loader.using("@wikimedia/codex").then(function (require) {
+    const Vue = require("vue");
+    const Codex = require("@wikimedia/codex");
+
+    const mountPoint = document.createElement("span");
+    $(element).append(mountPoint);
+
+    const app = Vue.createMwApp({
+      name: "UsefulQueriesLinkButton",
+      data: function () {
+        return { url, buttonLabel, title };
+      },
+      template: `
+          <a :href="url" target="_blank" rel="noopener noreferrer" :title="title" style="text-decoration: none;">
+            <cdx-button weight="quiet" action="progressive" :aria-label="title">
+              {{ buttonLabel }}
+            </cdx-button>
+          </a>
+        `,
+    });
+
+    app.component("CdxButton", Codex.CdxButton);
+    app.mount(mountPoint);
+  });
+}
+
+/**
+ * Create a Codex popup button with an embedded query
+ * @param {jQuery} element - The element to append the popup button to
+ * @param {string} querystring - The encoded query string
+ * @param {string} buttonLabel - The label (emoji/text) for the button
+ * @param {string} title - The tooltip and popup heading
+ * @param {string} scope - Template scope ("entity", "property", or "value")
+ */
+function createQueryPopup(
+  element,
+  querystring,
+  buttonLabel,
+  title,
+  scope,
+) {
+  const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
+
+  mw.loader.using("@wikimedia/codex").then(function (require) {
+    const Vue = require("vue");
+    const Codex = require("@wikimedia/codex");
+
+    if (!Codex.CdxPopover) {
+      // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
+      // fall back to a plain link button to avoid rendering the component inline.
+      createLinkButton(element, queryServiceHref, buttonLabel, title);
+      return;
+    }
+
+    const mountPoint = document.createElement("span");
+    $(element).append(mountPoint);
+
+    mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+
+    const placement = (scope === "value") ? "bottom" : "bottom-start";
+
+    const widthWithMin = Math.min(Math.max(window.innerWidth - 40, 400), 800);
+    const embedHref = SETTINGS.queryEmbedUrl + querystring;
+    const qleverHref = getQLeverUrl(querystring);
+
+    const app = Vue.createMwApp({
+      name: "UsefulQueriesPopover",
+      data: function () {
+        return {
+          open: false,
+          anchorEl: null,
+          buttonLabel,
+          title,
+          queryServiceHref,
+          embedHref,
+          qleverHref,
+          iframeSize: widthWithMin,
+          placement,
+          primaryAction: {
+            label: "Open in query service",
+            actionType: "progressive",
+          },
+          defaultAction: qleverHref ? { label: "Open in QLever" } : null,
+        };
+      },
+      mounted: function () {
+        this.anchorEl = this.$refs.triggerEl || null;
+      },
+      methods: {
+        openQueryService: function () {
+          window.open(this.queryServiceHref, "_blank", "noopener,noreferrer");
+        },
+        openQLever: function () {
+          if (this.qleverHref) {
+            window.open(this.qleverHref, "_blank", "noopener,noreferrer");
+          }
+        },
+      },
+      template: `
+          <span ref="triggerEl">
+            <cdx-button
+              weight="quiet"
+              action="progressive"
+              :aria-label="title"
+              :title="title"
+              @click="$event.preventDefault(); open = !open"
+            >
+              {{ buttonLabel }}
+            </cdx-button>
+          </span>
+
+          <cdx-popover
+            v-if="anchorEl"
+            v-model:open="open"
+            :anchor="anchorEl"
+            :placement="placement"
+            :render-in-place="false"
+            :title="title"
+            :use-close-button="true"
+            :use-bottom-sheet="true"
+            :primary-action="primaryAction"
+            :default-action="defaultAction"
+            class="usefulqueries-popover"
+            style="z-index: 999;"
+            @primary="openQueryService"
+            @default="openQLever"
+          >
+            <iframe
+              v-if="open"
+              scrolling="yes"
+              frameborder="0"
+              :src="embedHref"
+              :width="iframeSize"
+              :height="iframeSize"
+            ></iframe>
+          </cdx-popover>
+        `,
+    });
+
+    app.component("CdxButton", Codex.CdxButton);
+    app.component("CdxPopover", Codex.CdxPopover);
+    app.mount(mountPoint);
+  });
+}
+
+// ===== DOM HELPER FUNCTIONS =====
+
+/**
+ * Get the DOM element for a property group by property ID
+ * @param {string} propertyId - The property ID (e.g., "P106")
+ * @returns {jQuery|null} The property label element or null if not found
+ */
+function getPropertyElement(propertyId) {
+  // Desktop
+  const $propertyLink = $(
+    '.wikibase-statementgroupview-property-label a[title="Property:' +
+      propertyId +
+      '"]',
+  );
+  if ($propertyLink.length) {
+    return $propertyLink.closest(".wikibase-statementgroupview-property-label");
+  }
+  // Mobile (wbui2025): only match the heading row, not property names inside references
+  const $mobileLink = $(
+    '.wikibase-wbui2025-statement-heading .wikibase-wbui2025-property-name-link[data-property-id="' +
+      propertyId +
+      '"]',
+  );
+  if ($mobileLink.length) {
+    return $mobileLink.closest(".wikibase-wbui2025-property-name");
+  }
+  return null;
+}
+
+/**
+ * Get the DOM element for a specific statement by statement ID
+ * @param {string} statementId - The full statement ID
+ * @returns {jQuery|null} The statement element or null if not found
+ */
+function getStatementElement(statementId) {
+  const $statement = $("#" + CSS.escape(statementId));
+  return $statement.length ? $statement : null;
+}
+
+/**
+ * Get the indicator element for a statement where buttons can be attached
+ * @param {jQuery} $statementElement - The statement element
+ * @returns {jQuery|null} The indicator element or null if not found
+ */
+function getStatementIndicatorElement($statementElement) {
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-indicators").first();
+  if ($desktop.length) return $desktop;
+  // Mobile (wbui2025)
+  return $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value")
+    .first();
+}
+
+/**
+ * Extract the displayed label text from a statement's main value in the DOM
+ * @param {jQuery} $statementElement - The statement element
+ * @returns {string|null} The label text or null if not found
+ */
+function getStatementValueLabel($statementElement) {
+  // Desktop
+  const $desktop = $statementElement.find(".wikibase-snakview-value a").first();
+  if ($desktop.length) return $desktop.text().trim() || null;
+  // Mobile (wbui2025)
+  const $mobile = $statementElement
+    .find(".wikibase-wbui2025-main-snak .wikibase-wbui2025-snak-value .snakValue a")
+    .first();
+  if ($mobile.length) return $mobile.text().trim() || null;
+  return null;
+}
+
+/**
+ * Extract value details from a claim's mainsnak
+ * @param {Object} mainsnak - The mainsnak object from the claim
+ * @returns {{value: string|null, label: string|null, latitude?: string, longitude?: string}} Value details
+ */
+function extractValueFromMainsnak(mainsnak) {
+  if (!mainsnak || mainsnak.snaktype !== "value" || !mainsnak.datavalue) {
+    return { value: null, label: null };
+  }
+
+  const datavalue = mainsnak.datavalue;
+
+  switch (datavalue.type) {
+    case "wikibase-entityid":
+      return { value: datavalue.value.id, label: null };
+    case "time":
+      return {
+        value: '"' + datavalue.value.time + '"^^xsd:dateTime',
+        label: datavalue.value.time,
+      };
+    case "quantity":
+      return { value: datavalue.value.amount, label: datavalue.value.amount };
+    case "string":
+      return { value: '"' + datavalue.value + '"', label: datavalue.value };
+    case "globecoordinate": {
+      // Kept as strings so that a latitude/longitude of exactly 0 survives the
+      // falsy check in replacePlaceholders().
+      const lat = String(datavalue.value.latitude);
+      const lon = String(datavalue.value.longitude);
+      return {
+        value: '"Point(' + lon + " " + lat + ')"^^geo:wktLiteral',
+        label: lat + ", " + lon,
+        latitude: lat,
+        longitude: lon,
+      };
+    }
+    default:
+      return { value: null, label: null };
+  }
+}
+
+// ===== PROCESSING FUNCTIONS =====
+
+// Pre-built lookup indexes — avoids full-array scans on every property/claim.
+// Built once at script load; keys are "<scope>:<propertyId>".
+const _templateIndex = (function () {
+  function buildIndex(templates) {
+    const entity = [];
+    const byKey = new Map();
+    for (const t of templates) {
+      if (t.scope === "entity") {
+        entity.push(t);
+      } else {
+        const ids = Array.isArray(t.propertyId) ? t.propertyId : [t.propertyId];
+        for (const id of ids) {
+          const key = t.scope + ":" + id;
+          if (!byKey.has(key)) byKey.set(key, []);
+          byKey.get(key).push(t);
+        }
+      }
+    }
+    return { entity, byKey };
+  }
+  return {
+    queries: buildIndex(USEFUL_QUERIES),
+    links: buildIndex(USEFUL_LINKS),
+  };
+})();
+
+function matchesValueId(valueId, configValueId) {
+  if (!configValueId || configValueId.length === 0) return true;
+  return configValueId.includes(valueId);
+}
+
+/**
+ * Process entity-level features (attached to the entity title)
+ * @param {jQuery} $titleElement - The title element
+ * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+ */
+function processEntityFeatures($titleElement, context) {
+  // Process entity-level queries
+  for (const query of _templateIndex.queries.entity) {
+    const queryText = replacePlaceholders(query.template, context);
+    const queryString = encodeQueryString(queryText);
+    createQueryPopup(
+      $titleElement,
+      queryString,
+      query.emoji,
+      replacePlaceholders(query.title, context),
+      "entity",
+    );
+  }
+
+  // Process entity-level links
+  for (const link of _templateIndex.links.entity) {
+    const url = replacePlaceholders(link.urlTemplate, context);
+    createLinkButton($titleElement, url, link.emoji, link.title);
+  }
+}
+
+/**
+ * Process property-level features
+ * @param {string} propertyId - The property ID
+ * @param {jQuery} $propertyElement - The property DOM element
+ * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+ */
+function processPropertyFeatures(propertyId, $propertyElement, context) {
+  const propKey = "property:" + propertyId;
+
+  // Process property-level queries
+  for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
+    const queryText = replacePlaceholders(query.template, context);
+    const queryString = encodeQueryString(queryText);
+    createQueryPopup(
+      $propertyElement,
+      queryString,
+      query.emoji,
+      replacePlaceholders(query.title, context),
+      "property",
+    );
+  }
+
+  // Process property-level links
+  for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
+    const url = replacePlaceholders(link.urlTemplate, context);
+    createLinkButton($propertyElement, url, link.emoji, link.title);
+  }
+}
+
+/**
+ * Process value-level features
+ * @param {string} propertyId - The property ID
+ * @param {Object} valueDetails - The value details (value, label)
+ * @param {jQuery} $indicatorElement - The indicator DOM element
+ * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+ */
+function processValueFeatures(
+  propertyId,
+  valueDetails,
+  $indicatorElement,
+  context,
+) {
+  if (!valueDetails.value) return;
+
+  const valueContext = {
+    ...context,
+    valueQid: valueDetails.value,
+    valueLabel: valueDetails.label || valueDetails.value,
+    // Only set for globe-coordinate values (e.g. P625); empty elsewhere.
+    valueLat: valueDetails.latitude || "",
+    valueLon: valueDetails.longitude || "",
+  };
+
+  const valueKey = "value:" + propertyId;
+
+  // Process value-level queries
+  for (const query of (_templateIndex.queries.byKey.get(valueKey) ?? [])) {
+    if (!matchesValueId(valueDetails.value, query.valueId)) continue;
+    const queryText = replacePlaceholders(query.template, valueContext);
+    const queryString = encodeQueryString(queryText);
+    createQueryPopup(
+      $indicatorElement,
+      queryString,
+      query.emoji,
+      replacePlaceholders(query.title, valueContext),
+      "value",
+    );
+  }
+
+  // Process value-level links
+  for (const link of (_templateIndex.links.byKey.get(valueKey) ?? [])) {
+    if (!matchesValueId(valueDetails.value, link.valueId)) continue;
+    const url = replacePlaceholders(link.urlTemplate, valueContext);
+    createLinkButton($indicatorElement, url, link.emoji, link.title);
+  }
+}
+
+/**
+ * Process a single claim (statement) from the entity data
+ * @param {string} propertyId - The property ID
+ * @param {Object} claim - The claim object from entityData.claims
+ * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+ */
+function processClaim(propertyId, claim, context) {
+  const $statementElement = getStatementElement(claim.id);
+  if (!$statementElement) return;
+
+  const $indicatorElement = getStatementIndicatorElement($statementElement);
+  if (!$indicatorElement) return;
+
+  const valueDetails = extractValueFromMainsnak(claim.mainsnak);
+  if (valueDetails.label === null) {
+    valueDetails.label = getStatementValueLabel($statementElement);
+  }
+  processValueFeatures(propertyId, valueDetails, $indicatorElement, context);
+}
+
+/**
+ * Process all claims for a property
+ * @param {string} propertyId - The property ID
+ * @param {Array} claims - Array of claims for this property
+ * @param {Object} context - Context with itemQid, itemLabel, userLanguage
+ */
+function processPropertyClaims(propertyId, claims, context) {
+  const $propertyElement = getPropertyElement(propertyId);
+
+  if ($propertyElement) {
+    processPropertyFeatures(propertyId, $propertyElement, context);
+  }
+
+  claims.forEach((claim) => processClaim(propertyId, claim, context));
+}
+
+// ===== MAIN =====
+
+/**
+ * Main function to orchestrate the processing of the Wikibase entity page
+ */
+function processWikibaseEntityPage() {
+  mw.hook("wikibase.entityPage.entityLoaded").add(function (entityData) {
+    if (entityData.type !== "item") {
+      return;
+    }
+
+    const $labelEl = $(".wikibase-title").first().find(".wikibase-title-label");
+    const itemLabel =
+      $labelEl.find("span[lang]").first().text() ||
+      $labelEl.clone().find(".wb-language-fallback-indicator").remove().end().text().trim() ||
+      $("h2.wb-ui-label--primary").first().text();
+    let $titleElement = $(".wikibase-title").first().find(".wikibase-title-id");
+    if (!$titleElement.length) {
+      $titleElement = $("h2.wb-ui-label--primary").first();
+    }
+    const userLanguage = mw.config.get("wgUserLanguage");
+
+    const context = {
+      itemQid: entityData.id,
+      itemLabel: itemLabel,
+      userLanguage: userLanguage,
+    };
+
+    // Process entity-level features
+    processEntityFeatures($titleElement, context);
+
+    // Process all claims
+    Object.entries(entityData.claims).forEach(([propertyId, claims]) => {
+      processPropertyClaims(propertyId, claims, context);
+    });
+  });
+}
+
+// Initialize the main processing
+processWikibaseEntityPage();
+});

@@ -1,0 +1,29 @@
+{
+  "id": "openPatronCommissions",
+  "example": "Q137903386",
+  "scope": "property",
+  "propertyId": [
+    "P88"
+  ],
+  "template": [
+    "# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.",
+    "# Same patron as the Corpus-only query, but without the P10626 filter the answer",
+    "# stops being a list of ceilings and becomes the shape of a building campaign:",
+    "# the palaces, churches, gardens and monuments the same person paid for.",
+    "SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?creator ?creatorLabel ?location ?locationLabel ?cbddId WHERE {",
+    "  wd:{itemQid} wdt:P88 ?patron.",
+    "  ?work wdt:P88 ?patron.",
+    "  FILTER(?work != wd:{itemQid})",
+    "  OPTIONAL { ?work wdt:P31 ?kind. }",
+    "  OPTIONAL { ?work wdt:P571 ?inception. }",
+    "  OPTIONAL { ?work wdt:P170 ?creator. }",
+    "  OPTIONAL { ?work wdt:P276 ?location. }",
+    "  OPTIONAL { ?work wdt:P10626 ?cbddId. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "ORDER BY ?inception",
+    "LIMIT 400"
+  ],
+  "emoji": "💰",
+  "title": "All of Wikidata — the full building campaign of this patron"
+}

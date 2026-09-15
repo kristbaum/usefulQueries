@@ -1,0 +1,34 @@
+{
+  "id": "corpusSameBuildingProgramme",
+  "example": "Q122702246",
+  "scope": "property",
+  "propertyId": [
+    "P276"
+  ],
+  "template": [
+    "# CbDD corpus only. A ceiling was almost never painted on its own: it belongs to",
+    "# a programme spanning a staircase, a hall or a whole wing. The item page shows a",
+    "# single location link and stops there. This lists the siblings that share that",
+    "# location, so the painting can be read as part of its cycle.",
+    "SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes ?deckenmalereiUrl WHERE {",
+    "  {",
+    "    SELECT ?sibling ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=\", \") AS ?themes) WHERE {",
+    "      wd:{itemQid} wdt:P276 ?building.",
+    "      ?sibling wdt:P10626 ?dmId;",
+    "               wdt:P276 ?building.",
+    "      FILTER(?sibling != wd:{itemQid})",
+    "      BIND(IRI(CONCAT(\"https://www.deckenmalerei.eu/\", ?dmId)) AS ?deckenmalereiUrl)",
+    "      OPTIONAL { ?sibling wdt:P1257 ?ic. }",
+    "    }",
+    "    GROUP BY ?sibling ?deckenmalereiUrl",
+    "  }",
+    "  OPTIONAL { ?sibling wdt:P571 ?inception. }",
+    "  OPTIONAL { ?sibling wdt:P170 ?creator. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "ORDER BY ?inception ?siblingLabel",
+    "LIMIT 300"
+  ],
+  "emoji": "🏛️",
+  "title": "CbDD corpus only — the rest of the painted programme around {itemLabel}"
+}

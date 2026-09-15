@@ -164,6 +164,12 @@ The build will read `MyQueries/settings.json`, load templates from `MyQueries/te
 
 Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per variant.
 
+**Variants in this repository:**
+
+- [`ReSaNode/`](ReSaNode/) — targets the ReSaNode Wikibase Cloud instance.
+- [`Deckenmalerei/`](Deckenmalerei/README.md) — targets Wikidata, with queries for
+  the Baroque ceiling painting corpus (`deckenmalerei.eu ID`, P10626).
+
 ## Development
 
 ```bash

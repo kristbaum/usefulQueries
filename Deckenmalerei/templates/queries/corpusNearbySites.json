@@ -1,0 +1,38 @@
+{
+  "id": "corpusNearbySites",
+  "example": "Q17326914",
+  "scope": "value",
+  "propertyId": [
+    "P625"
+  ],
+  "template": [
+    "#defaultView:Map",
+    "# CbDD corpus only. A coordinate on an item page is a dot with no neighbourhood.",
+    "# This turns it into a route: every other site within 30 km that has documented",
+    "# ceiling paintings, ordered by distance and labelled with how many survive there.",
+    "# Requiring a Corpus painting at the place doubles as the Corpus filter, so a site",
+    "# only appears if something there has actually been surveyed.",
+    "# The count is aggregated at the top level rather than in its own subquery on",
+    "# purpose. As a subquery it is unbounded - it groups all ~4,200 Corpus paintings by",
+    "# location before the radius is applied - and WDQS occasionally plans that into a",
+    "# 90s timeout. Grouping here lets wikibase:around bind ?place first and constrain",
+    "# the join, which holds it at a few hundred milliseconds.",
+    "SELECT ?place ?placeLabel ?coordinates ?distanceKm ?placeImage (COUNT(DISTINCT ?painting) AS ?ceilings) WHERE {",
+    "  SERVICE wikibase:around {",
+    "    ?place wdt:P625 ?coordinates.",
+    "    bd:serviceParam wikibase:center \"Point({valueLon} {valueLat})\"^^geo:wktLiteral.",
+    "    bd:serviceParam wikibase:radius \"30\".",
+    "    bd:serviceParam wikibase:distance ?distanceKm.",
+    "  }",
+    "  ?painting wdt:P10626 [];",
+    "            wdt:P276 ?place.",
+    "  OPTIONAL { ?place wdt:P18 ?placeImage. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "GROUP BY ?place ?placeLabel ?coordinates ?distanceKm ?placeImage",
+    "ORDER BY ?distanceKm",
+    "LIMIT 100"
+  ],
+  "emoji": "📍",
+  "title": "CbDD corpus only — painted ceilings within 30 km of {itemLabel}"
+}

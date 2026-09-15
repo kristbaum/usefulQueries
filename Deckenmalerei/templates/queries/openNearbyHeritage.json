@@ -1,0 +1,32 @@
+{
+  "id": "openNearbyHeritage",
+  "example": "Q17326914",
+  "scope": "value",
+  "propertyId": [
+    "P625"
+  ],
+  "template": [
+    "#defaultView:Map",
+    "# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.",
+    "# The Corpus-only neighbourhood query shows the handful of sites with documented",
+    "# ceilings. This one shows the full protected landscape within 15 km: every listed",
+    "# heritage monument, whether or not anyone has surveyed its interior. Rows with an",
+    "# empty ?cbddId are the candidates the Corpus has not covered yet.",
+    "SELECT DISTINCT ?place ?placeLabel ?placeDescription ?coordinates ?distanceKm ?designation ?designationLabel ?placeImage ?cbddId WHERE {",
+    "  SERVICE wikibase:around {",
+    "    ?place wdt:P625 ?coordinates.",
+    "    bd:serviceParam wikibase:center \"Point({valueLon} {valueLat})\"^^geo:wktLiteral.",
+    "    bd:serviceParam wikibase:radius \"15\".",
+    "    bd:serviceParam wikibase:distance ?distanceKm.",
+    "  }",
+    "  ?place wdt:P1435 ?designation.",
+    "  OPTIONAL { ?place wdt:P18 ?placeImage. }",
+    "  OPTIONAL { ?place wdt:P10626 ?cbddId. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "ORDER BY ?distanceKm",
+    "LIMIT 250"
+  ],
+  "emoji": "🧭",
+  "title": "All of Wikidata — every listed monument within 15 km of {itemLabel}"
+}

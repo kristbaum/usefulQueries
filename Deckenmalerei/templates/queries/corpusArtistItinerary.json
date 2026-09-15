@@ -1,0 +1,39 @@
+{
+  "id": "corpusArtistItinerary",
+  "example": "Q715693",
+  "scope": "value",
+  "propertyId": [
+    "P31"
+  ],
+  "valueId": [
+    "Q5"
+  ],
+  "template": [
+    "#defaultView:Map",
+    "# CbDD corpus only. Baroque ceiling painters were travelling workshops, but the",
+    "# person page shows only a birthplace and a death place. This plots the sites they",
+    "# actually worked at, how much survives at each, and the span of dates - the",
+    "# working itinerary rather than the biography.",
+    "# The coordinate lookup sits inside the aggregate on purpose. Hoisted out, WDQS",
+    "# stops using the handful of buildings the subquery returns to constrain it and",
+    "# scans every coordinate statement in Wikidata instead - 0.3s becomes a timeout.",
+    "SELECT DISTINCT ?building ?buildingLabel ?coordinates ?buildingImage ?ceilings ?earliest ?latest WHERE {",
+    "  {",
+    "    SELECT ?building ?coordinates (COUNT(DISTINCT ?work) AS ?ceilings) (MIN(?date) AS ?earliest) (MAX(?date) AS ?latest) WHERE {",
+    "      ?work wdt:P10626 [];",
+    "            wdt:P170 wd:{itemQid};",
+    "            wdt:P276 ?building.",
+    "      ?building wdt:P625 ?coordinates.",
+    "      OPTIONAL { ?work wdt:P571 ?date. }",
+    "    }",
+    "    GROUP BY ?building ?coordinates",
+    "  }",
+    "  OPTIONAL { ?building wdt:P18 ?buildingImage. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "ORDER BY DESC(?ceilings)",
+    "LIMIT 200"
+  ],
+  "emoji": "🗺️",
+  "title": "CbDD corpus only — the working itinerary of {itemLabel}"
+}

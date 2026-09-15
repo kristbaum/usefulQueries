@@ -1,0 +1,29 @@
+{
+  "id": "corpusPatronCommissions",
+  "example": "Q137903386",
+  "scope": "property",
+  "propertyId": [
+    "P88"
+  ],
+  "template": [
+    "#defaultView:Map",
+    "# CbDD corpus only. Patronage is the connection the item page hides best: the",
+    "# commissioner is one link among many, and nothing shows how far that patron's",
+    "# programme reached. This maps everything else the same patron commissioned in",
+    "# the Corpus, with the painters they hired for each site.",
+    "SELECT DISTINCT ?work ?workLabel ?patron ?patronLabel ?building ?buildingLabel ?coordinates ?inception ?creator ?creatorLabel WHERE {",
+    "  wd:{itemQid} wdt:P88 ?patron.",
+    "  ?work wdt:P10626 [];",
+    "        wdt:P88 ?patron;",
+    "        wdt:P276 ?building.",
+    "  FILTER(?work != wd:{itemQid})",
+    "  ?building wdt:P625 ?coordinates.",
+    "  OPTIONAL { ?work wdt:P571 ?inception. }",
+    "  OPTIONAL { ?work wdt:P170 ?creator. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "LIMIT 300"
+  ],
+  "emoji": "👑",
+  "title": "CbDD corpus only — everything else this patron commissioned"
+}

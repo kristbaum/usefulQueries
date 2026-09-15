@@ -1,0 +1,35 @@
+{
+  "id": "corpusArtistCollaborators",
+  "example": "Q715693",
+  "scope": "value",
+  "propertyId": [
+    "P31"
+  ],
+  "valueId": [
+    "Q5"
+  ],
+  "template": [
+    "#defaultView:Graph",
+    "# CbDD corpus only. Nothing on a painter's item page says who else was at work in",
+    "# the same house. This builds that bipartite graph - the buildings this person",
+    "# painted in, and every other Corpus painter documented in those same buildings -",
+    "# which is how workshops, families and successions become visible.",
+    "# The limit to Corpus works matters here: without it, any painting that happens to",
+    "# hang in a museum drags in that museum's entire collection as false colleagues.",
+    "SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {",
+    "  ?ownWork wdt:P10626 [];",
+    "           wdt:P170 wd:{itemQid};",
+    "           wdt:P276 ?node.",
+    "  ?otherWork wdt:P10626 [];",
+    "             wdt:P276 ?node;",
+    "             wdt:P170 ?childNode.",
+    "  BIND(IF(?childNode = wd:{itemQid}, \"E8A33D\", \"7DCEA0\") AS ?rgb)",
+    "  OPTIONAL { ?node wdt:P18 ?nodeImage. }",
+    "  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "LIMIT 300"
+  ],
+  "emoji": "🕸️",
+  "title": "CbDD corpus only — painters who worked in the same houses as {itemLabel}"
+}

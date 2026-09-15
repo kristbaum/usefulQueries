@@ -1,0 +1,36 @@
+{
+  "id": "corpusIconclassSiblings",
+  "example": "Q122702246",
+  "scope": "property",
+  "propertyId": [
+    "P1257"
+  ],
+  "template": [
+    "#defaultView:Map",
+    "# CbDD corpus only. An Iconclass notation on the item page is an opaque code.",
+    "# This resolves it into a thematic network: every other Corpus ceiling painting",
+    "# in the same Iconclass branch, mapped via the building that holds it.",
+    "# Codes are hierarchical (91E23 -> 91E -> 91), so the first three characters are",
+    "# used as the branch - narrow enough to stay on-theme, wide enough to recover the",
+    "# rest of the cycle (91E is the Ovidian creation and flood myths: Prometheus,",
+    "# Pandora, Deucalion). A painting with several codes in the branch returns one row",
+    "# per code; on a map those land on the same point, which is why this is not",
+    "# aggregated - GROUP_CONCAT here costs more than the duplicate rows do.",
+    "SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?coordinates ?creator ?creatorLabel ?inception WHERE {",
+    "  wd:{itemQid} wdt:P1257 ?ownCode.",
+    "  BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)",
+    "  ?painting wdt:P10626 [];",
+    "            wdt:P1257 ?iconclass;",
+    "            wdt:P276 ?building.",
+    "  FILTER(STRSTARTS(?iconclass, ?branch))",
+    "  FILTER(?painting != wd:{itemQid})",
+    "  ?building wdt:P625 ?coordinates.",
+    "  OPTIONAL { ?painting wdt:P170 ?creator. }",
+    "  OPTIONAL { ?painting wdt:P571 ?inception. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "LIMIT 200"
+  ],
+  "emoji": "🎭",
+  "title": "CbDD corpus only — where else this Iconclass theme appears on a Baroque ceiling"
+}

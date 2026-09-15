@@ -1,0 +1,40 @@
+{
+  "id": "openIconclassAnywhere",
+  "example": "Q122702246",
+  "scope": "property",
+  "propertyId": [
+    "P1257"
+  ],
+  "template": [
+    "# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.",
+    "# Same Iconclass branch as the Corpus-only query, but with the P10626 filter",
+    "# dropped, so the theme can be followed out of the Baroque ceiling material and",
+    "# into panel paintings, prints and drawings in museum collections worldwide.",
+    "# The ?cbddId column stays empty for everything outside the Corpus, which is the",
+    "# quickest way to see how much of a theme the Corpus actually holds.",
+    "# The branch scan is wrapped in a LIMITed subquery on purpose: STRSTARTS against a",
+    "# runtime prefix cannot use an index and has to walk all ~240k P1257 statements.",
+    "# Capping it there before the OPTIONALs join takes this from a 90s+ timeout to ~8s.",
+    "# For a very common branch the 300 cap bites, and the result is a sample.",
+    "SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?creatorLabel ?collection ?collectionLabel ?inception ?image ?cbddId WHERE {",
+    "  {",
+    "    SELECT ?artwork ?iconclass WHERE {",
+    "      wd:{itemQid} wdt:P1257 ?ownCode.",
+    "      BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)",
+    "      ?artwork wdt:P1257 ?iconclass.",
+    "      FILTER(STRSTARTS(?iconclass, ?branch))",
+    "      FILTER(?artwork != wd:{itemQid})",
+    "    }",
+    "    LIMIT 300",
+    "  }",
+    "  OPTIONAL { ?artwork wdt:P170 ?creator. }",
+    "  OPTIONAL { ?artwork wdt:P195 ?collection. }",
+    "  OPTIONAL { ?artwork wdt:P571 ?inception. }",
+    "  OPTIONAL { ?artwork wdt:P18 ?image. }",
+    "  OPTIONAL { ?artwork wdt:P10626 ?cbddId. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}"
+  ],
+  "emoji": "🌍",
+  "title": "All of Wikidata — this Iconclass theme beyond the Corpus"
+}

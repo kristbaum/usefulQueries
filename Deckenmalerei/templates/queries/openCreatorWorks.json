@@ -1,0 +1,32 @@
+{
+  "id": "openCreatorWorks",
+  "example": "Q715693",
+  "scope": "value",
+  "propertyId": [
+    "P31"
+  ],
+  "valueId": [
+    "Q5"
+  ],
+  "template": [
+    "# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.",
+    "# The Corpus itinerary query answers 'where did this painter work on ceilings'.",
+    "# This one answers 'what is recorded of this painter at all': altarpieces, panel",
+    "# paintings, drawings and prints, wherever they now hang. Sorting by ?cbddId",
+    "# separates the documented ceiling work from the rest of the oeuvre.",
+    "SELECT DISTINCT ?work ?workLabel ?kind ?kindLabel ?inception ?location ?locationLabel ?collection ?collectionLabel ?image ?cbddId WHERE {",
+    "  ?work wdt:P170 wd:{itemQid}.",
+    "  OPTIONAL { ?work wdt:P31 ?kind. }",
+    "  OPTIONAL { ?work wdt:P571 ?inception. }",
+    "  OPTIONAL { ?work wdt:P276 ?location. }",
+    "  OPTIONAL { ?work wdt:P195 ?collection. }",
+    "  OPTIONAL { ?work wdt:P18 ?image. }",
+    "  OPTIONAL { ?work wdt:P10626 ?cbddId. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "}",
+    "ORDER BY ?inception",
+    "LIMIT 400"
+  ],
+  "emoji": "🎨",
+  "title": "All of Wikidata — the complete recorded oeuvre of {itemLabel}"
+}
