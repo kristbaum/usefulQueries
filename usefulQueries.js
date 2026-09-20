@@ -191,7 +191,7 @@ LIMIT 100`,
       id: "artworks",
       scope: "value",
       propertyId: ["P106"],
-      valueId: ["Q1028181"],
+      valueId: ["Q1028181","Q1281618"],
       template: `#defaultView:ImageGrid
 SELECT ?item ?creator ?creatorLabel ?image WHERE {
   ?item wdt:P170 wd:{itemQid}.

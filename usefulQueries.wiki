@@ -82,7 +82,7 @@ These buttons appear when the item has the listed property set to one of the lis
 |-
 | 📍 || Artwork locations of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworkLocationsMap.json artworkLocationsMap.json]
 |-
-| 🖼️ || Artworks by {itemLabel} on Commons || {{P|P106}} || {{Q|Q1028181}} || ImageGrid || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworks.json artworks.json]
+| 🖼️ || Artworks by {itemLabel} on Commons || {{P|P106}} || {{Q|Q1028181}} or {{Q|Q1281618}} || ImageGrid || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworks.json artworks.json]
 |-
 | 📖 || Literary works by {itemLabel} || {{P|P106}} || {{Q|Q18844224}} or {{Q|Q36180}} or {{Q|Q6625963}} || Table || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/authorWorks.json authorWorks.json]
 |-
