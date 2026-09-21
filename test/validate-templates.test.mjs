@@ -227,6 +227,32 @@ test("value placeholders require value scope", () => {
   );
 });
 
+test("the matched-property placeholder requires property or value scope", () => {
+  const onProperty = validQuery({
+    template: ["SELECT ?x WHERE { ?x wdt:{propertyPid} wd:{itemQid}. }"],
+  });
+  assert.deepEqual(validateTemplate(onProperty, "query"), []);
+
+  const onValue = validQuery({
+    scope: "value",
+    valueId: null,
+    template: ["SELECT ?x WHERE { ?x wdt:{propertyPid} wd:{valueQid}. }"],
+  });
+  assert.deepEqual(validateTemplate(onValue, "query"), []);
+
+  // An entity-scope button matched no property, so the placeholder would
+  // survive unreplaced into the query.
+  assertRejected(
+    validQuery({
+      scope: "entity",
+      propertyId: undefined,
+      template: ["SELECT ?x WHERE { ?x wdt:{propertyPid} wd:{itemQid}. }"],
+    }),
+    "query",
+    'only available with scope "property" or "value"',
+  );
+});
+
 test("SPARQL braces are not mistaken for placeholders", () => {
   const sparqlHeavy = validQuery({
     template: [

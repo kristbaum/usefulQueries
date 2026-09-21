@@ -426,6 +426,30 @@ LIMIT 2000`,
       title: "Map of all monuments on {valueLabel}",
     },
     {
+      id: "memberList",
+      scope: "value",
+      propertyId: ["P54","P102","P1344","P53","P5096","P463"],
+      valueId: null,
+      template: `SELECT DISTINCT ?member ?memberLabel ?memberDescription ?image ?birthDate ?birthPlaceLabel ?deathDate ?deathPlaceLabel WHERE {
+  # Capping the members before the details keeps the label service off a
+  # six-figure membership (P102 on a large party) — see AGENTS.md.
+  {
+    SELECT DISTINCT ?member WHERE {
+      ?member wdt:{propertyPid} wd:{valueQid}.
+    }
+    LIMIT 300
+  }
+  OPTIONAL { ?member wdt:P18 ?image. }
+  OPTIONAL { ?member wdt:P569 ?birthDate. }
+  OPTIONAL { ?member wdt:P19 ?birthPlace. }
+  OPTIONAL { ?member wdt:P570 ?deathDate. }
+  OPTIONAL { ?member wdt:P20 ?deathPlace. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
+}`,
+      emoji: "🧑‍🤝‍🧑",
+      title: "Members of {valueLabel}",
+    },
+    {
       id: "namedAfterList",
       scope: "value",
       propertyId: ["P138"],
@@ -990,22 +1014,26 @@ function processEntityFeatures($titleElement, context) {
 function processPropertyFeatures(propertyId, $propertyElement, context) {
   const propKey = "property:" + propertyId;
 
+  // The property this button hangs off, for templates that query that exact
+  // relation instead of hardcoding one.
+  const propertyContext = { ...context, propertyPid: propertyId };
+
   // Process property-level queries
   for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
-    const queryText = replacePlaceholders(query.template, context);
+    const queryText = replacePlaceholders(query.template, propertyContext);
     const queryString = encodeQueryString(queryText);
     createQueryPopup(
       $propertyElement,
       queryString,
       query.emoji,
-      replacePlaceholders(query.title, context),
+      replacePlaceholders(query.title, propertyContext),
       "property",
     );
   }
 
   // Process property-level links
   for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
-    const url = replacePlaceholders(link.urlTemplate, context);
+    const url = replacePlaceholders(link.urlTemplate, propertyContext);
     createLinkButton($propertyElement, url, link.emoji, link.title);
   }
 }
@@ -1027,6 +1055,7 @@ function processValueFeatures(
 
   const valueContext = {
     ...context,
+    propertyPid: propertyId,
     valueQid: valueDetails.value,
     valueLabel: valueDetails.label || valueDetails.value,
     // Only set for globe-coordinate values (e.g. P625); empty elsewhere.

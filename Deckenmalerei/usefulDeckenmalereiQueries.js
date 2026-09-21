@@ -772,22 +772,26 @@ function processEntityFeatures($titleElement, context) {
 function processPropertyFeatures(propertyId, $propertyElement, context) {
   const propKey = "property:" + propertyId;
 
+  // The property this button hangs off, for templates that query that exact
+  // relation instead of hardcoding one.
+  const propertyContext = { ...context, propertyPid: propertyId };
+
   // Process property-level queries
   for (const query of (_templateIndex.queries.byKey.get(propKey) ?? [])) {
-    const queryText = replacePlaceholders(query.template, context);
+    const queryText = replacePlaceholders(query.template, propertyContext);
     const queryString = encodeQueryString(queryText);
     createQueryPopup(
       $propertyElement,
       queryString,
       query.emoji,
-      replacePlaceholders(query.title, context),
+      replacePlaceholders(query.title, propertyContext),
       "property",
     );
   }
 
   // Process property-level links
   for (const link of (_templateIndex.links.byKey.get(propKey) ?? [])) {
-    const url = replacePlaceholders(link.urlTemplate, context);
+    const url = replacePlaceholders(link.urlTemplate, propertyContext);
     createLinkButton($propertyElement, url, link.emoji, link.title);
   }
 }
@@ -809,6 +813,7 @@ function processValueFeatures(
 
   const valueContext = {
     ...context,
+    propertyPid: propertyId,
     valueQid: valueDetails.value,
     valueLabel: valueDetails.label || valueDetails.value,
     // Only set for globe-coordinate values (e.g. P625); empty elsewhere.

@@ -98,6 +98,8 @@ These buttons appear when the item has the listed property set to one of the lis
 |-
 | 🏰 || Map of all monuments on {valueLabel} || {{P|P2817}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/heritageMonumentsMap.json heritageMonumentsMap.json]
 |-
+| 🧑‍🤝‍🧑 || Members of {valueLabel} || {{P|P54}}, {{P|P102}}, {{P|P1344}}, {{P|P53}}, {{P|P5096}}, {{P|P463}} || ''any value'' || Table || {{Q|Q25909967}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/memberList.json memberList.json]
+|-
 | 📋 || Everything named after {valueLabel} || {{P|P138}} || ''any value'' || Table || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterList.json namedAfterList.json]
 |-
 | 🗺️ || Map of places named after {valueLabel} || {{P|P138}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterMap.json namedAfterMap.json]

@@ -34,6 +34,7 @@
   // The SPARQL query. Available placeholders:
   //   {itemQid}      — QID of the current entity (e.g. Q762)
   //   {itemLabel}    — label of the current entity
+  //   {propertyPid}  — PID of the property the button sits on (scopes "property" and "value")
   //   {valueQid}     — QID of the matched statement value (scope "value" only)
   //   {valueLabel}   — label of the matched value (scope "value" only)
   //   {userLanguage} — user's interface language code (e.g. "en")

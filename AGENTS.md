@@ -98,10 +98,61 @@ Runtime placeholders replaced in `template` and `title`:
 
 - `{itemQid}` — QID of the current item (e.g. `Q454172`)
 - `{itemLabel}` — display label of the current item
+- `{propertyPid}` — PID of the property the button is attached to (scopes `property` and `value`; see below)
 - `{valueQid}` — QID of the matched property value (scope `value` only)
 - `{valueLabel}` — label of the matched property value (scope `value` only)
 - `{valueLat}` / `{valueLon}` — latitude/longitude of the matched value (scope `value` only, and only non-empty when the value is a globe coordinate such as `P625`)
 - `{userLanguage}` — the user's MediaWiki language code
+
+#### Querying the matched property (`{propertyPid}`)
+
+A template can list several `propertyId`s, and `{propertyPid}` tells the query
+which one the clicked button actually hangs off. Use it when the trigger
+property *is* the relation being queried — then one template covers a family of
+properties without a `UNION` arm per member, and the query stays a single
+triple pattern:
+
+```sparql
+    # memberList: one arm, whichever of the six member properties fired
+    ?member wdt:{propertyPid} wd:{valueQid}.
+```
+
+It also keeps the query out of the one pattern that does not scale. A `LIMIT`ed
+scan of a single `wdt:` pattern, or of `UNION` arms, terminates early; the
+property-path alternation `(wdt:P54|wdt:P102|…)` is materialised first. Fetching
+300 members of a six-figure membership (P102 → Nazi Party):
+
+| member scan | time |
+| ------------- | ------ |
+| `?member wdt:{propertyPid} wd:{valueQid}.` | 0.4 s |
+| six `UNION` arms | 0.3 s |
+| `VALUES ?prop` + variable predicate | 0.5 s |
+| six-way property path | 2.0–2.7 s, once a 90 s timeout |
+
+So the placeholder is mainly about precision and a smaller template — the
+`UNION` form is no slower. What *does* decide whether the query finishes is how
+many members reach the `OPTIONAL`s and the label service, which is why
+`memberList` caps them in a subselect first. Same query, P463 → Royal Society,
+measured back to back: 11 s at `LIMIT 200`, 14 s at 300, 40 s at 500, against a
+60 s WDQS ceiling.
+Note that WDQS timings swing by an order of magnitude with server load, and a
+timed-out response is cached and replayed instantly — vary the query (a comment
+is enough) when re-measuring.
+
+Also mind that `VALUES ?prop { … } ?member ?prop wd:Q…` is not just slow but
+wrong inside a subselect: Blazegraph returned the *predicates* in `?member`.
+
+Do **not** reach for it when a multi-property template deliberately aggregates
+*across* its properties: `positionTimeline` wants every office in one timeline
+and `countsOverTime` wants population, members and students in one chart, so
+both keep their hardcoded `VALUES` lists. The test is whether the other
+properties belong in the same result set — if they do, hardcode them; if the
+button should answer only for the statement it sits on, use `{propertyPid}`.
+
+Two things it is not: it is unset on `entity` scope (the button hangs off the
+title and matched no property), which the validator rejects, and it expands to
+a bare PID (`P54`), so it needs its `wdt:` / `p:` prefix written in the
+template.
 
 ### Link template (`templates/links/*.json`)
 

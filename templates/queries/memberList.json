@@ -1,0 +1,34 @@
+{
+  "id": "memberList",
+  "example": "Q25909967",
+  "scope": "value",
+  "propertyId": [
+    "P54",
+    "P102",
+    "P1344",
+    "P53",
+    "P5096",
+    "P463"
+  ],
+  "valueId": null,
+  "template": [
+    "SELECT DISTINCT ?member ?memberLabel ?memberDescription ?image ?birthDate ?birthPlaceLabel ?deathDate ?deathPlaceLabel WHERE {",
+    "  # Capping the members before the details keeps the label service off a",
+    "  # six-figure membership (P102 on a large party) — see AGENTS.md.",
+    "  {",
+    "    SELECT DISTINCT ?member WHERE {",
+    "      ?member wdt:{propertyPid} wd:{valueQid}.",
+    "    }",
+    "    LIMIT 300",
+    "  }",
+    "  OPTIONAL { ?member wdt:P18 ?image. }",
+    "  OPTIONAL { ?member wdt:P569 ?birthDate. }",
+    "  OPTIONAL { ?member wdt:P19 ?birthPlace. }",
+    "  OPTIONAL { ?member wdt:P570 ?deathDate. }",
+    "  OPTIONAL { ?member wdt:P20 ?deathPlace. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "}"
+  ],
+  "emoji": "🧑‍🤝‍🧑",
+  "title": "Members of {valueLabel}"
+}

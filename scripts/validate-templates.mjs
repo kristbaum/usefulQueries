@@ -11,6 +11,9 @@ const SCOPES = ["entity", "property", "value"];
 // Placeholders replaced by replacePlaceholders() in src/helpers.js. Anything
 // else survives into the SPARQL query / URL verbatim and breaks it.
 const BASE_PLACEHOLDERS = ["itemQid", "itemLabel", "userLanguage"];
+// The property the button is attached to. Only bound for scope "property" and
+// "value" — an entity-scope button hangs off the title and matched no property.
+const PROPERTY_PLACEHOLDERS = ["propertyPid"];
 // valueLat / valueLon are only filled for globe-coordinate values (P625 and
 // friends); on any other datatype they resolve to an empty string.
 const VALUE_PLACEHOLDERS = ["valueQid", "valueLabel", "valueLat", "valueLon"];
@@ -160,10 +163,13 @@ export function validateTemplate(tpl, kind) {
   }
 
   // --- placeholders ---
-  const known =
-    scope === "value"
-      ? [...BASE_PLACEHOLDERS, ...VALUE_PLACEHOLDERS]
-      : BASE_PLACEHOLDERS;
+  const known = [...BASE_PLACEHOLDERS];
+  if (scope === "property" || scope === "value") {
+    known.push(...PROPERTY_PLACEHOLDERS);
+  }
+  if (scope === "value") {
+    known.push(...VALUE_PLACEHOLDERS);
+  }
 
   for (const [field, text] of texts) {
     for (const name of new Set(collectPlaceholders(text))) {
@@ -171,6 +177,10 @@ export function validateTemplate(tpl, kind) {
       if (VALUE_PLACEHOLDERS.includes(name)) {
         errors.push(
           `"${field}" uses {${name}}, which is only available with scope "value"`,
+        );
+      } else if (PROPERTY_PLACEHOLDERS.includes(name)) {
+        errors.push(
+          `"${field}" uses {${name}}, which is only available with scope "property" or "value"`,
         );
       } else {
         errors.push(
