@@ -20,5 +20,5 @@
     "LIMIT 1000"
   ],
   "emoji": "📍",
-  "title": "Other objects on {itemLabel}"
+  "title": "Other objects on {valueLabel}"
 }
