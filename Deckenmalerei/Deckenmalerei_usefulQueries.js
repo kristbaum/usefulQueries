@@ -4,7 +4,7 @@
  *
  * Documentation: https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries
  *
- * License: CC0
+ * License of this file: CC0
  */
 
 $(function () {
