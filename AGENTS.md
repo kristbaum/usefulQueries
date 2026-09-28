@@ -70,13 +70,13 @@ Keep them green before committing.
 5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
 7. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified).
-   A variant built with `--custom <Name>` writes `<Name>/<Name>_usefulQueries.js`
+   A profile built with `--profile <Name>` writes `<Name>/<Name>_usefulQueries.js`
    and `<Name>/minified_<Name>_usefulQueries.js` instead — same names, prefixed.
 8. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
    `usefulQueries.wiki` from the templates (`scripts/generate-wiki.mjs`).
    Everything from a managed heading up to the next top-level heading is
    replaced, so the rest of the page is safe to edit by hand; a missing heading
-   is appended. Custom builds without a matching `.wiki` file skip this step.
+   is appended. Profiles without a matching `.wiki` file skip this step.
 
 **Always run `npm run build` after changing any file in `src/` or `templates/`.**
 
@@ -87,7 +87,7 @@ how to choose `scope`, and the rules for SPARQL that runs on both WDQS and
 QLever — lives in [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md). It is written to be
 handed to an LLM on its own, so script users can create buttons without reading
 this file. Read it before adding or changing anything in `templates/` or a
-custom variant's `templates/`.
+profile's `templates/`.
 
 The build enforces the schema (`scripts/validate-templates.mjs`) and three
 syntactic SPARQL rules (`scripts/check-sparql.mjs`). It cannot check that the

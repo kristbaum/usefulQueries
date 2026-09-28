@@ -1,18 +1,18 @@
-# Deckenmalerei — a usefulQueries variant for the Baroque ceiling painting corpus
+# Deckenmalerei — a usefulQueries profile for the Baroque ceiling painting corpus
 
-A custom build of [usefulQueries](../README.md) aimed at the items documented in
+A profile of [usefulQueries](../README.md) aimed at the items documented in
 the *Corpus der barocken Deckenmalerei in Deutschland* (CbDD), which are marked
 on Wikidata with [deckenmalerei.eu ID (P10626)](https://www.wikidata.org/wiki/Property:P10626).
 
 It targets Wikidata itself, not a separate Wikibase — the settings are the stock
-Wikidata ones. The variant exists to ship a *different set of buttons*, tuned to
+Wikidata ones. The profile exists to ship a *different set of buttons*, tuned to
 the three kinds of item this corpus is built from: ceiling paintings, the
 buildings that hold them, and the painters and patrons behind them.
 
 ## Build
 
 ```bash
-node scripts/assemble.mjs --custom Deckenmalerei
+node scripts/assemble.mjs --profile Deckenmalerei
 ```
 
 Writes `Deckenmalerei_usefulQueries.js` and `minified_Deckenmalerei_usefulQueries.js`

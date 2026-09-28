@@ -9,18 +9,18 @@ const repoRoot = path.resolve(process.cwd());
 const frameworkPath = path.join(repoRoot, "framework.js");
 const srcDir = path.join(repoRoot, "src");
 
-// --custom <Name> switches settings, templates and output into a named subfolder
-const customIdx = process.argv.indexOf("--custom");
-const customName = customIdx !== -1 ? process.argv[customIdx + 1] : null;
+// --profile <Name> switches settings, templates and output into a named subfolder
+const profileIdx = process.argv.indexOf("--profile");
+const profileName = profileIdx !== -1 ? process.argv[profileIdx + 1] : null;
 
 // Every build lives in one folder and names its outputs after one base name:
 //   usefulQueries.js          minified_usefulQueries.js          usefulQueries.wiki
 //   Name/Name_usefulQueries.js  Name/minified_Name_usefulQueries.js  Name/Name_usefulQueries.wiki
 // The only other difference is where the default build keeps its settings.
-const buildDir = customName ? path.join(repoRoot, customName) : repoRoot;
-const baseName = customName ? `${customName}_usefulQueries` : "usefulQueries";
+const buildDir = profileName ? path.join(repoRoot, profileName) : repoRoot;
+const baseName = profileName ? `${profileName}_usefulQueries` : "usefulQueries";
 
-const settingsPath = customName
+const settingsPath = profileName
   ? path.join(buildDir, "settings.json")
   : path.join(srcDir, "settings.json");
 const queriesDir = path.join(buildDir, "templates", "queries");
@@ -270,7 +270,7 @@ console.log(
 );
 
 // Keep the on-wiki documentation in sync with the shipped templates.
-// Builds without a .wiki page (custom variants) are skipped silently.
+// Builds without a .wiki page (most profiles) are skipped silently.
 const wikiResult = await updateWikiPage(wikiPath, queriesDir, linksDir);
 if (wikiResult !== "skipped") {
   console.log(

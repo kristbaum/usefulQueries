@@ -55,11 +55,11 @@ npm run build
 > **Wikibase Cloud / MediaWiki version compatibility:**
 > The popup feature relies on `CdxPopover` from the [Codex](https://doc.wikimedia.org/codex/) design system, which is not available on every Wikibase Version. The script detects this at runtime and automatically falls back to opening the query as a plain link in a new tab instead of showing an inline popup.
 
-### Custom builds with `--custom`
+### Profiles with `--profile`
 
-For a self-contained variant (e.g. targeting a different Wikibase), you can keep all configuration, templates and output inside a named subfolder using the `--custom <Name>` flag.
+A profile is a self-contained build with its own settings, templates and output, kept in a named subfolder and built with the `--profile <Name>` flag. Use one to target a different Wikibase, or to ship a separate set of buttons for Wikidata.
 
-**Expected folder layout for a custom build named `MyQueries`:**
+**Expected folder layout for a profile named `MyQueries`:**
 
 ```bash
 MyQueries/
@@ -72,7 +72,7 @@ MyQueries/
 **Build command:**
 
 ```bash
-node scripts/assemble.mjs --custom MyQueries
+node scripts/assemble.mjs --profile MyQueries
 ```
 
 The build will read `MyQueries/settings.json`, load templates from `MyQueries/templates/queries/` and `MyQueries/templates/links/`, and write the output files into the same subfolder:
@@ -80,11 +80,11 @@ The build will read `MyQueries/settings.json`, load templates from `MyQueries/te
 - `MyQueries/MyQueries_usefulQueries.js` — readable output
 - `MyQueries/minified_MyQueries_usefulQueries.js` — minified output for upload
 
-This is the same naming as the main build (`usefulQueries.js` / `minified_usefulQueries.js`), with the variant name as a prefix.
+This is the same naming as the main build (`usefulQueries.js` / `minified_usefulQueries.js`), with the profile name as a prefix.
 
-Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per variant.
+Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per profile.
 
-**Variants in this repository:**
+**Profiles in this repository:**
 
 - [`ReSaNode/`](ReSaNode/) — targets the ReSaNode Wikibase Cloud instance.
 - [`Deckenmalerei/`](Deckenmalerei/README.md) — targets Wikidata, with queries for
