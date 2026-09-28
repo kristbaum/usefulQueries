@@ -74,12 +74,14 @@ one item and compared directly.
 
 ## How the buttons are triggered
 
-`scope` and `propertyId` decide where a button appears — see the template format
-in [AGENTS.md](../AGENTS.md).
+`scope` and `propertyId` decide where a button appears, see
+[TEMPLATE_GUIDE.md](../TEMPLATE_GUIDE.md).
 
 - **Paintings** are reached through the statements that matter for them:
-  `P1257` (Iconclass), `P276` (location), `P88` (commissioned by). Attaching to
-  the statement rather than the item puts the button next to the data it explains.
+  `P1257` (Iconclass), `P276` (location), `P88` (commissioned by). These use
+  `scope: "value"` and query `{valueQid}`, so a painting with two Iconclass
+  notations or two patrons gets one button per statement, each answering for
+  the value it sits next to.
 - **People** are matched with `scope: "value"` on `P31` = `Q5`.
 - **Buildings** are matched with `scope: "value"` on `P31` against a list of the
   building classes that actually occur in the corpus — château, royal palace,

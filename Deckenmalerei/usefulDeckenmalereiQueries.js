@@ -150,7 +150,7 @@ LIMIT 300`,
     },
     {
       id: "corpusIconclassSiblings",
-      scope: "property",
+      scope: "value",
       propertyId: ["P1257"],
       template: `#defaultView:Map
 # CbDD corpus only. An Iconclass notation on the item page is an opaque code.
@@ -163,8 +163,8 @@ LIMIT 300`,
 # per code; on a map those land on the same point, which is why this is not
 # aggregated - GROUP_CONCAT here costs more than the duplicate rows do.
 SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?coordinates ?creator ?creatorLabel ?inception WHERE {
-  wd:{itemQid} wdt:P1257 ?ownCode.
-  BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)
+  # {valueQid} is the clicked notation as a string literal, e.g. "91E23".
+  BIND(SUBSTR({valueQid}, 1, 3) AS ?branch)
   ?painting wdt:P10626 [];
             wdt:P1257 ?iconclass;
             wdt:P276 ?building.
@@ -177,7 +177,7 @@ SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?co
 }
 LIMIT 200`,
       emoji: "🎭",
-      title: "CbDD corpus only — where else this Iconclass theme appears on a Baroque ceiling",
+      title: "CbDD corpus only — where else the Iconclass branch of {valueLabel} appears on a Baroque ceiling",
     },
     {
       id: "corpusNearbySites",
@@ -214,17 +214,16 @@ LIMIT 100`,
     },
     {
       id: "corpusPatronCommissions",
-      scope: "property",
+      scope: "value",
       propertyId: ["P88"],
       template: `#defaultView:Map
 # CbDD corpus only. Patronage is the connection the item page hides best: the
 # commissioner is one link among many, and nothing shows how far that patron's
 # programme reached. This maps everything else the same patron commissioned in
 # the Corpus, with the painters they hired for each site.
-SELECT DISTINCT ?work ?workLabel ?patron ?patronLabel ?building ?buildingLabel ?coordinates ?inception ?creator ?creatorLabel WHERE {
-  wd:{itemQid} wdt:P88 ?patron.
+SELECT DISTINCT ?work ?workLabel ?building ?buildingLabel ?coordinates ?inception ?creator ?creatorLabel WHERE {
   ?work wdt:P10626 [];
-        wdt:P88 ?patron;
+        wdt:P88 wd:{valueQid};
         wdt:P276 ?building.
   FILTER(?work != wd:{itemQid})
   ?building wdt:P625 ?coordinates.
@@ -234,11 +233,11 @@ SELECT DISTINCT ?work ?workLabel ?patron ?patronLabel ?building ?buildingLabel ?
 }
 LIMIT 300`,
       emoji: "👑",
-      title: "CbDD corpus only — everything else this patron commissioned",
+      title: "CbDD corpus only — everything else {valueLabel} commissioned",
     },
     {
       id: "corpusSameBuildingProgramme",
-      scope: "property",
+      scope: "value",
       propertyId: ["P276"],
       template: `# CbDD corpus only. A ceiling was almost never painted on its own: it belongs to
 # a programme spanning a staircase, a hall or a whole wing. The item page shows a
@@ -247,9 +246,8 @@ LIMIT 300`,
 SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes ?deckenmalereiUrl WHERE {
   {
     SELECT ?sibling ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=", ") AS ?themes) WHERE {
-      wd:{itemQid} wdt:P276 ?building.
       ?sibling wdt:P10626 ?dmId;
-               wdt:P276 ?building.
+               wdt:P276 wd:{valueQid}.
       FILTER(?sibling != wd:{itemQid})
       BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?dmId)) AS ?deckenmalereiUrl)
       OPTIONAL { ?sibling wdt:P1257 ?ic. }
@@ -263,7 +261,7 @@ SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes
 ORDER BY ?inception ?siblingLabel
 LIMIT 300`,
       emoji: "🏛️",
-      title: "CbDD corpus only — the rest of the painted programme around {itemLabel}",
+      title: "CbDD corpus only — the rest of the painted programme in {valueLabel}",
     },
     {
       id: "openCreatorWorks",
@@ -292,7 +290,7 @@ LIMIT 400`,
     },
     {
       id: "openIconclassAnywhere",
-      scope: "property",
+      scope: "value",
       propertyId: ["P1257"],
       template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
 # Same Iconclass branch as the Corpus-only query, but with the P10626 filter
@@ -307,8 +305,7 @@ LIMIT 400`,
 SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?creatorLabel ?collection ?collectionLabel ?inception ?image ?cbddId WHERE {
   {
     SELECT ?artwork ?iconclass WHERE {
-      wd:{itemQid} wdt:P1257 ?ownCode.
-      BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)
+      BIND(SUBSTR({valueQid}, 1, 3) AS ?branch)
       ?artwork wdt:P1257 ?iconclass.
       FILTER(STRSTARTS(?iconclass, ?branch))
       FILTER(?artwork != wd:{itemQid})
@@ -323,7 +320,7 @@ SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?
   SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
 }`,
       emoji: "🌍",
-      title: "All of Wikidata — this Iconclass theme beyond the Corpus",
+      title: "All of Wikidata — the Iconclass branch of {valueLabel} beyond the Corpus",
     },
     {
       id: "openNearbyHeritage",
@@ -354,15 +351,14 @@ LIMIT 250`,
     },
     {
       id: "openPatronCommissions",
-      scope: "property",
+      scope: "value",
       propertyId: ["P88"],
       template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
 # Same patron as the Corpus-only query, but without the P10626 filter the answer
 # stops being a list of ceilings and becomes the shape of a building campaign:
 # the palaces, churches, gardens and monuments the same person paid for.
 SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?creator ?creatorLabel ?location ?locationLabel ?cbddId WHERE {
-  wd:{itemQid} wdt:P88 ?patron.
-  ?work wdt:P88 ?patron.
+  ?work wdt:P88 wd:{valueQid}.
   FILTER(?work != wd:{itemQid})
   OPTIONAL { ?work wdt:P31 ?kind. }
   OPTIONAL { ?work wdt:P571 ?inception. }
@@ -374,7 +370,7 @@ SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?c
 ORDER BY ?inception
 LIMIT 400`,
       emoji: "💰",
-      title: "All of Wikidata — the full building campaign of this patron",
+      title: "All of Wikidata — the full building campaign of {valueLabel}",
     },
   ];
 

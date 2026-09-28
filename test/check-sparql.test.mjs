@@ -56,7 +56,7 @@ test("a query without a label service is not second-guessed", () => {
 });
 
 test("an OPTIONAL holding two unconnected patterns is rejected", () => {
-  // The example from AGENTS.md: QLever materialises the cross product of two
+  // The example from TEMPLATE_GUIDE.md: QLever materialises the cross product of two
   // 6M-row relations.
   rejects(
     [
