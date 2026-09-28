@@ -15,7 +15,7 @@ buildings that hold them, and the painters and patrons behind them.
 node scripts/assemble.mjs --custom Deckenmalerei
 ```
 
-Writes `usefulDeckenmalereiQueries.js` and `minified_Deckenmalerei_version.js`
+Writes `Deckenmalerei_usefulQueries.js` and `minified_Deckenmalerei_usefulQueries.js`
 into this folder. Upload the minified file to your Wikidata user JS page.
 
 ## The two families of query

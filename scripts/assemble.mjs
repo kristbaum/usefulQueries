@@ -13,23 +13,21 @@ const srcDir = path.join(repoRoot, "src");
 const customIdx = process.argv.indexOf("--custom");
 const customName = customIdx !== -1 ? process.argv[customIdx + 1] : null;
 
-let settingsPath, queriesDir, linksDir, outputPath, minifiedPath, wikiPath;
-if (customName) {
-  const customDir = path.join(repoRoot, customName);
-  settingsPath = path.join(customDir, "settings.json");
-  queriesDir = path.join(customDir, "templates", "queries");
-  linksDir = path.join(customDir, "templates", "links");
-  outputPath = path.join(customDir, `useful${customName}Queries.js`);
-  minifiedPath = path.join(customDir, `minified_${customName}_version.js`);
-  wikiPath = path.join(customDir, `useful${customName}Queries.wiki`);
-} else {
-  settingsPath = path.join(repoRoot, "src", "settings.json");
-  queriesDir = path.join(repoRoot, "templates", "queries");
-  linksDir = path.join(repoRoot, "templates", "links");
-  outputPath = path.join(repoRoot, "usefulQueries.js");
-  minifiedPath = path.join(repoRoot, "minified_version.js");
-  wikiPath = path.join(repoRoot, "usefulQueries.wiki");
-}
+// Every build lives in one folder and names its outputs after one base name:
+//   usefulQueries.js          minified_usefulQueries.js          usefulQueries.wiki
+//   Name/Name_usefulQueries.js  Name/minified_Name_usefulQueries.js  Name/Name_usefulQueries.wiki
+// The only other difference is where the default build keeps its settings.
+const buildDir = customName ? path.join(repoRoot, customName) : repoRoot;
+const baseName = customName ? `${customName}_usefulQueries` : "usefulQueries";
+
+const settingsPath = customName
+  ? path.join(buildDir, "settings.json")
+  : path.join(srcDir, "settings.json");
+const queriesDir = path.join(buildDir, "templates", "queries");
+const linksDir = path.join(buildDir, "templates", "links");
+const outputPath = path.join(buildDir, `${baseName}.js`);
+const minifiedPath = path.join(buildDir, `minified_${baseName}.js`);
+const wikiPath = path.join(buildDir, `${baseName}.wiki`);
 
 // Source files to include, in dependency order
 const SRC_FILES = [

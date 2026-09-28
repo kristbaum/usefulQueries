@@ -355,7 +355,7 @@ npm install
 npm run build && npm test
 ```
 
-Upload the resulting `minified_version.js` to a user JS page on Wikidata and
+Upload the resulting `minified_usefulQueries.js` to a user JS page on Wikidata and
 load it from [your `common.js`](https://www.wikidata.org/wiki/Special:MyPage/common.js)
 — the README has the step-by-step setup.
 
@@ -363,7 +363,7 @@ For a personal or project-specific set of buttons, use a custom variant instead
 of editing the shared templates: create `MyQueries/settings.json` (copy
 `src/settings.json`) and `MyQueries/templates/queries/`, put the template
 there, and run `node scripts/assemble.mjs --custom MyQueries`. The output lands
-in `MyQueries/minified_MyQueries_version.js`. The `Deckenmalerei/` and
+in `MyQueries/minified_MyQueries_usefulQueries.js`. The `Deckenmalerei/` and
 `ReSaNode/` folders are worked examples.
 
 When browsing for a template to copy, the existing ones under

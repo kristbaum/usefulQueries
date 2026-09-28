@@ -30,14 +30,14 @@ usefulQueries/
 ├── TEMPLATE_GUIDE.md         # How to write templates — self-contained, for LLM agents and users
 ├── usefulQueries.wiki        # On-wiki documentation; its overview sections are generated
 ├── usefulQueries.js          # Built readable output (do not edit directly)
-├── minified_version.js       # Built minified output — the file uploaded to Wikidata
+├── minified_usefulQueries.js # Built minified output — the file uploaded to Wikidata
 └── package.json              # npm scripts; dev dependencies are terser + oxlint
 ```
 
 ## Build system
 
 ```bash
-npm run build   # runs scripts/assemble.mjs → writes usefulQueries.js + minified_version.js
+npm run build   # runs scripts/assemble.mjs → writes usefulQueries.js + minified_usefulQueries.js
 npm run lint    # oxlint check (readable build output)
 npm test        # checks the built output files are valid, runnable JS
 ```
@@ -47,7 +47,7 @@ npm test        # checks the built output files are valid, runnable JS
 deps) covers two things:
 
 - `test/build-output.test.mjs` verifies that both `usefulQueries.js` and
-  `minified_version.js` exist, parse as valid JavaScript, and execute their
+  `minified_usefulQueries.js` exist, parse as valid JavaScript, and execute their
   top-level IIFE without throwing.
 - `test/validate-templates.test.mjs` checks every shipped template against the
   schema and pins the rejection cases.
@@ -69,7 +69,9 @@ Keep them green before committing.
    abort the build, listing every problem found, if any template is malformed.
 5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
-7. Writes `usefulQueries.js` (readable) and `minified_version.js` (terser-minified).
+7. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified).
+   A variant built with `--custom <Name>` writes `<Name>/<Name>_usefulQueries.js`
+   and `<Name>/minified_<Name>_usefulQueries.js` instead — same names, prefixed.
 8. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
    `usefulQueries.wiki` from the templates (`scripts/generate-wiki.mjs`).
    Everything from a managed heading up to the next top-level heading is

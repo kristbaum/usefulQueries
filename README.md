@@ -24,7 +24,7 @@ Steps:
    npm run build
    ```
 
-7. Copy `minified_version.js` and upload it to a location like: <https://www.wikidata.org/wiki/Special:MyPage/myUsefulQueries.js>
+7. Copy `minified_usefulQueries.js` and upload it to a location like: <https://www.wikidata.org/wiki/Special:MyPage/myUsefulQueries.js>
 8. Replace the link in <https://www.wikidata.org/wiki/Special:MyPage/common.js> with your version.
 
 ### Writing a template
@@ -77,8 +77,10 @@ node scripts/assemble.mjs --custom MyQueries
 
 The build will read `MyQueries/settings.json`, load templates from `MyQueries/templates/queries/` and `MyQueries/templates/links/`, and write the output files into the same subfolder:
 
-- `MyQueries/usefulMyQueriesQueries.js` — readable output
-- `MyQueries/minified_MyQueries_version.js` — minified output for upload
+- `MyQueries/MyQueries_usefulQueries.js` — readable output
+- `MyQueries/minified_MyQueries_usefulQueries.js` — minified output for upload
+
+This is the same naming as the main build (`usefulQueries.js` / `minified_usefulQueries.js`), with the variant name as a prefix.
 
 Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per variant.
 
