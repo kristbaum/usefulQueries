@@ -15,7 +15,7 @@ Steps:
 1. Download this repo
 2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 3. Copy one of the existing files from `templates/queries` and rename it for your new query (keep the `.json` extension).
-4. Edit the file following the template structure described below.
+4. Edit the file following [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) (or give that file to an LLM and let it write the template).
 5. Optionally add a link template in `templates/links` if your query integrates with an external viewer.
 6. Rebuild the project assets so the new template becomes available in the UI:
 
@@ -24,106 +24,24 @@ Steps:
    npm run build
    ```
 
-7. Copy `minified_version.js` and upload it to a location like: <https://www.wikidata.org/wiki/Special:MyPage/myUsefulQueries.js>
+7. Copy `minified_usefulQueries.js` and upload it to a location like: <https://www.wikidata.org/wiki/Special:MyPage/myUsefulQueries.js>
 8. Replace the link in <https://www.wikidata.org/wiki/Special:MyPage/common.js> with your version.
 
-### Query template structure (`templates/queries/*.json`)
+### Writing a template
 
-A query template is a JSON file that describes when a button should appear and what SPARQL query it runs. There are three trigger modes controlled by `scope`:
+The full reference, including fields, placeholders, where a button should hang, and how
+to write SPARQL that runs (hopefully) on both WDQS and QLever, is
+[TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md). It is written as a self-contained documentation, so everything for writing your own queries templates should be in there.
 
-**`scope: "entity"`** — button appears on every item:
+In short, each button is one JSON file with a `scope`:
 
-```json
-{
-  "id": "entityGraph",
-  "scope": "entity",
-  "template": [
-    "#defaultView:Graph",
-    "SELECT ?node ?nodeLabel ?childNode ?childNodeLabel WHERE {",
-    "  BIND(wd:{itemQid} AS ?node)",
-    "  ...",
-    "}"
-  ],
-  "emoji": "🔗",
-  "title": "Connections of {itemLabel}"
-}
-```
-
-**`scope: "property"`** — button appears when the item has a specific property (e.g. P2124 member count):
-
-```json
-{
-  "id": "membersCount",
-  "scope": "property",
-  "propertyId": ["P2124"],
-  "template": [
-    "#defaultView:LineChart",
-    "SELECT ?pit ?s_count WHERE {",
-    "  wd:{itemQid} p:P2124 ?statement.",
-    "  ?statement ps:P2124 ?s_count.",
-    "  OPTIONAL { ?statement pq:P585 ?pit. }",
-    "}"
-  ],
-  "emoji": "📊",
-  "title": "Members count of {itemLabel} over time"
-}
-```
-
-**`scope: "value"`** — button appears when the item has a specific property set to a specific value (e.g. occupation = painter):
-
-```json
-{
-  "id": "artworks",
-  "scope": "value",
-  "propertyId": ["P106"],
-  "valueId": ["Q1028181"],
-  "template": [
-    "#defaultView:ImageGrid",
-    "SELECT ?item ?image WHERE {",
-    "  ?item wdt:P170 wd:{itemQid}.",
-    "  OPTIONAL { ?item wdt:P18 ?image. }",
-    "}",
-    "LIMIT 100"
-  ],
-  "emoji": "🖼️",
-  "title": "Artworks by {itemLabel}"
-}
-```
-
-The placeholders `{itemQid}`, `{itemLabel}`, `{valueQid}`, and `{valueLabel}` are replaced at runtime with the current item's data. On `value`-scope templates, `{valueLat}` and `{valueLon}` additionally expose the coordinates of a globe-coordinate value such as `P625`.
-
-### Link template structure (`templates/links/*.json`)
-
-A link template adds a button that opens an external URL instead of running a SPARQL query. The URL is built from a pattern using the current item's QID.
-
-**`scope: "property"`** — link appears when the item has any of the listed properties:
-
-```json
-{
-  "id": "entitree_family",
-  "scope": "property",
-  "propertyId": ["P22", "P25", "P26", "P40", "P3373", "P1038", "P3448", "P8810"],
-  "urlTemplate": "https://www.entitree.com/en/family_tree/{itemQid}",
-  "emoji": "🌳",
-  "title": "Family tree on Entitree"
-}
-```
-
-**`scope: "value"`** — link appears when the item has a specific property set to a specific value:
-
-```json
-{
-  "id": "scholia",
-  "scope": "value",
-  "propertyId": ["P106"],
-  "valueId": ["Q1650915"],
-  "urlTemplate": "https://scholia.toolforge.org/author/{itemQid}",
-  "emoji": "📚",
-  "title": "Page on Scholia"
-}
-```
-
-The `{itemQid}` placeholder is replaced at runtime with the current item's QID.
+- **`entity`**: next to the item title, on every item.
+- **`property`**: next to a property label; for queries that use *all* of that
+  property's values together, or none of them (the property just signals the
+  right kind of item).
+- **`value`**: next to each statement value; for queries whose answer depends
+  on the clicked value (`{valueQid}`), or, with `valueId`, for buttons that
+  should only appear when a value matches (e.g. occupation = painter).
 
 ## Run on another Wikibase
 
@@ -137,11 +55,11 @@ npm run build
 > **Wikibase Cloud / MediaWiki version compatibility:**
 > The popup feature relies on `CdxPopover` from the [Codex](https://doc.wikimedia.org/codex/) design system, which is not available on every Wikibase Version. The script detects this at runtime and automatically falls back to opening the query as a plain link in a new tab instead of showing an inline popup.
 
-### Custom builds with `--custom`
+### Profiles with `--profile`
 
-For a self-contained variant (e.g. targeting a different Wikibase), you can keep all configuration, templates and output inside a named subfolder using the `--custom <Name>` flag.
+A profile is a self-contained build with its own settings, templates and output, kept in a named subfolder and built with the `--profile <Name>` flag. Use one to target a different Wikibase, or to ship a separate set of buttons for Wikidata.
 
-**Expected folder layout for a custom build named `MyQueries`:**
+**Expected folder layout for a profile named `MyQueries`:**
 
 ```bash
 MyQueries/
@@ -154,17 +72,19 @@ MyQueries/
 **Build command:**
 
 ```bash
-node scripts/assemble.mjs --custom MyQueries
+node scripts/assemble.mjs --profile MyQueries
 ```
 
 The build will read `MyQueries/settings.json`, load templates from `MyQueries/templates/queries/` and `MyQueries/templates/links/`, and write the output files into the same subfolder:
 
-- `MyQueries/usefulMyQueriesQueries.js` — readable output
-- `MyQueries/minified_MyQueries_version.js` — minified output for upload
+- `MyQueries/MyQueries_usefulQueries.js` — readable output
+- `MyQueries/minified_MyQueries_usefulQueries.js` — minified output for upload
 
-Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per variant.
+This is the same naming as the main build (`usefulQueries.js` / `minified_usefulQueries.js`), with the profile name as a prefix.
 
-**Variants in this repository:**
+Missing `queries/` or `links/` subdirectories are silently ignored (treated as empty). The shared source files in `src/` are always used, so only settings and templates need to be provided per profile.
+
+**Profiles in this repository:**
 
 - [`ReSaNode/`](ReSaNode/) — targets the ReSaNode Wikibase Cloud instance.
 - [`Deckenmalerei/`](Deckenmalerei/README.md) — targets Wikidata, with queries for

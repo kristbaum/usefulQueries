@@ -27,16 +27,17 @@ usefulQueries/
 │   ├── validate-templates.mjs # Template schema checks, run by the build
 │   └── check-sparql.mjs      # WDQS/QLever portability checks, run by the build
 ├── framework.js              # Outer IIFE wrapper injected by the build
+├── TEMPLATE_GUIDE.md         # How to write templates — self-contained, for LLM agents and users
 ├── usefulQueries.wiki        # On-wiki documentation; its overview sections are generated
 ├── usefulQueries.js          # Built readable output (do not edit directly)
-├── minified_version.js       # Built minified output — the file uploaded to Wikidata
+├── minified_usefulQueries.js # Built minified output — the file uploaded to Wikidata
 └── package.json              # npm scripts; dev dependencies are terser + oxlint
 ```
 
 ## Build system
 
 ```bash
-npm run build   # runs scripts/assemble.mjs → writes usefulQueries.js + minified_version.js
+npm run build   # runs scripts/assemble.mjs → writes usefulQueries.js + minified_usefulQueries.js
 npm run lint    # oxlint check (readable build output)
 npm test        # checks the built output files are valid, runnable JS
 ```
@@ -46,7 +47,7 @@ npm test        # checks the built output files are valid, runnable JS
 deps) covers two things:
 
 - `test/build-output.test.mjs` verifies that both `usefulQueries.js` and
-  `minified_version.js` exist, parse as valid JavaScript, and execute their
+  `minified_usefulQueries.js` exist, parse as valid JavaScript, and execute their
   top-level IIFE without throwing.
 - `test/validate-templates.test.mjs` checks every shipped template against the
   schema and pins the rejection cases.
@@ -68,137 +69,31 @@ Keep them green before committing.
    abort the build, listing every problem found, if any template is malformed.
 5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
-7. Writes `usefulQueries.js` (readable) and `minified_version.js` (terser-minified).
+7. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified).
+   A profile built with `--profile <Name>` writes `<Name>/<Name>_usefulQueries.js`
+   and `<Name>/minified_<Name>_usefulQueries.js` instead — same names, prefixed.
 8. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
    `usefulQueries.wiki` from the templates (`scripts/generate-wiki.mjs`).
    Everything from a managed heading up to the next top-level heading is
    replaced, so the rest of the page is safe to edit by hand; a missing heading
-   is appended. Custom builds without a matching `.wiki` file skip this step.
+   is appended. Profiles without a matching `.wiki` file skip this step.
 
 **Always run `npm run build` after changing any file in `src/` or `templates/`.**
 
-## Template formats
+## Writing templates
 
-### Query template (`templates/queries/*.json`)
+Everything about *designing* a template — the field reference, placeholders,
+how to choose `scope`, and the rules for SPARQL that runs on both WDQS and
+QLever — lives in [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md). It is written to be
+handed to an LLM on its own, so script users can create buttons without reading
+this file. Read it before adding or changing anything in `templates/` or a
+profile's `templates/`.
 
-Controls when a SPARQL query button appears and what it runs.
-
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `id` | string | Unique identifier |
-| `example` | string | QID of an item this template can be tried out on (debugging aid, build-time only) |
-| `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
-| `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`, forbidden for `entity`) |
-| `valueId` | string[] \| null | Entity QIDs that the property value must match (`value` scope only; omit or `null` to match any value) |
-| `template` | string[] | Lines of the SPARQL query; joined with `\n` at build time |
-| `emoji` | string | Button label (usually an emoji) |
-| `title` | string | Button tooltip and popup heading; supports `{itemLabel}`, `{itemQid}` placeholders |
-
-Runtime placeholders replaced in `template` and `title`:
-
-- `{itemQid}` — QID of the current item (e.g. `Q454172`)
-- `{itemLabel}` — display label of the current item
-- `{propertyPid}` — PID of the property the button is attached to (scopes `property` and `value`; see below)
-- `{valueQid}` — QID of the matched property value (scope `value` only)
-- `{valueLabel}` — label of the matched property value (scope `value` only)
-- `{valueLat}` / `{valueLon}` — latitude/longitude of the matched value (scope `value` only, and only non-empty when the value is a globe coordinate such as `P625`)
-- `{userLanguage}` — the user's MediaWiki language code
-
-#### Querying the matched property (`{propertyPid}`)
-
-A template can list several `propertyId`s, and `{propertyPid}` tells the query
-which one the clicked button actually hangs off. Use it when the trigger
-property *is* the relation being queried — then one template covers a family of
-properties without a `UNION` arm per member, and the query stays a single
-triple pattern:
-
-```sparql
-    # memberList: one arm, whichever of the six member properties fired
-    ?member wdt:{propertyPid} wd:{valueQid}.
-```
-
-It also keeps the query out of the one pattern that does not scale. A `LIMIT`ed
-scan of a single `wdt:` pattern, or of `UNION` arms, terminates early; the
-property-path alternation `(wdt:P54|wdt:P102|…)` is materialised first. Fetching
-300 members of a six-figure membership (P102 → Nazi Party):
-
-| member scan | time |
-| ------------- | ------ |
-| `?member wdt:{propertyPid} wd:{valueQid}.` | 0.4 s |
-| six `UNION` arms | 0.3 s |
-| `VALUES ?prop` + variable predicate | 0.5 s |
-| six-way property path | 2.0–2.7 s, once a 90 s timeout |
-
-So the placeholder is mainly about precision and a smaller template — the
-`UNION` form is no slower. What *does* decide whether the query finishes is how
-many members reach the `OPTIONAL`s and the label service, which is why
-`memberList` caps them in a subselect first. Same query, P463 → Royal Society,
-measured back to back: 11 s at `LIMIT 200`, 14 s at 300, 40 s at 500, against a
-60 s WDQS ceiling.
-Note that WDQS timings swing by an order of magnitude with server load, and a
-timed-out response is cached and replayed instantly — vary the query (a comment
-is enough) when re-measuring.
-
-Also mind that `VALUES ?prop { … } ?member ?prop wd:Q…` is not just slow but
-wrong inside a subselect: Blazegraph returned the *predicates* in `?member`.
-
-Do **not** reach for it when a multi-property template deliberately aggregates
-*across* its properties: `positionTimeline` wants every office in one timeline
-and `countsOverTime` wants population, members and students in one chart, so
-both keep their hardcoded `VALUES` lists. The test is whether the other
-properties belong in the same result set — if they do, hardcode them; if the
-button should answer only for the statement it sits on, use `{propertyPid}`.
-
-Two things it is not: it is unset on `entity` scope (the button hangs off the
-title and matched no property), which the validator rejects, and it expands to
-a bare PID (`P54`), so it needs its `wdt:` / `p:` prefix written in the
-template.
-
-### Link template (`templates/links/*.json`)
-
-Controls when an external URL button appears.
-
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `id` | string | Unique identifier |
-| `example` | string | QID of an item this template can be tried out on (debugging aid, build-time only) |
-| `scope` | `"entity"` \| `"property"` \| `"value"` | When to show the button |
-| `propertyId` | string[] | Property IDs that trigger the button (required for `property`/`value`, forbidden for `entity`) |
-| `valueId` | string[] \| null | Entity QIDs the value must match (`value` scope only; omit or `null` to match any value) |
-| `urlTemplate` | string | Absolute `http(s)` URL pattern; supports the same placeholders as `title` |
-| `emoji` | string | Button label |
-| `title` | string | Button tooltip text |
-
-### Validation
-
-`npm run build` validates every template before assembling and fails with a list
-of problems rather than silently shipping a button that never appears. The rules
-are in `scripts/validate-templates.mjs`:
-
-- Unknown fields are rejected — this is what catches typos and the field names
-  from older revisions (`popupTitle`, `toolhint`, `enabled` are all gone).
-- `scope` must be one of the three values; `propertyId` / `valueId` must be
-  present or absent as the tables above describe, and must look like `P123` /
-  `Q123`.
-- `template` must be an array of strings (a bare string is a common mistake and
-  would be joined character-by-character); `urlTemplate` must be absolute.
-- Every `{placeholder}` must be one of the known names, and `{valueQid}` /
-  `{valueLabel}` are only allowed on `value`-scope templates.
-
-- `example` is mandatory on every template and must be a QID (an item on the
-  target Wikibase where the button actually appears, so the query can be tried
-  out). It is stripped by `assemble.mjs` and never reaches the shipped script,
-  but it is shown in the generated wiki overview.
-
-Note that `id` is documentation only — nothing reads it at runtime, and the two
-`entitree` link templates deliberately share one.
-
-## Adding a new query or link
-
-1. Create a new `.json` file in `templates/queries/` (or `templates/links/`).
-2. Follow the format above. Copy an existing file as a starting point.
-3. Run `npm run build`.
-4. Test locally, then upload `minified_version.js` to your Wikidata user JS page.
+The build enforces the schema (`scripts/validate-templates.mjs`) and three
+syntactic SPARQL rules (`scripts/check-sparql.mjs`). It cannot check that the
+scope is right: a template whose result depends on the clicked value must be
+`scope: "value"` and use `{valueQid}`, not read the property back out of
+`{itemQid}`.
 
 ## Key runtime conventions
 
@@ -220,49 +115,3 @@ Note that `id` is documentation only — nothing reads it at runtime, and the tw
 ```
 
 Changing `queryServiceUrl` / `queryEmbedUrl` to another Wikibase endpoint is the main way to run the script on a non-Wikidata wiki. Set `enableQLever: false` for non-Wikidata installs.
-
-## Writing queries that run on both WDQS and QLever
-
-Templates here are also converted for QLever (to-qlever.toolforge.org). Both
-engines speak SPARQL 1.1, but they plan it very differently, so a query can be
-instant on one and time out on the other. Two rules cover almost all of it.
-
-The three syntactic rules below are enforced by `scripts/check-sparql.mjs` and
-fail the build. The judgement calls at the end of the section are not — they
-still need a human and a stopwatch.
-
-**Never put two unconnected patterns in one `OPTIONAL`.** If the patterns in an
-`OPTIONAL` body share no variable with each other, write one `OPTIONAL` per
-pattern:
-
-```sparql
-    # times out on QLever - cross product of two 6M-row relations
-    OPTIONAL { ?node wdt:P18 ?nodeImage. ?childNode wdt:P18 ?childImage. }
-
-    # fine on both
-    OPTIONAL { ?node wdt:P18 ?nodeImage. }
-    OPTIONAL { ?childNode wdt:P18 ?childImage. }
-```
-
-Blazegraph evaluates the block per row of the left side, so the joint form costs
-it nothing. QLever evaluates the body as its own subtree first and materialises
-the product. The two forms are not equivalent — the joint one is all-or-nothing
-— so pick the split form deliberately, and only when binding either variable on
-its own is acceptable. It usually is.
-
-**Hoist shared lookups out of `UNION` arms.** If each arm carries its own
-`OPTIONAL` for the same lookup, move one copy below the `UNION` instead. It
-covers every arm, halves the pattern count, and removes the temptation to bolt a
-joint `OPTIONAL` on the end to fill the gaps.
-
-Also worth keeping in mind:
-
-- Keep `SERVICE wikibase:label` as the last line of the WHERE clause. The
-  converter rewrites it into `OPTIONAL { ?x rdfs:label ?xLabel. FILTER(LANG(...)) }`
-  blocks and places them well only when it can see what binds each variable.
-- Constrain the subject before an unbounded `?s ?p ?o` scan. An entity with many
-  statements can push such a query past the WDQS 60 s limit even when QLever
-  answers in milliseconds — check new templates against both endpoints, not
-  just the one you happen to be using.
-- Test the `example` value, not just the template. A template that is correct
-  for a small item can still time out on the example shipped with it.

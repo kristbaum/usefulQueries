@@ -149,7 +149,7 @@ export function validateTemplate(tpl, kind) {
       );
     } else {
       texts.push(["template", tpl.template.join("\n")]);
-      // Portability between WDQS and QLever — see AGENTS.md.
+      // Portability between WDQS and QLever — see TEMPLATE_GUIDE.md.
       errors.push(...checkSparql(tpl.template));
     }
   } else {

@@ -234,7 +234,7 @@ export async function loadTemplates(dir) {
   try {
     files = (await readdir(dir)).filter((f) => f.endsWith(".json")).sort();
   } catch {
-    return []; // optional directory (e.g. a build variant without links)
+    return []; // optional directory (e.g. a profile without links)
   }
   const templates = [];
   for (const file of files) {
@@ -256,7 +256,7 @@ export async function updateWikiPage(wikiPath, queriesDir, linksDir) {
   try {
     wikitext = await readFile(wikiPath, "utf8");
   } catch {
-    return "skipped"; // no wiki page in this build variant
+    return "skipped"; // no wiki page for this profile
   }
 
   const queries = await loadTemplates(queriesDir);

@@ -16,8 +16,7 @@
     "templates/**",
     "test/**",
     "framework.js",
-    "minified_version.js",
-    "**/minified_*_version.js",
+    "**/minified_*usefulQueries.js",
     "ReSaNode/**"
   ],
   "rules": {}

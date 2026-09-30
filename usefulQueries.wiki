@@ -23,9 +23,17 @@ You can add your own query templates to the project by following the [https://gi
 
 == Run on another Wikibase ==
 
-The script can run on any MediaWiki/Wikibase installation. Adjust the endpoint URLs in <code>src/settings.json</code> and rebuild. Note that on non-Wikidata wikis, links to Scholia and Entitree are disabled because those services only index Wikidata items, and QLever integration is not available.
+The script can run on any MediaWiki/Wikibase installation. Setups for other Wikibases are called '''profiles''': a folder with its own endpoint settings and query templates, built into its own copy of the script. The repository ships one for the [https://github.com/kristbaum/usefulQueries/tree/main/ReSaNode ReSaNode] Wikibase Cloud instance. Note that on non-Wikidata wikis, links to Scholia and Entitree are disabled because those services only index Wikidata items, and QLever integration is not available.
 
 See the [https://github.com/kristbaum/usefulQueries#run-on-another-wikibase technical documentation] for details.
+
+== Lenses ==
+
+A '''lens''' is an additional set of buttons for Wikidata, built around one project or research question instead of general use. It runs on the same item pages as the main script but asks different questions of them.
+
+* [https://github.com/kristbaum/usefulQueries/tree/main/Deckenmalerei Deckenmalerei] – for items of the ''Corpus der barocken Deckenmalerei in Deutschland'' ({{P|P10626}}): ceiling paintings, the buildings that hold them, and their painters and patrons. Most questions come in two versions, one restricted to the corpus and one across all of Wikidata, so you can compare what the corpus already covers.
+
+A lens is built and installed like the main script, but separately, so you can load it in addition to the main script or instead of it.
 
 == Suggestions ==
 

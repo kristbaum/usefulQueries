@@ -9,27 +9,25 @@ const repoRoot = path.resolve(process.cwd());
 const frameworkPath = path.join(repoRoot, "framework.js");
 const srcDir = path.join(repoRoot, "src");
 
-// --custom <Name> switches settings, templates and output into a named subfolder
-const customIdx = process.argv.indexOf("--custom");
-const customName = customIdx !== -1 ? process.argv[customIdx + 1] : null;
+// --profile <Name> switches settings, templates and output into a named subfolder
+const profileIdx = process.argv.indexOf("--profile");
+const profileName = profileIdx !== -1 ? process.argv[profileIdx + 1] : null;
 
-let settingsPath, queriesDir, linksDir, outputPath, minifiedPath, wikiPath;
-if (customName) {
-  const customDir = path.join(repoRoot, customName);
-  settingsPath = path.join(customDir, "settings.json");
-  queriesDir = path.join(customDir, "templates", "queries");
-  linksDir = path.join(customDir, "templates", "links");
-  outputPath = path.join(customDir, `useful${customName}Queries.js`);
-  minifiedPath = path.join(customDir, `minified_${customName}_version.js`);
-  wikiPath = path.join(customDir, `useful${customName}Queries.wiki`);
-} else {
-  settingsPath = path.join(repoRoot, "src", "settings.json");
-  queriesDir = path.join(repoRoot, "templates", "queries");
-  linksDir = path.join(repoRoot, "templates", "links");
-  outputPath = path.join(repoRoot, "usefulQueries.js");
-  minifiedPath = path.join(repoRoot, "minified_version.js");
-  wikiPath = path.join(repoRoot, "usefulQueries.wiki");
-}
+// Every build lives in one folder and names its outputs after one base name:
+//   usefulQueries.js          minified_usefulQueries.js          usefulQueries.wiki
+//   Name/Name_usefulQueries.js  Name/minified_Name_usefulQueries.js  Name/Name_usefulQueries.wiki
+// The only other difference is where the default build keeps its settings.
+const buildDir = profileName ? path.join(repoRoot, profileName) : repoRoot;
+const baseName = profileName ? `${profileName}_usefulQueries` : "usefulQueries";
+
+const settingsPath = profileName
+  ? path.join(buildDir, "settings.json")
+  : path.join(srcDir, "settings.json");
+const queriesDir = path.join(buildDir, "templates", "queries");
+const linksDir = path.join(buildDir, "templates", "links");
+const outputPath = path.join(buildDir, `${baseName}.js`);
+const minifiedPath = path.join(buildDir, `minified_${baseName}.js`);
+const wikiPath = path.join(buildDir, `${baseName}.wiki`);
 
 // Source files to include, in dependency order
 const SRC_FILES = [
@@ -272,7 +270,7 @@ console.log(
 );
 
 // Keep the on-wiki documentation in sync with the shipped templates.
-// Builds without a .wiki page (custom variants) are skipped silently.
+// Builds without a .wiki page (most profiles) are skipped silently.
 const wikiResult = await updateWikiPage(wikiPath, queriesDir, linksDir);
 if (wikiResult !== "skipped") {
   console.log(

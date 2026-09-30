@@ -1,7 +1,7 @@
 {
   "id": "openIconclassAnywhere",
   "example": "Q122702246",
-  "scope": "property",
+  "scope": "value",
   "propertyId": [
     "P1257"
   ],
@@ -19,8 +19,7 @@
     "SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?creatorLabel ?collection ?collectionLabel ?inception ?image ?cbddId WHERE {",
     "  {",
     "    SELECT ?artwork ?iconclass WHERE {",
-    "      wd:{itemQid} wdt:P1257 ?ownCode.",
-    "      BIND(SUBSTR(?ownCode, 1, 3) AS ?branch)",
+    "      BIND(SUBSTR({valueQid}, 1, 3) AS ?branch)",
     "      ?artwork wdt:P1257 ?iconclass.",
     "      FILTER(STRSTARTS(?iconclass, ?branch))",
     "      FILTER(?artwork != wd:{itemQid})",
@@ -36,5 +35,5 @@
     "}"
   ],
   "emoji": "🌍",
-  "title": "All of Wikidata — this Iconclass theme beyond the Corpus"
+  "title": "All of Wikidata — the Iconclass branch of {valueLabel} beyond the Corpus"
 }
