@@ -1,12 +1,10 @@
 /*
- * This script provides context-based queries to statements for Wikibase pages.
- * It creates a popup when you click on certain elements, showing live queries It also provides some some links to projects like entitree and scholia.
+ * usefulQueries: adds buttons to Wikibase item pages that run SPARQL queries
+ * or open external tools relevant to the item's statements.
  *
- * To activate this script, add the line below to your common.js on MediaWiki (go to https://www.wikidata.org/wiki/Special:MyPage/common.js):
- * mw.loader.load("//www.wikidata.org/w/index.php?title=User:Kristbaum/usefulQueries.js&action=raw&ctype=text/javascript");
- * The source code in readable form can be found here https://github.com/kristbaum/usefulQueries/
+ * Documentation: https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries
  *
- * License: CC0
+ * License of this file: CC0
  */
 
 $(function () {
@@ -14,11 +12,11 @@ $(function () {
 
   // ===== GLOBAL SETTINGS =====
   const SETTINGS = {
-    queryServiceUrl: "https://resanode.wikibase.cloud/query/",
-    queryEmbedUrl: "https://resanode.wikibase.cloud/query/embed.html",
-    enableQLever: false,
+    queryServiceUrl: "https://query.wikidata.org/",
+    queryEmbedUrl: "https://query.wikidata.org/embed.html",
+    enableQLever: true,
     toQLeverUrl: "https://to-qlever.toolforge.org/to-qlever",
-    allowedNamespace: 120,
+    allowedNamespace: 0,
   };
 
   // Exit the script if we're not in the main namespace (article namespace).
@@ -59,39 +57,318 @@ $(function () {
   /** @type {UsefulQuery[]} */
   const USEFUL_QUERIES = [
     {
-      id: "artworkLocationsMap",
-      scope: "property",
-      propertyId: ["P17"],
-      template: `PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>
-PREFIX rs: <https://resanode.wikibase.cloud/entity/>
-#defaultView:Map
-SELECT ?work ?workLabel ?coordinate WHERE {
-  rs:{itemQid} rst:P17 ?work.
-  ?work rst:P7 ?coordinate.
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
-}`,
-      emoji: "📍",
-      title: "Lokalisierung der Kunstwerke von {itemLabel}",
+      id: "corpusArtistCollaborators",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q5"],
+      template: `#defaultView:Graph
+# CbDD corpus only. Nothing on a painter's item page says who else was at work in
+# the same house. This builds that bipartite graph - the buildings this person
+# painted in, and every other Corpus painter documented in those same buildings -
+# which is how workshops, families and successions become visible.
+# The limit to Corpus works matters here: without it, any painting that happens to
+# hang in a museum drags in that museum's entire collection as false colleagues.
+SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?rgb WHERE {
+  ?ownWork wdt:P10626 [];
+           wdt:P170 wd:{itemQid};
+           wdt:P276 ?node.
+  ?otherWork wdt:P10626 [];
+             wdt:P276 ?node;
+             wdt:P170 ?childNode.
+  BIND(IF(?childNode = wd:{itemQid}, "E8A33D", "7DCEA0") AS ?rgb)
+  OPTIONAL { ?node wdt:P18 ?nodeImage. }
+  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+LIMIT 300`,
+      emoji: "🕸️",
+      title: "CbDD corpus only — painters who worked in the same houses as {itemLabel}",
     },
     {
-      id: "personNetwork",
-      scope: "property",
-      propertyId: ["P35"],
-      template: `PREFIX rs: <https://resanode.wikibase.cloud/entity/>
-PREFIX rst: <https://resanode.wikibase.cloud/prop/direct/>
-
-#defaultView:Graph
-
-SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WHERE {
-  rs:{itemQid} rst:P35 ?event.
-  ?event rst:P38 ?person.
-  OPTIONAL {
-    ?person ( rst:P14 | rst:P29 ) ?fieldofwork.
+      id: "corpusArtistItinerary",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q5"],
+      template: `#defaultView:Map
+# CbDD corpus only. Baroque ceiling painters were travelling workshops, but the
+# person page shows only a birthplace and a death place. This plots the sites they
+# actually worked at, how much survives at each, and the span of dates - the
+# working itinerary rather than the biography.
+# The coordinate lookup sits inside the aggregate on purpose. Hoisted out, WDQS
+# stops using the handful of buildings the subquery returns to constrain it and
+# scans every coordinate statement in Wikidata instead - 0.3s becomes a timeout.
+SELECT DISTINCT ?building ?buildingLabel ?coordinates ?buildingImage ?ceilings ?earliest ?latest WHERE {
+  {
+    SELECT ?building ?coordinates (COUNT(DISTINCT ?work) AS ?ceilings) (MIN(?date) AS ?earliest) (MAX(?date) AS ?latest) WHERE {
+      ?work wdt:P10626 [];
+            wdt:P170 wd:{itemQid};
+            wdt:P276 ?building.
+      ?building wdt:P625 ?coordinates.
+      OPTIONAL { ?work wdt:P571 ?date. }
+    }
+    GROUP BY ?building ?coordinates
   }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
+  OPTIONAL { ?building wdt:P18 ?buildingImage. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY DESC(?ceilings)
+LIMIT 200`,
+      emoji: "🗺️",
+      title: "CbDD corpus only — the working itinerary of {itemLabel}",
+    },
+    {
+      id: "corpusBuildingPaintings",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q751876","Q53536964","Q16970","Q879050","Q317557","Q41176","Q23413","Q33506","Q108325","Q16560","Q3947","Q16823155","Q1436181","Q1424449","Q1129743","Q2519340","Q276173","Q44613","Q334383","Q543654","Q10631691","Q615810","Q160742","Q1802963","Q16884952","Q24354","Q811979","Q19860854","Q1516079","Q12292478","Q16147981"],
+      template: `# CbDD corpus only. The building page links out to its region and its heritage
+# status, but never lists the ceilings inside it - the location statement points
+# the other way, from each painting to the building. This inverts that link and
+# reads the decorative programme of the house in one table, oldest first.
+SELECT DISTINCT ?painting ?paintingLabel ?inception ?creator ?creatorLabel ?patron ?patronLabel ?technique ?techniqueLabel ?themes ?deckenmalereiUrl WHERE {
+  {
+    SELECT ?painting ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=", ") AS ?themes) WHERE {
+      ?painting wdt:P10626 ?dmId;
+                wdt:P276 wd:{itemQid}.
+      BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?dmId)) AS ?deckenmalereiUrl)
+      OPTIONAL { ?painting wdt:P1257 ?ic. }
+    }
+    GROUP BY ?painting ?deckenmalereiUrl
+  }
+  OPTIONAL { ?painting wdt:P571 ?inception. }
+  OPTIONAL { ?painting wdt:P170 ?creator. }
+  OPTIONAL { ?painting wdt:P88 ?patron. }
+  OPTIONAL { ?painting wdt:P2079 ?technique. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception ?paintingLabel
+LIMIT 300`,
+      emoji: "🖼️",
+      title: "CbDD corpus only — every documented ceiling inside {itemLabel}",
+    },
+    {
+      id: "corpusIconclassSiblings",
+      scope: "value",
+      propertyId: ["P1257"],
+      template: `#defaultView:Map
+# CbDD corpus only. An Iconclass notation on the item page is an opaque code.
+# This resolves it into a thematic network: every other Corpus ceiling painting
+# in the same Iconclass branch, mapped via the building that holds it.
+# Codes are hierarchical (91E23 -> 91E -> 91), so the first three characters are
+# used as the branch - narrow enough to stay on-theme, wide enough to recover the
+# rest of the cycle (91E is the Ovidian creation and flood myths: Prometheus,
+# Pandora, Deucalion). A painting with several codes in the branch returns one row
+# per code; on a map those land on the same point, which is why this is not
+# aggregated - GROUP_CONCAT here costs more than the duplicate rows do.
+SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?coordinates ?creator ?creatorLabel ?inception WHERE {
+  # {valueQid} is the clicked notation as a string literal, e.g. "91E23".
+  BIND(SUBSTR({valueQid}, 1, 3) AS ?branch)
+  ?painting wdt:P10626 [];
+            wdt:P1257 ?iconclass;
+            wdt:P276 ?building.
+  FILTER(STRSTARTS(?iconclass, ?branch))
+  FILTER(?painting != wd:{itemQid})
+  ?building wdt:P625 ?coordinates.
+  OPTIONAL { ?painting wdt:P170 ?creator. }
+  OPTIONAL { ?painting wdt:P571 ?inception. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+LIMIT 200`,
+      emoji: "🎭",
+      title: "CbDD corpus only — where else the Iconclass branch of {valueLabel} appears on a Baroque ceiling",
+    },
+    {
+      id: "corpusNearbySites",
+      scope: "value",
+      propertyId: ["P625"],
+      template: `#defaultView:Map
+# CbDD corpus only. A coordinate on an item page is a dot with no neighbourhood.
+# This turns it into a route: every other site within 30 km that has documented
+# ceiling paintings, ordered by distance and labelled with how many survive there.
+# Requiring a Corpus painting at the place doubles as the Corpus filter, so a site
+# only appears if something there has actually been surveyed.
+# The count is aggregated at the top level rather than in its own subquery on
+# purpose. As a subquery it is unbounded - it groups all ~4,200 Corpus paintings by
+# location before the radius is applied - and WDQS occasionally plans that into a
+# 90s timeout. Grouping here lets wikibase:around bind ?place first and constrain
+# the join, which holds it at a few hundred milliseconds.
+SELECT ?place ?placeLabel ?coordinates ?distanceKm ?placeImage (COUNT(DISTINCT ?painting) AS ?ceilings) WHERE {
+  SERVICE wikibase:around {
+    ?place wdt:P625 ?coordinates.
+    bd:serviceParam wikibase:center "Point({valueLon} {valueLat})"^^geo:wktLiteral.
+    bd:serviceParam wikibase:radius "30".
+    bd:serviceParam wikibase:distance ?distanceKm.
+  }
+  ?painting wdt:P10626 [];
+            wdt:P276 ?place.
+  OPTIONAL { ?place wdt:P18 ?placeImage. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+GROUP BY ?place ?placeLabel ?coordinates ?distanceKm ?placeImage
+ORDER BY ?distanceKm
+LIMIT 100`,
+      emoji: "📍",
+      title: "CbDD corpus only — painted ceilings within 30 km of {itemLabel}",
+    },
+    {
+      id: "corpusPatronCommissions",
+      scope: "value",
+      propertyId: ["P88"],
+      template: `#defaultView:Map
+# CbDD corpus only. Patronage is the connection the item page hides best: the
+# commissioner is one link among many, and nothing shows how far that patron's
+# programme reached. This maps everything else the same patron commissioned in
+# the Corpus, with the painters they hired for each site.
+SELECT DISTINCT ?work ?workLabel ?building ?buildingLabel ?coordinates ?inception ?creator ?creatorLabel WHERE {
+  ?work wdt:P10626 [];
+        wdt:P88 wd:{valueQid};
+        wdt:P276 ?building.
+  FILTER(?work != wd:{itemQid})
+  ?building wdt:P625 ?coordinates.
+  OPTIONAL { ?work wdt:P571 ?inception. }
+  OPTIONAL { ?work wdt:P170 ?creator. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+LIMIT 300`,
+      emoji: "👑",
+      title: "CbDD corpus only — everything else {valueLabel} commissioned",
+    },
+    {
+      id: "corpusSameBuildingProgramme",
+      scope: "value",
+      propertyId: ["P276"],
+      template: `# CbDD corpus only. A ceiling was almost never painted on its own: it belongs to
+# a programme spanning a staircase, a hall or a whole wing. The item page shows a
+# single location link and stops there. This lists the siblings that share that
+# location, so the painting can be read as part of its cycle.
+SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes ?deckenmalereiUrl WHERE {
+  {
+    SELECT ?sibling ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=", ") AS ?themes) WHERE {
+      ?sibling wdt:P10626 ?dmId;
+               wdt:P276 wd:{valueQid}.
+      FILTER(?sibling != wd:{itemQid})
+      BIND(IRI(CONCAT("https://www.deckenmalerei.eu/", ?dmId)) AS ?deckenmalereiUrl)
+      OPTIONAL { ?sibling wdt:P1257 ?ic. }
+    }
+    GROUP BY ?sibling ?deckenmalereiUrl
+  }
+  OPTIONAL { ?sibling wdt:P571 ?inception. }
+  OPTIONAL { ?sibling wdt:P170 ?creator. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception ?siblingLabel
+LIMIT 300`,
+      emoji: "🏛️",
+      title: "CbDD corpus only — the rest of the painted programme in {valueLabel}",
+    },
+    {
+      id: "openCreatorWorks",
+      scope: "value",
+      propertyId: ["P31"],
+      valueId: ["Q5"],
+      template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# The Corpus itinerary query answers 'where did this painter work on ceilings'.
+# This one answers 'what is recorded of this painter at all': altarpieces, panel
+# paintings, drawings and prints, wherever they now hang. Sorting by ?cbddId
+# separates the documented ceiling work from the rest of the oeuvre.
+SELECT DISTINCT ?work ?workLabel ?kind ?kindLabel ?inception ?location ?locationLabel ?collection ?collectionLabel ?image ?cbddId WHERE {
+  ?work wdt:P170 wd:{itemQid}.
+  OPTIONAL { ?work wdt:P31 ?kind. }
+  OPTIONAL { ?work wdt:P571 ?inception. }
+  OPTIONAL { ?work wdt:P276 ?location. }
+  OPTIONAL { ?work wdt:P195 ?collection. }
+  OPTIONAL { ?work wdt:P18 ?image. }
+  OPTIONAL { ?work wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception
+LIMIT 400`,
+      emoji: "🎨",
+      title: "All of Wikidata — the complete recorded oeuvre of {itemLabel}",
+    },
+    {
+      id: "openIconclassAnywhere",
+      scope: "value",
+      propertyId: ["P1257"],
+      template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# Same Iconclass branch as the Corpus-only query, but with the P10626 filter
+# dropped, so the theme can be followed out of the Baroque ceiling material and
+# into panel paintings, prints and drawings in museum collections worldwide.
+# The ?cbddId column stays empty for everything outside the Corpus, which is the
+# quickest way to see how much of a theme the Corpus actually holds.
+# The branch scan is wrapped in a LIMITed subquery on purpose: STRSTARTS against a
+# runtime prefix cannot use an index and has to walk all ~240k P1257 statements.
+# Capping it there before the OPTIONALs join takes this from a 90s+ timeout to ~8s.
+# For a very common branch the 300 cap bites, and the result is a sample.
+SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?creatorLabel ?collection ?collectionLabel ?inception ?image ?cbddId WHERE {
+  {
+    SELECT ?artwork ?iconclass WHERE {
+      BIND(SUBSTR({valueQid}, 1, 3) AS ?branch)
+      ?artwork wdt:P1257 ?iconclass.
+      FILTER(STRSTARTS(?iconclass, ?branch))
+      FILTER(?artwork != wd:{itemQid})
+    }
+    LIMIT 300
+  }
+  OPTIONAL { ?artwork wdt:P170 ?creator. }
+  OPTIONAL { ?artwork wdt:P195 ?collection. }
+  OPTIONAL { ?artwork wdt:P571 ?inception. }
+  OPTIONAL { ?artwork wdt:P18 ?image. }
+  OPTIONAL { ?artwork wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
 }`,
-      emoji: "🕸️",
-      title: "Personennetzwerk von {itemLabel} über Ereignisse",
+      emoji: "🌍",
+      title: "All of Wikidata — the Iconclass branch of {valueLabel} beyond the Corpus",
+    },
+    {
+      id: "openNearbyHeritage",
+      scope: "value",
+      propertyId: ["P625"],
+      template: `#defaultView:Map
+# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# The Corpus-only neighbourhood query shows the handful of sites with documented
+# ceilings. This one shows the full protected landscape within 15 km: every listed
+# heritage monument, whether or not anyone has surveyed its interior. Rows with an
+# empty ?cbddId are the candidates the Corpus has not covered yet.
+SELECT DISTINCT ?place ?placeLabel ?placeDescription ?coordinates ?distanceKm ?designation ?designationLabel ?placeImage ?cbddId WHERE {
+  SERVICE wikibase:around {
+    ?place wdt:P625 ?coordinates.
+    bd:serviceParam wikibase:center "Point({valueLon} {valueLat})"^^geo:wktLiteral.
+    bd:serviceParam wikibase:radius "15".
+    bd:serviceParam wikibase:distance ?distanceKm.
+  }
+  ?place wdt:P1435 ?designation.
+  OPTIONAL { ?place wdt:P18 ?placeImage. }
+  OPTIONAL { ?place wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?distanceKm
+LIMIT 250`,
+      emoji: "🧭",
+      title: "All of Wikidata — every listed monument within 15 km of {itemLabel}",
+    },
+    {
+      id: "openPatronCommissions",
+      scope: "value",
+      propertyId: ["P88"],
+      template: `# All of Wikidata - deliberately NOT limited to the deckenmalerei.eu corpus.
+# Same patron as the Corpus-only query, but without the P10626 filter the answer
+# stops being a list of ceilings and becomes the shape of a building campaign:
+# the palaces, churches, gardens and monuments the same person paid for.
+SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?creator ?creatorLabel ?location ?locationLabel ?cbddId WHERE {
+  ?work wdt:P88 wd:{valueQid}.
+  FILTER(?work != wd:{itemQid})
+  OPTIONAL { ?work wdt:P31 ?kind. }
+  OPTIONAL { ?work wdt:P571 ?inception. }
+  OPTIONAL { ?work wdt:P170 ?creator. }
+  OPTIONAL { ?work wdt:P276 ?location. }
+  OPTIONAL { ?work wdt:P10626 ?cbddId. }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+}
+ORDER BY ?inception
+LIMIT 400`,
+      emoji: "💰",
+      title: "All of Wikidata — the full building campaign of {valueLabel}",
     },
   ];
 
@@ -127,6 +404,32 @@ SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WH
   function encodeQueryString(query) {
     return "#" + encodeURIComponent(query);
   }
+
+// ===== QLEVER FUNCTIONS =====
+
+/**
+ * Check if the current Wikibase is Wikidata
+ * @returns {boolean} True if using Wikidata
+ */
+function isWikidata() {
+  return SETTINGS.queryServiceUrl.includes("query.wikidata.org");
+}
+
+/**
+ * Build a "To QLever" link for a query. The Toolforge tool
+ * (https://to-qlever.toolforge.org/) parses the WDQS query, rewrites the
+ * Blazegraph-specific parts (label service, named subqueries, query hints,
+ * missing prefixes) and redirects to QLever with the converted query.
+ * @param {string} querystring - The encoded query string (starts with "#")
+ * @returns {string|null} To QLever URL or null if disabled
+ */
+function getQLeverUrl(querystring) {
+  if (!SETTINGS.enableQLever || !isWikidata()) {
+    return null;
+  }
+  const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
+  return SETTINGS.toQLeverUrl + "?url=" + encodeURIComponent(queryServiceHref);
+}
 
 // ===== UI CREATION FUNCTIONS =====
 
@@ -201,7 +504,7 @@ function createQueryPopup(
 
     const widthWithMin = Math.min(Math.max(window.innerWidth - 40, 400), 800);
     const embedHref = SETTINGS.queryEmbedUrl + querystring;
-    const qleverHref = null;
+    const qleverHref = getQLeverUrl(querystring);
 
     const app = Vue.createMwApp({
       name: "UsefulQueriesPopover",

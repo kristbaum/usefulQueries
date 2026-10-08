@@ -1,7 +1,7 @@
 {
   "id": "corpusSameBuildingProgramme",
   "example": "Q122702246",
-  "scope": "property",
+  "scope": "value",
   "propertyId": [
     "P276"
   ],
@@ -13,9 +13,8 @@
     "SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes ?deckenmalereiUrl WHERE {",
     "  {",
     "    SELECT ?sibling ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=\", \") AS ?themes) WHERE {",
-    "      wd:{itemQid} wdt:P276 ?building.",
     "      ?sibling wdt:P10626 ?dmId;",
-    "               wdt:P276 ?building.",
+    "               wdt:P276 wd:{valueQid}.",
     "      FILTER(?sibling != wd:{itemQid})",
     "      BIND(IRI(CONCAT(\"https://www.deckenmalerei.eu/\", ?dmId)) AS ?deckenmalereiUrl)",
     "      OPTIONAL { ?sibling wdt:P1257 ?ic. }",
@@ -30,5 +29,5 @@
     "LIMIT 300"
   ],
   "emoji": "🏛️",
-  "title": "CbDD corpus only — the rest of the painted programme around {itemLabel}"
+  "title": "CbDD corpus only — the rest of the painted programme in {valueLabel}"
 }

@@ -3,8 +3,8 @@
 // The schema checks in validate-templates.mjs catch templates that never show
 // up. These catch templates that show up and then time out: every query here is
 // also offered as a QLever link, and the two engines plan SPARQL very
-// differently. The rules encoded below are the ones written up in AGENTS.md
-// under "Writing queries that run on both WDQS and QLever".
+// differently. The rules encoded below are the ones written up in TEMPLATE_GUIDE.md
+// under "Writing the SPARQL".
 //
 // These are deliberately syntactic. They are not a SPARQL parser and cannot
 // judge selectivity — they pin the three mistakes that have actually shipped.

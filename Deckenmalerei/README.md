@@ -1,21 +1,21 @@
-# Deckenmalerei — a usefulQueries variant for the Baroque ceiling painting corpus
+# Deckenmalerei — a usefulQueries profile for the Baroque ceiling painting corpus
 
-A custom build of [usefulQueries](../README.md) aimed at the items documented in
+A profile of [usefulQueries](../README.md) aimed at the items documented in
 the *Corpus der barocken Deckenmalerei in Deutschland* (CbDD), which are marked
 on Wikidata with [deckenmalerei.eu ID (P10626)](https://www.wikidata.org/wiki/Property:P10626).
 
 It targets Wikidata itself, not a separate Wikibase — the settings are the stock
-Wikidata ones. The variant exists to ship a *different set of buttons*, tuned to
+Wikidata ones. The profile exists to ship a *different set of buttons*, tuned to
 the three kinds of item this corpus is built from: ceiling paintings, the
 buildings that hold them, and the painters and patrons behind them.
 
 ## Build
 
 ```bash
-node scripts/assemble.mjs --custom Deckenmalerei
+node scripts/assemble.mjs --profile Deckenmalerei
 ```
 
-Writes `usefulDeckenmalereiQueries.js` and `minified_Deckenmalerei_version.js`
+Writes `Deckenmalerei_usefulQueries.js` and `minified_Deckenmalerei_usefulQueries.js`
 into this folder. Upload the minified file to your Wikidata user JS page.
 
 ## The two families of query
@@ -74,12 +74,14 @@ one item and compared directly.
 
 ## How the buttons are triggered
 
-`scope` and `propertyId` decide where a button appears — see the template format
-in [AGENTS.md](../AGENTS.md).
+`scope` and `propertyId` decide where a button appears, see
+[TEMPLATE_GUIDE.md](../TEMPLATE_GUIDE.md).
 
 - **Paintings** are reached through the statements that matter for them:
-  `P1257` (Iconclass), `P276` (location), `P88` (commissioned by). Attaching to
-  the statement rather than the item puts the button next to the data it explains.
+  `P1257` (Iconclass), `P276` (location), `P88` (commissioned by). These use
+  `scope: "value"` and query `{valueQid}`, so a painting with two Iconclass
+  notations or two patrons gets one button per statement, each answering for
+  the value it sits next to.
 - **People** are matched with `scope: "value"` on `P31` = `Q5`.
 - **Buildings** are matched with `scope: "value"` on `P31` against a list of the
   building classes that actually occur in the corpus — château, royal palace,

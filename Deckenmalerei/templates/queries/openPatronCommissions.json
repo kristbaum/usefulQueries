@@ -1,7 +1,7 @@
 {
   "id": "openPatronCommissions",
   "example": "Q137903386",
-  "scope": "property",
+  "scope": "value",
   "propertyId": [
     "P88"
   ],
@@ -11,8 +11,7 @@
     "# stops being a list of ceilings and becomes the shape of a building campaign:",
     "# the palaces, churches, gardens and monuments the same person paid for.",
     "SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?creator ?creatorLabel ?location ?locationLabel ?cbddId WHERE {",
-    "  wd:{itemQid} wdt:P88 ?patron.",
-    "  ?work wdt:P88 ?patron.",
+    "  ?work wdt:P88 wd:{valueQid}.",
     "  FILTER(?work != wd:{itemQid})",
     "  OPTIONAL { ?work wdt:P31 ?kind. }",
     "  OPTIONAL { ?work wdt:P571 ?inception. }",
@@ -25,5 +24,5 @@
     "LIMIT 400"
   ],
   "emoji": "💰",
-  "title": "All of Wikidata — the full building campaign of this patron"
+  "title": "All of Wikidata — the full building campaign of {valueLabel}"
 }

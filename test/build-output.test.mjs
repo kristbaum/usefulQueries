@@ -11,7 +11,7 @@ const repoRoot = path.resolve(process.cwd());
 // actually served to MediaWiki, so they must always be valid, runnable JS.
 const OUTPUTS = [
   { name: "usefulQueries.js", minified: false },
-  { name: "minified_version.js", minified: true },
+  { name: "minified_usefulQueries.js", minified: true },
 ];
 
 /**

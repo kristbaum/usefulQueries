@@ -1,12 +1,10 @@
 /*
- * This script provides context-based queries to statements for Wikibase pages.
- * It creates a popup when you click on certain elements, showing live queries It also provides some some links to projects like entitree and scholia.
+ * usefulQueries: adds buttons to Wikibase item pages that run SPARQL queries
+ * or open external tools relevant to the item's statements.
  *
- * To activate this script, add the line below to your common.js on MediaWiki (go to https://www.wikidata.org/wiki/Special:MyPage/common.js):
- * mw.loader.load("//www.wikidata.org/w/index.php?title=User:Kristbaum/usefulQueries.js&action=raw&ctype=text/javascript");
- * The source code in readable form can be found here https://github.com/kristbaum/usefulQueries/
+ * Documentation: https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries
  *
- * License: CC0
+ * License of this file: CC0
  */
 
 $(function () {
