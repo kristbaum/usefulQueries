@@ -55,6 +55,18 @@ test("a query without a label service is not second-guessed", () => {
   accepts(["SELECT ?x WHERE {", "  ?x wdt:P31 wd:Q5.", "}"]);
 });
 
+test("a comment naming the label service is not a label service call", () => {
+  // seatingChain labels by hand and says so in a comment above the patterns
+  // that do it; that comment must not be read as the service itself.
+  accepts([
+    "SELECT ?x ?xLabel WHERE {",
+    "  ?x wdt:P31 wd:Q5.",
+    "  # labelled by hand rather than by SERVICE wikibase:label",
+    "  OPTIONAL { ?x rdfs:label ?xLabel. FILTER(LANG(?xLabel) = \"en\") }",
+    "}",
+  ]);
+});
+
 test("an OPTIONAL holding two unconnected patterns is rejected", () => {
   // The example from TEMPLATE_GUIDE.md: QLever materialises the cross product of two
   // 6M-row relations.
