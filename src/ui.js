@@ -1,5 +1,8 @@
 // ===== UI CREATION FUNCTIONS =====
 
+// The popover stylesheet is added once per build, on the first popup.
+let _popoverCssAdded = false;
+
 /**
  * Create a Codex button with a link
  * @param {jQuery} element - The element to append the button to
@@ -65,7 +68,10 @@ function createQueryPopup(
     const mountPoint = document.createElement("span");
     $(element).append(mountPoint);
 
-    mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+    if (!_popoverCssAdded) {
+      mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+      _popoverCssAdded = true;
+    }
 
     const placement = (scope === "value") ? "bottom" : "bottom-start";
 

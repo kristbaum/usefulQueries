@@ -433,6 +433,9 @@ function getQLeverUrl(querystring) {
 
 // ===== UI CREATION FUNCTIONS =====
 
+// The popover stylesheet is added once per build, on the first popup.
+let _popoverCssAdded = false;
+
 /**
  * Create a Codex button with a link
  * @param {jQuery} element - The element to append the button to
@@ -498,7 +501,10 @@ function createQueryPopup(
     const mountPoint = document.createElement("span");
     $(element).append(mountPoint);
 
-    mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+    if (!_popoverCssAdded) {
+      mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
+      _popoverCssAdded = true;
+    }
 
     const placement = (scope === "value") ? "bottom" : "bottom-start";
 
@@ -866,13 +872,22 @@ function processClaim(propertyId, claim, context) {
  * @param {Object} context - Context with itemQid, itemLabel, userLanguage
  */
 function processPropertyClaims(propertyId, claims, context) {
-  const $propertyElement = getPropertyElement(propertyId);
+  // Check the index before touching the DOM, so properties without any
+  // template cost nothing (matters when several builds run on one page).
+  const { queries, links } = _templateIndex;
+  const propKey = "property:" + propertyId;
+  const valueKey = "value:" + propertyId;
 
-  if ($propertyElement) {
-    processPropertyFeatures(propertyId, $propertyElement, context);
+  if (queries.byKey.has(propKey) || links.byKey.has(propKey)) {
+    const $propertyElement = getPropertyElement(propertyId);
+    if ($propertyElement) {
+      processPropertyFeatures(propertyId, $propertyElement, context);
+    }
   }
 
-  claims.forEach((claim) => processClaim(propertyId, claim, context));
+  if (queries.byKey.has(valueKey) || links.byKey.has(valueKey)) {
+    claims.forEach((claim) => processClaim(propertyId, claim, context));
+  }
 }
 
 // ===== MAIN =====
