@@ -1,0 +1,38 @@
+{
+  "id": "coParticipantGraph",
+  "example": "Q140068424",
+  "scope": "value",
+  "propertyId": [
+    "P710"
+  ],
+  "valueId": null,
+  "template": [
+    "#defaultView:Graph",
+    "# Where else did this participant meet people: the other events they are",
+    "# recorded at, each one surrounded by its own attendees. Two levels out of",
+    "# one row set - level 1 links the person to the event, level 2 the event to",
+    "# its other participants - which keeps the graph connected without a UNION",
+    "# of BIND-only arms (Blazegraph leaves ?event unbound in those, and the",
+    "# image OPTIONALs below then scan every P18 in the store).",
+    "SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage WHERE {",
+    "  {",
+    "    SELECT DISTINCT ?event ?other WHERE {",
+    "      ?event wdt:P710 wd:{valueQid}.",
+    "      ?event wdt:P710 ?other.",
+    "      FILTER(?other != wd:{valueQid})",
+    "      # Participants recorded as unknown value are blank nodes with no label.",
+    "      FILTER(STRSTARTS(STR(?other), \"http://www.wikidata.org/entity/Q\"))",
+    "    }",
+    "    LIMIT 300",
+    "  }",
+    "  VALUES ?level { 1 2 }",
+    "  BIND(IF(?level = 1, wd:{valueQid}, ?event) AS ?node)",
+    "  BIND(IF(?level = 1, ?event, ?other) AS ?childNode)",
+    "  OPTIONAL { ?node wdt:P18 ?nodeImage. }",
+    "  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "}"
+  ],
+  "emoji": "🕸️",
+  "title": "Who {valueLabel} met at other events"
+}

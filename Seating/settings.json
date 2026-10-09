@@ -1,0 +1,7 @@
+{
+  "queryServiceUrl": "https://query.wikidata.org/",
+  "queryEmbedUrl": "https://query.wikidata.org/embed.html",
+  "enableQLever": true,
+  "toQLeverUrl": "https://to-qlever.toolforge.org/to-qlever",
+  "allowedNamespace": 0
+}
