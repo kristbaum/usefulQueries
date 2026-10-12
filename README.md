@@ -89,6 +89,9 @@ Missing `queries/` or `links/` subdirectories are silently ignored (treated as e
 - [`ReSaNode/`](ReSaNode/) — targets the ReSaNode Wikibase Cloud instance.
 - [`Deckenmalerei/`](Deckenmalerei/README.md) — targets Wikidata, with queries for
   the Baroque ceiling painting corpus (`deckenmalerei.eu ID`, P10626).
+- [`Seating/`](Seating/README.md) — targets Wikidata, with queries for ceremonial
+  seating arrangements: events whose `participant` statements are ordered by
+  seat, role and rank of precedence.
 
 ## Development
 

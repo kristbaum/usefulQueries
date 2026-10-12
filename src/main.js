@@ -33,6 +33,8 @@ function processWikibaseEntityPage() {
     Object.entries(entityData.claims).forEach(([propertyId, claims]) => {
       processPropertyClaims(propertyId, claims, context);
     });
+
+    mountButtons();
   });
 }
 

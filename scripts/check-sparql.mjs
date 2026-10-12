@@ -135,7 +135,9 @@ const TAIL_RE =
  * @returns {string[]}
  */
 function checkLabelServiceLast(lines) {
-  const svc = lines.findIndex((l) => /SERVICE\s+wikibase:label/i.test(l));
+  // Comment-stripped: a comment that only talks about the label service, in a
+  // query that labels by hand, is not a label service call.
+  const svc = lines.findIndex((l) => /SERVICE\s+wikibase:label/i.test(stripComment(l)));
   if (svc === -1) return [];
   const offenders = [];
   for (let i = svc + 1; i < lines.length; i++) {

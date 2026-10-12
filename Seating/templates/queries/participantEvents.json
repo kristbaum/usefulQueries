@@ -1,0 +1,33 @@
+{
+  "id": "participantEvents",
+  "example": "Q140068424",
+  "scope": "value",
+  "propertyId": [
+    "P710"
+  ],
+  "valueId": null,
+  "template": [
+    "#defaultView:Timeline",
+    "# When this participant appears: every event they are recorded at, on a",
+    "# timeline, grouped by the role they appeared in - bride, bridegroom,",
+    "# mourner. The role variable is called ?edge because the Timeline view",
+    "# groups by ?edgeLabel, and the label service only fills a label variable",
+    "# that the SELECT projects by name.",
+    "SELECT DISTINCT ?event ?eventLabel ?date ?image ?edgeLabel WHERE {",
+    "  ?event p:P710 ?statement.",
+    "  ?statement ps:P710 wd:{valueQid}.",
+    "  # Ceremonies carry a point in time, longer events a start time.",
+    "  OPTIONAL { ?event wdt:P585 ?pointInTime. }",
+    "  OPTIONAL { ?event wdt:P580 ?startTime. }",
+    "  BIND(COALESCE(?pointInTime, ?startTime) AS ?date)",
+    "  FILTER(BOUND(?date))",
+    "  OPTIONAL { ?statement pq:P3831 ?edge. }",
+    "  OPTIONAL { ?event wdt:P18 ?image. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "}",
+    "ORDER BY ?date",
+    "LIMIT 300"
+  ],
+  "emoji": "📆",
+  "title": "Events {valueLabel} took part in, over time"
+}

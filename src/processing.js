@@ -166,11 +166,20 @@ function processClaim(propertyId, claim, context) {
  * @param {Object} context - Context with itemQid, itemLabel, userLanguage
  */
 function processPropertyClaims(propertyId, claims, context) {
-  const $propertyElement = getPropertyElement(propertyId);
+  // Check the index before touching the DOM, so properties without any
+  // template cost nothing (matters when several builds run on one page).
+  const { queries, links } = _templateIndex;
+  const propKey = "property:" + propertyId;
+  const valueKey = "value:" + propertyId;
 
-  if ($propertyElement) {
-    processPropertyFeatures(propertyId, $propertyElement, context);
+  if (queries.byKey.has(propKey) || links.byKey.has(propKey)) {
+    const $propertyElement = getPropertyElement(propertyId);
+    if ($propertyElement) {
+      processPropertyFeatures(propertyId, $propertyElement, context);
+    }
   }
 
-  claims.forEach((claim) => processClaim(propertyId, claim, context));
+  if (queries.byKey.has(valueKey) || links.byKey.has(valueKey)) {
+    claims.forEach((claim) => processClaim(propertyId, claim, context));
+  }
 }

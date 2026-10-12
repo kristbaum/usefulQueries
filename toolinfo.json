@@ -1,0 +1,36 @@
+{
+  "name": "user-kristbaum-usefulQueries",
+  "title": "usefulQueries",
+  "subtitle": "Context-sensitive SPARQL query and visualization buttons on Wikidata item pages",
+  "description": "usefulQueries is a user script that adds small buttons to Wikidata item pages. Each button either runs a pre-written SPARQL query tailored to the item you are currently viewing, opening the result directly in a popup with the Wikidata Query Service, or links to an external visualization tool such as Scholia or Entitree. The script inspects the item's statements at runtime and only shows the buttons that are relevant, so a painter gets different buttons than a university. Query results are rendered with the Query Service's own views (maps, timelines, graphs, charts), and on Wikidata each popup also offers to re-run the query on the faster QLever endpoint. The query and link templates are plain JSON files, so new ones can be contributed without touching the script logic, and the endpoint URLs can be repointed to run the script on any other Wikibase installation.",
+  "url": "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries",
+  "author": [
+    {
+      "name": "Kristbaum",
+      "wiki_username": "Kristbaum",
+      "url": "https://www.wikidata.org/wiki/User:Kristbaum"
+    }
+  ],
+  "repository": "https://github.com/kristbaum/usefulQueries",
+  "tool_type": "user script",
+  "license": "GPL-3.0-or-later",
+  "for_wikis": "www.wikidata.org",
+  "available_ui_languages": "en",
+  "technology_used": [
+    "JavaScript",
+    "SPARQL",
+    "MediaWiki user script",
+    "Vue 3",
+    "Codex",
+    "Wikidata Query Service",
+    "QLever"
+  ],
+  "user_docs_url": "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries",
+  "developer_docs_url": "https://github.com/kristbaum/usefulQueries#readme",
+  "feedback_url": "https://www.wikidata.org/wiki/User_talk:Kristbaum/usefulQueries",
+  "bugtracker_url": "https://github.com/kristbaum/usefulQueries/issues",
+  "deprecated": false,
+  "experimental": false,
+  "_schema": "/toolinfo/1.2.2",
+  "_language": "en"
+}
