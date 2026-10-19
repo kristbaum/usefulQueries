@@ -1,0 +1,30 @@
+{
+  "id": "seriesParts",
+  "example": "Q3257270",
+  "scope": "value",
+  "propertyId": [
+    "P179"
+  ],
+  "valueId": null,
+  "template": [
+    "SELECT ?ordinal ?part ?partLabel ?partDescription ?date WHERE {",
+    "  # The ordinal (P1545) is a qualifier on the part's own P179 statement,",
+    "  # so read the full statement rather than wdt:P179.",
+    "  {",
+    "    SELECT DISTINCT ?part ?ordinal WHERE {",
+    "      ?part p:P179 ?seriesStatement.",
+    "      ?seriesStatement ps:P179 wd:{valueQid}.",
+    "      OPTIONAL { ?seriesStatement pq:P1545 ?ordinal. }",
+    "    }",
+    "    LIMIT 500",
+    "  }",
+    "  OPTIONAL { ?part wdt:P577 ?date. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
+    "}",
+    "# Ordinals are strings (\"12\", \"128-129\", \"134c\"): sort by their leading",
+    "# number, then the string; parts without an ordinal go last.",
+    "ORDER BY (!BOUND(?ordinal)) (COALESCE(xsd:integer(REPLACE(?ordinal, \"^([0-9]+).*$\", \"$1\")), 999999999)) ?ordinal ?date"
+  ],
+  "emoji": "🔢",
+  "title": "Parts of the series {valueLabel}"
+}
