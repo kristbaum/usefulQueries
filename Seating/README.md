@@ -6,6 +6,9 @@ banquet is documented seat by seat, with each guest's role and rank of
 precedence. The worked example is the
 [wedding of Maximilian II Emanuel and Maria Antonia (Q140068424)](https://www.wikidata.org/wiki/Q140068424),
 taken from the Vienna *Zeremonialprotokolle*.
+Other examples:
+* wedding of Leopold I, Holy Roman Emperor and Eleonor Magdalene of Neuburg (Q141776247)
+* wedding of Leopold I, Holy Roman Emperor and Claudia Felicitas of Austria (Q141775864)
 
 It targets Wikidata itself, not a separate Wikibase — the settings are the stock
 Wikidata ones. The profile exists to ship a different set of buttons.
