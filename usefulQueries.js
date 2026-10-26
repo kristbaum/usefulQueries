@@ -515,7 +515,7 @@ SELECT DISTINCT ?item ?itemLabel ?coordinates ?housenumber ?image WHERE {
 }
 LIMIT 1000`,
       emoji: "📍",
-      title: "Other objects on {itemLabel}",
+      title: "Other objects on {valueLabel}",
     },
     {
       id: "painterPlacesMap",
