@@ -235,5 +235,7 @@ These buttons do not run a query; they open an external tool for the current ite
 |-
 | 📚 || Page on Scholia || {{P|P106}} || {{Q|Q1650915}} || <code>https://scholia.toolforge.org/author/{itemId}</code> || [[Q20895241#P106|{{Label|Q20895241}} <small>(Q20895241)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/scholia.json scholia.json]
 |-
+| 🖼️ || Images of {itemLabel} on View it! || ''every item'' ||  || <code>https://view-it.toolforge.org/?q={itemId}</code> || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/viewIt.json viewIt.json]
+|-
 | 📷 || Items in the immediate surroundings on WikiShootMe || {{P|P625}} || ''any value'' || <code>https://wikishootme.toolforge.org/#lat={valueLatitude}&lng={valueLongitude}&zoom=19</code> || [[Q64#P625|{{Label|Q64}} <small>(Q64)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/wikishootme.json wikishootme.json]
 |}

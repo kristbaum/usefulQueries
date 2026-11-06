@@ -25,8 +25,12 @@ const AUTOGEN_NOTE =
 /** `{{P|P106}}, {{P|P108}}` */
 const propertyLinks = (ids) => ids.map((id) => `{{P|${id}}}`).join(", ");
 
-/** The triggering properties, marked when they are qualifiers or in references. */
+/**
+ * The triggering properties, marked when they are qualifiers or in references.
+ * Entity buttons have none; they appear on every item.
+ */
 const triggerCell = (t) => {
+  if (t.scope === "entity") return "''every item''";
   const links = propertyLinks(t.propertyId);
   if (t.section === "qualifiers") return `${links} ''(as qualifier)''`;
   if (t.section === "references") return `${links} ''(in references)''`;
@@ -146,7 +150,7 @@ const LINK_TABLE = {
     t.emoji,
     t.title,
     triggerCell(t),
-    valueCell(t.valueId),
+    t.scope === "entity" ? "" : valueCell(t.valueId),
     `<code>${t.urlTemplate}</code>`,
     exampleCell(t),
     linkLink(t),

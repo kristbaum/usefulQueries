@@ -1,0 +1,8 @@
+{
+  "id": "viewIt",
+  "example": "Q42",
+  "scope": "entity",
+  "urlTemplate": "https://view-it.toolforge.org/?q={itemId}",
+  "emoji": "🖼️",
+  "title": "Images of {itemLabel} on View it!"
+}
