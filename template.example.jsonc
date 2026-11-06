@@ -22,9 +22,18 @@
   //   "property" → next to the property label; for queries that use ALL of
   //                the property's values together, or none of them
   //   "value"    → next to each statement value; for queries whose result
-  //                depends on the clicked value ({valueQid}), or — with
+  //                depends on the clicked value ({valueId}), or — with
   //                valueId — to show the button only for certain values
   "scope": "value",
+
+  // Optional, "property"/"value" only: hang the button on qualifiers or inside
+  // references instead of on statements. propertyId then names the qualifier
+  // or reference property. Omit for statements.
+  //   "section": "qualifiers"   → qualifier labels / qualifier values
+  //   "section": "references"   → reference labels / reference values
+  // Inside a section, {statementPropertyId}, {statementValueId},
+  // {statementValueSparql} and {statementValueLabel} describe the statement
+  // the qualifier or reference belongs to.
 
   // Properties that trigger the button. Always an array.
   // Required for "property"/"value", forbidden for "entity".
@@ -34,18 +43,21 @@
   "valueId": null,
 
   // The SPARQL query, one line per array entry. Placeholders:
-  //   {itemQid}      QID of the current item (all scopes)
+  // "…Id" placeholders are bare IDs you prefix yourself (wd:{itemId});
+  // {valueSparql} is the only one that is already a SPARQL term.
+  //   {itemId}       ID of the current item, e.g. Q42 (all scopes)
   //   {itemLabel}    label of the current item (all scopes)
   //   {userLanguage} user's interface language code (all scopes)
-  //   {propertyPid}  PID the button sits on ("property" and "value")
-  //   {valueQid}     the clicked value as a SPARQL term ("value" only):
-  //                    Q1726 for items (write wd:{valueQid}), "91E23" with
-  //                    quotes for strings/external IDs
+  //   {propertyId}   property the button sits on, e.g. P19 ("property", "value")
+  //   {valueId}      ID of the clicked value if it is an item/property, e.g.
+  //                    Q1726 — write wd:{valueId}; empty otherwise ("value")
+  //   {valueSparql}  the clicked value of any datatype as a SPARQL term:
+  //                    wd:Q1726, "91E23" (quotes included), dates, … ("value")
   //   {valueLabel}   readable form of the value ("value" only)
-  //   {valueLat} / {valueLon} — coordinates of a P625 value ("value" only)
+  //   {valueLatitude} / {valueLongitude} — coordinates of a P625 value ("value")
   "template": [
     "SELECT ?person ?personLabel WHERE {",
-    "  ?person wdt:P19 wd:{valueQid}.",
+    "  ?person wdt:P19 wd:{valueId}.",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
     "}",
     "LIMIT 100"
@@ -68,7 +80,7 @@
   "propertyId": ["P22", "P25"],
 
   // Absolute http(s) URL, opened in a new tab. Same placeholders as above.
-  "urlTemplate": "https://entitree.com/{userLanguage}/family_tree/{itemQid}",
+  "urlTemplate": "https://entitree.com/{userLanguage}/family_tree/{itemId}",
 
   "emoji": "🌳",
   "title": "Family tree on Entitree"

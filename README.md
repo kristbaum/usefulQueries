@@ -4,6 +4,17 @@ Code for usefulQueries
 
 Documentation: <https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries>
 
+## Configure on-wiki (beta)
+
+Logged-in users can choose their buttons without npm, straight on the wiki:
+
+- **Settings page** (`Special:BlankPage/usefulQueries`, or *usefulQueries settings* in the Tools menu): switch built-in buttons on and off, delete or suggest your own buttons, and copy buttons from another user.
+- **Edit mode** (*usefulQueries: edit buttons* in the Tools menu on any item): a “+” appears next to the item title, every property and every value, including qualifiers and references. Click it where the new button should go. The dialog works out the scope from that spot, takes a query written in the Query Service (paste the link back and the item/value IDs become placeholders), tests it on the current item and saves it. ✕ hides a built-in button and ✎ edits one of your own.
+
+Everything is stored as JSON on `User:<you>/usefulQueries.json`, a page only you (and interface admins) can edit. It is saved with your own session, so no OAuth or external tool is involved. The script validates that page with the same schema checks the build uses (minus the QLever portability rules, which the editor shows as warnings), and skips any invalid entries.
+
+Each profile build uses its own page (`User:<you>/<Profile>_usefulQueries.json`, `Special:BlankPage/<Profile>_usefulQueries`), so a lens is configured separately from the main script.
+
 ## Adding your own queries
 
 Queries that would be useful to general users can be added as suggestions [on GitHub](https://github.com/kristbaum/usefulQueries/issues) or [on Wikidata](https://www.wikidata.org/wiki/User_talk:Kristbaum/usefulQueries).
@@ -40,8 +51,12 @@ In short, each button is one JSON file with a `scope`:
   property's values together, or none of them (the property just signals the
   right kind of item).
 - **`value`**: next to each statement value; for queries whose answer depends
-  on the clicked value (`{valueQid}`), or, with `valueId`, for buttons that
+  on the clicked value (`wd:{valueId}`, or `{valueSparql}` for non-item values), or, with `valueId`, for buttons that
   should only appear when a value matches (e.g. occupation = painter).
+
+With `"section": "qualifiers"` or `"references"`, `property`/`value` buttons hang
+on qualifiers or on snaks inside references instead (e.g. next to every *stated
+in* value: items that cite this source).
 
 ## Run on another Wikibase
 

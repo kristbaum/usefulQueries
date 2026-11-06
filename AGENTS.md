@@ -17,6 +17,11 @@ usefulQueries/
 │   ├── dom.js                # DOM helpers: locates property/statement/indicator elements
 │   ├── helpers.js            # Pure utilities: replacePlaceholders(), encodeQueryString()
 │   ├── qlever.js             # Builds "To QLever" links (conversion happens in that tool)
+│   ├── config.js             # Loads/saves the user's config page (User:<name>/<configName>.json)
+│   ├── editor.js             # Edit mode on item pages + the add/edit-button dialog
+│   ├── settings-page.js      # Special:BlankPage/<configName>: toggles, own buttons, import
+│   ├── shared/
+│   │   └── user-config.mjs   # Pure config logic (parse, validate, merge, generalize queries); tested directly
 │   └── settings.json         # Runtime config: query service URLs, QLever toggle
 ├── templates/
 │   ├── queries/              # One JSON file per query button (see template format below)
@@ -55,6 +60,9 @@ deps) covers two things:
   `usefulQueries.wiki` are stale (i.e. templates changed without a rebuild).
 - `test/check-sparql.test.mjs` pins the WDQS/QLever portability rules described
   below, and asserts that every shipped query template still satisfies them.
+- `test/user-config.test.mjs` covers parsing, validating and merging user configs.
+- `test/runtime-smoke.test.mjs` runs the built script against stubbed `mw`/`$` as an
+  item page (logged out, logged in, broken config) and as the settings page.
 
 Keep them green before committing.
 
@@ -67,9 +75,15 @@ Keep them green before committing.
 
    Steps 3 and 4 validate each file first (`scripts/validate-templates.mjs`) and
    abort the build, listing every problem found, if any template is malformed.
-5. Concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `main.js`.
+5. Inlines the shared ES modules (`scripts/check-sparql.mjs`,
+   `scripts/validate-templates.mjs`, `src/shared/user-config.mjs`) with their
+   `import`/`export` keywords stripped, so the runtime validates user configs
+   with the same code the build uses. Keep their top-level names distinct from
+   the `src/` files, since they all share one scope.
+   Then concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `config.js`, `editor.js`, `settings-page.js`, `main.js`.
 6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
-7. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified).
+7. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified;
+   the whitespace inside inline Vue `template:` strings is collapsed first).
    A profile built with `--profile <Name>` writes `<Name>/<Name>_usefulQueries.js`
    and `<Name>/minified_<Name>_usefulQueries.js` instead — same names, prefixed.
 8. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
@@ -92,13 +106,24 @@ profile's `templates/`.
 The build enforces the schema (`scripts/validate-templates.mjs`) and three
 syntactic SPARQL rules (`scripts/check-sparql.mjs`). It cannot check that the
 scope is right: a template whose result depends on the clicked value must be
-`scope: "value"` and use `{valueQid}`, not read the property back out of
-`{itemQid}`.
+`scope: "value"` and use `wd:{valueId}` / `{valueSparql}`, not read the property
+back out of `{itemId}`. Placeholder naming: `…Id` is a bare entity ID, `{valueSparql}`
+a ready SPARQL term; the old names (`{itemQid}`, `{valueQid}`, …) are rejected.
 
 ## Key runtime conventions
 
-- The script only runs on namespace 0 (item pages). See `framework.js`.
-- Template matching is done via pre-built lookup indexes in `processing.js` (`_templateIndex`). These are built once at script load from `USEFUL_QUERIES` and `USEFUL_LINKS`.
+- The script runs on item pages (`allowedNamespace`), on its settings page
+  `Special:BlankPage/<configName>` and on the user's own config page. See `framework.js`.
+- **Per-user config:** logged-in users' choices live on `User:<name>/<configName>.json`
+  (`configName` defaults to the build's base name, e.g. `usefulQueries`). It holds
+  `disabled` (built-in ids to hide), `seen`, and `queries`/`links` in the same JSON
+  form as template files. Built-in ids must therefore be unique and stable —
+  renaming one un-hides it for everyone who hid it. A broken config page never
+  breaks the script: invalid entries are skipped with a notice.
+- The config is loaded before the first render; `applyUserConfig()` rebuilds the
+  template index and `renderButtons()` redraws everything (also used by edit mode).
+- Template matching is done via pre-built lookup indexes in `processing.js` (`_templateIndex`), keyed `<scope>:<section>:<propertyId>`. They are rebuilt by `setActiveTemplates()` when the user's config loads.
+- `section` (`statement` | `qualifiers` | `references`) places property/value buttons on qualifiers or reference snaks. These are located by snak hash (`.wikibase-snakview-<hash>` on desktop, `[data-snak-hash]` on mobile); mobile references are not rendered at load and get no buttons.
 - On viewports narrower than 900 px the popup is replaced with a plain link button (no iframe).
 - The QLever integration is toggled by `enableQLever` in `src/settings.json`. The build strips the inactive branch entirely. The popup's QLever action just hands the WDQS URL to the [To QLever](https://to-qlever.toolforge.org/) Toolforge tool, which converts the query server-side and redirects to QLever — the script does no SPARQL rewriting itself.
 - The script uses Wikimedia Codex (Vue 3 components) loaded via `mw.loader`. Do not import external libraries.
@@ -110,7 +135,13 @@ scope is right: a template whose result depends on the clicked value must be
   "queryServiceUrl": "https://query.wikidata.org/",       // Base URL for query links
   "queryEmbedUrl":   "https://query.wikidata.org/embed.html", // URL for iframe embeds
   "enableQLever":    true,                                 // Include QLever links in popups
-  "toQLeverUrl":     "https://to-qlever.toolforge.org/to-qlever"
+  "toQLeverUrl":     "https://to-qlever.toolforge.org/to-qlever",
+  "allowedNamespace": 0,                                   // Namespace of item pages (120 on many Wikibase Cloud wikis)
+  // Optional, filled in by the build when absent:
+  // "configName":    "usefulQueries",                     // User:<name>/<configName>.json
+  // "displayName":   "usefulQueries",                     // Label in the Tools menu
+  // "repositoryUrl": "https://github.com/kristbaum/usefulQueries",
+  // "sparqlEndpoint": "<queryServiceUrl>sparql"           // Used by the editor's preview
 }
 ```
 
