@@ -2,7 +2,7 @@
 
   /**
    * Replace placeholders in a template string
-   * @param {string} template - Template with placeholders like {itemQid}, {itemLabel}, etc.
+   * @param {string} template - Template with placeholders like {itemId}, {itemLabel}, etc.
    * @param {Object} replacements - Key-value pairs for replacements
    * @returns {string} Template with placeholders replaced
    */

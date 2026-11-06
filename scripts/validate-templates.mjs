@@ -10,15 +10,46 @@ const SCOPES = ["entity", "property", "value"];
 
 // Placeholders replaced by replacePlaceholders() in src/helpers.js. Anything
 // else survives into the SPARQL query / URL verbatim and breaks it.
-const BASE_PLACEHOLDERS = ["itemQid", "itemLabel", "userLanguage"];
+// Naming: `…Id` is always a bare entity ID (Q42, P19) that you prefix yourself
+// (wd:{itemId}); `valueSparql` is the one that is already a SPARQL term.
+export const BASE_PLACEHOLDERS = ["itemId", "itemLabel", "userLanguage"];
 // The property the button is attached to. Only bound for scope "property" and
 // "value" — an entity-scope button hangs off the title and matched no property.
-const PROPERTY_PLACEHOLDERS = ["propertyPid"];
-// valueLat / valueLon are only filled for globe-coordinate values (P625 and
+export const PROPERTY_PLACEHOLDERS = ["propertyId"];
+// valueId is empty unless the value is an item/property; valueLatitude /
+// valueLongitude are only filled for globe-coordinate values (P625 and
 // friends); on any other datatype they resolve to an empty string.
-const VALUE_PLACEHOLDERS = ["valueQid", "valueLabel", "valueLat", "valueLon"];
+export const VALUE_PLACEHOLDERS = [
+  "valueId",
+  "valueSparql",
+  "valueLabel",
+  "valueLatitude",
+  "valueLongitude",
+];
 
-// Matches {itemQid} but not SPARQL graph patterns like `{ bd:serviceParam … }`,
+// The statement a qualifier or reference belongs to. Only bound for templates
+// with "section": "qualifiers" or "references".
+export const STATEMENT_PLACEHOLDERS = [
+  "statementPropertyId",
+  "statementValueId",
+  "statementValueSparql",
+  "statementValueLabel",
+];
+
+// Where on a statement a property/value template hangs. Omitted = "statement",
+// the statement's own value.
+export const SECTIONS = ["statement", "qualifiers", "references"];
+
+// Names used before the placeholders were renamed, with what to write now.
+const RENAMED_PLACEHOLDERS = {
+  itemQid: "{itemId}",
+  propertyPid: "{propertyId}",
+  valueQid: "wd:{valueId} for item values, or {valueSparql} for any datatype",
+  valueLat: "{valueLatitude}",
+  valueLon: "{valueLongitude}",
+};
+
+// Matches {itemId} but not SPARQL graph patterns like `{ bd:serviceParam … }`,
 // which always contain a space, colon or `?` before the closing brace.
 const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 
@@ -26,6 +57,7 @@ const COMMON_FIELDS = [
   "id",
   "example",
   "scope",
+  "section",
   "propertyId",
   "valueId",
   "emoji",
@@ -48,9 +80,13 @@ function collectPlaceholders(text) {
  * Validate one parsed template object.
  * @param {unknown} tpl - The parsed JSON
  * @param {"query"|"link"} kind - Which template flavour to check against
+ * @param {{sparqlChecks?: boolean}} [options] - sparqlChecks: also run the
+ *   WDQS/QLever portability rules (default true). The runtime turns them off
+ *   for templates from a user's config page and shows them as warnings instead.
  * @returns {string[]} Human-readable problems; empty means valid.
  */
-export function validateTemplate(tpl, kind) {
+export function validateTemplate(tpl, kind, options = {}) {
+  const sparqlChecks = options.sparqlChecks !== false;
   const errors = [];
 
   if (tpl === null || typeof tpl !== "object" || Array.isArray(tpl)) {
@@ -106,6 +142,18 @@ export function validateTemplate(tpl, kind) {
     }
   }
 
+  // --- section: which part of a statement (main value, qualifiers, references) ---
+  const section = tpl.section === undefined ? "statement" : tpl.section;
+  if (tpl.section !== undefined) {
+    if (!SECTIONS.includes(tpl.section)) {
+      errors.push(
+        `"section" must be one of ${SECTIONS.join(" | ")}, got ${JSON.stringify(tpl.section)}`,
+      );
+    } else if (scope === "entity") {
+      errors.push('"section" is not used with scope "entity" — remove it');
+    }
+  }
+
   // --- valueId: only meaningful for scope "value"; null means "any value" ---
   if (tpl.valueId !== undefined && tpl.valueId !== null) {
     if (scope !== "value") {
@@ -150,7 +198,7 @@ export function validateTemplate(tpl, kind) {
     } else {
       texts.push(["template", tpl.template.join("\n")]);
       // Portability between WDQS and QLever — see TEMPLATE_GUIDE.md.
-      errors.push(...checkSparql(tpl.template));
+      if (sparqlChecks) errors.push(...checkSparql(tpl.template));
     }
   } else {
     if (!isNonEmptyString(tpl.urlTemplate)) {
@@ -170,11 +218,23 @@ export function validateTemplate(tpl, kind) {
   if (scope === "value") {
     known.push(...VALUE_PLACEHOLDERS);
   }
+  const inSubsection = section === "qualifiers" || section === "references";
+  if (inSubsection && scope !== "entity") {
+    known.push(...STATEMENT_PLACEHOLDERS);
+  }
 
   for (const [field, text] of texts) {
     for (const name of new Set(collectPlaceholders(text))) {
       if (known.includes(name)) continue;
-      if (VALUE_PLACEHOLDERS.includes(name)) {
+      if (Object.hasOwn(RENAMED_PLACEHOLDERS, name)) {
+        errors.push(
+          `"${field}" uses {${name}}, which has been renamed — use ${RENAMED_PLACEHOLDERS[name]}`,
+        );
+      } else if (STATEMENT_PLACEHOLDERS.includes(name)) {
+        errors.push(
+          `"${field}" uses {${name}}, which is only available with "section": "qualifiers" or "references"`,
+        );
+      } else if (VALUE_PLACEHOLDERS.includes(name)) {
         errors.push(
           `"${field}" uses {${name}}, which is only available with scope "value"`,
         );
@@ -199,8 +259,21 @@ export function validateTemplate(tpl, kind) {
  * @param {"query"|"link"} kind
  * @param {string} label - Directory shown in the error message
  */
+// oxlint-disable-next-line no-unused-vars -- build-only; unused once inlined into the shipped script
 export function assertTemplatesValid(loaded, kind, label) {
   const report = [];
+  const seenIds = new Map();
+  for (const { file, data } of loaded) {
+    if (data && typeof data.id === "string") {
+      if (seenIds.has(data.id)) {
+        report.push(
+          `  ${file}:\n    - "id" ${JSON.stringify(data.id)} is already used by ${seenIds.get(data.id)} (ids must be unique; users hide built-in buttons by id)`,
+        );
+      } else {
+        seenIds.set(data.id, file);
+      }
+    }
+  }
   for (const { file, data } of loaded) {
     const errors = validateTemplate(data, kind);
     if (errors.length) {

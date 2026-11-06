@@ -25,6 +25,14 @@ const AUTOGEN_NOTE =
 /** `{{P|P106}}, {{P|P108}}` */
 const propertyLinks = (ids) => ids.map((id) => `{{P|${id}}}`).join(", ");
 
+/** The triggering properties, marked when they are qualifiers or in references. */
+const triggerCell = (t) => {
+  const links = propertyLinks(t.propertyId);
+  if (t.section === "qualifiers") return `${links} ''(as qualifier)''`;
+  if (t.section === "references") return `${links} ''(in references)''`;
+  return links;
+};
+
 /** `{{Q|Q42}} or {{Q|Q64}}`, or a note that the value does not matter. */
 const valueCell = (ids) =>
   ids ? ids.map((id) => `{{Q|${id}}}`).join(" or ") : "''any value''";
@@ -63,7 +71,8 @@ const QUERY_TABLES = [
     heading: "Queries triggered by a property",
     intro:
       "These buttons appear when the item has at least one of the listed " +
-      "properties, whatever its value.",
+      "properties, whatever its value. Properties marked as qualifier or in " +
+      "references are matched there instead of as statements.",
     columns: [
       "Button",
       "Title",
@@ -75,7 +84,7 @@ const QUERY_TABLES = [
     cells: (t) => [
       t.emoji,
       t.title,
-      propertyLinks(t.propertyId),
+      triggerCell(t),
       defaultView(t),
       `{{Q|${t.example}}}`,
       queryLink(t),
@@ -85,8 +94,9 @@ const QUERY_TABLES = [
     scope: "value",
     heading: "Queries triggered by a property value",
     intro:
-      "These buttons appear when the item has the listed property set to one " +
-      "of the listed values.",
+      "These buttons appear next to each value of the listed property (or only " +
+      "next to the listed values). Properties marked as qualifier or in " +
+      "references are matched on qualifier and reference values.",
     columns: [
       "Button",
       "Title",
@@ -99,7 +109,7 @@ const QUERY_TABLES = [
     cells: (t) => [
       t.emoji,
       t.title,
-      propertyLinks(t.propertyId),
+      triggerCell(t),
       valueCell(t.valueId),
       defaultView(t),
       `{{Q|${t.example}}}`,
@@ -123,7 +133,7 @@ const LINK_TABLE = {
   cells: (t) => [
     t.emoji,
     t.title,
-    propertyLinks(t.propertyId),
+    triggerCell(t),
     valueCell(t.valueId),
     `<code>${t.urlTemplate}</code>`,
     `{{Q|${t.example}}}`,

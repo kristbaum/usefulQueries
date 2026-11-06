@@ -4,6 +4,10 @@
 // by mountButtons(): one Vue app per build instead of one per button.
 const _pendingButtons = [];
 
+// What is currently on the page, so it can be torn down and rebuilt when the
+// active templates or edit mode change.
+const _mounted = { app: null, mountPoint: null, slots: [], generation: 0 };
+
 /**
  * Append an empty slot to an anchor element; the button is teleported into it
  * later, so it keeps its position among the other buttons on that anchor.
@@ -12,7 +16,9 @@ const _pendingButtons = [];
  */
 function addButtonSlot(element) {
   const slot = document.createElement("span");
+  slot.className = "usefulqueries-slot";
   $(element).append(slot);
+  _mounted.slots.push(slot);
   return slot;
 }
 
@@ -22,15 +28,45 @@ function addButtonSlot(element) {
  * @param {string} url - The URL to open when clicked
  * @param {string} buttonLabel - The label (emoji/text) for the button
  * @param {string} title - The tooltip for the button
+ * @param {{kind: string, id: string}} [ref] - The template behind the button
  */
-function createLinkButton(element, url, buttonLabel, title) {
+function createLinkButton(element, url, buttonLabel, title, ref) {
   _pendingButtons.push({
     kind: "link",
     slot: addButtonSlot(element),
     url,
     buttonLabel,
     title,
+    ref: ref || null,
   });
+}
+
+/**
+ * Queue an edit-mode "+" button that opens the editor for this spot.
+ * @param {jQuery} element - The anchor element
+ * @param {Object} target - Where a new button would go (scope, propertyId, value)
+ */
+function createAddSlot(element, target) {
+  _pendingButtons.push({
+    kind: "add",
+    slot: addButtonSlot(element),
+    target,
+  });
+}
+
+/** Remove every button this script put on the page. */
+function clearButtons() {
+  if (_mounted.app) {
+    _mounted.app.unmount();
+    _mounted.mountPoint.remove();
+    _mounted.app = null;
+    _mounted.mountPoint = null;
+  }
+  _mounted.slots.forEach((slot) => slot.remove());
+  _mounted.slots = [];
+  _pendingButtons.length = 0;
+  // Invalidates a mountButtons() still waiting for Codex.
+  _mounted.generation++;
 }
 
 /**
@@ -40,6 +76,7 @@ function createLinkButton(element, url, buttonLabel, title) {
  * @param {string} buttonLabel - The label (emoji/text) for the button
  * @param {string} title - The tooltip and popup heading
  * @param {string} scope - Template scope ("entity", "property", or "value")
+ * @param {{kind: string, id: string}} [ref] - The template behind the button
  */
 function createQueryPopup(
   element,
@@ -47,6 +84,7 @@ function createQueryPopup(
   buttonLabel,
   title,
   scope,
+  ref,
 ) {
   /* __IF_QLEVER__ */
   const qleverHref = getQLeverUrl(querystring);
@@ -64,6 +102,7 @@ function createQueryPopup(
     embedHref: SETTINGS.queryEmbedUrl + querystring,
     qleverHref,
     placement: (scope === "value") ? "bottom" : "bottom-start",
+    ref: ref || null,
   });
 }
 
@@ -147,10 +186,22 @@ const UsefulQueriesPopover = {
  * into its slot.
  */
 function mountButtons() {
-  if (!_pendingButtons.length) return;
-  const buttons = _pendingButtons.splice(0);
+  // A slot whose anchor was not found never made it into the page; teleporting
+  // into it would render nothing, so leave those buttons out.
+  const buttons = _pendingButtons.splice(0).filter((b) => b.slot.isConnected);
+  if (!buttons.length) return;
+  const generation = _mounted.generation;
+  const editMode = _editMode;
+  const userIds = new Set(
+    _userConfig ? [..._userConfig.queries, ..._userConfig.links].map((t) => t.id) : [],
+  );
+  for (const b of buttons) {
+    b.isUser = !!(b.ref && userIds.has(b.ref.id));
+  }
 
   mw.loader.using("@wikimedia/codex").then(function (require) {
+    // Torn down (e.g. edit mode toggled) before Codex finished loading.
+    if (generation !== _mounted.generation) return;
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
 
@@ -169,6 +220,13 @@ function mountButtons() {
       }
     }
 
+    if (editMode) {
+      mw.util.addCSS(
+        ".usefulqueries-add .cdx-button, .usefulqueries-edit .cdx-button { min-width: 0; padding: 0 4px; opacity: .75; }" +
+          ".usefulqueries-add .cdx-button { border: 1px dashed currentColor; }",
+      );
+    }
+
     const mountPoint = document.createElement("div");
     mountPoint.hidden = true;
     document.body.appendChild(mountPoint);
@@ -179,14 +237,35 @@ function mountButtons() {
         return {
           // Static list holding DOM nodes; keep Vue from proxying it.
           buttons: Vue.markRaw(buttons),
+          editMode,
           iframeSize: Math.min(Math.max(window.innerWidth - 40, 400), 800),
         };
+      },
+      methods: {
+        add: function (b) {
+          openTemplateEditor(b.target, null);
+        },
+        editOrHide: function (b) {
+          if (b.isUser) {
+            openTemplateEditor(null, b.ref);
+          } else {
+            hideBuiltinButton(b.ref, b.title);
+          }
+        },
       },
       template: `
           <template v-for="(b, i) in buttons" :key="i">
             <teleport :to="b.slot">
+              <span v-if="b.kind === 'add'" class="usefulqueries-add">
+                <cdx-button
+                  weight="quiet"
+                  aria-label="Add a usefulQueries button here"
+                  title="Add a usefulQueries button here"
+                  @click="add(b)"
+                >+</cdx-button>
+              </span>
               <a
-                v-if="b.kind === 'link'"
+                v-else-if="b.kind === 'link'"
                 :href="b.url"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -202,6 +281,15 @@ function mountButtons() {
                 :button="b"
                 :iframe-size="iframeSize"
               ></useful-queries-popover>
+              <span v-if="editMode && b.ref" class="usefulqueries-edit">
+                <cdx-button
+                  weight="quiet"
+                  :action="b.isUser ? 'progressive' : 'destructive'"
+                  :aria-label="b.isUser ? 'Edit this button' : 'Hide this button'"
+                  :title="b.isUser ? 'Edit this button' : 'Hide this built-in button (bring it back in usefulQueries settings)'"
+                  @click="editOrHide(b)"
+                >{{ b.isUser ? "✎" : "✕" }}</cdx-button>
+              </span>
             </teleport>
           </template>
         `,
@@ -213,5 +301,7 @@ function mountButtons() {
     }
     app.component("UsefulQueriesPopover", UsefulQueriesPopover);
     app.mount(mountPoint);
+    _mounted.app = app;
+    _mounted.mountPoint = mountPoint;
   });
 }

@@ -36,8 +36,30 @@ const SRC_FILES = [
   "ui.js",
   "dom.js",
   "processing.js",
+  "config.js",
+  "editor.js",
+  "settings-page.js",
   "main.js",
 ];
+
+// ES modules shared between the build/tests and the shipped script. They are
+// inlined with their import/export keywords stripped; keep their top-level
+// names distinct from the src/ files.
+const SHARED_MODULES = [
+  "scripts/check-sparql.mjs",
+  "scripts/validate-templates.mjs",
+  "src/shared/user-config.mjs",
+];
+
+/**
+ * Turn an ES module into a plain script fragment for the IIFE.
+ * @param {string} code
+ */
+function inlineModule(code) {
+  return code
+    .replace(/^import\s[^;]*;\s*$/gm, "")
+    .replace(/^export\s+(?=(async\s+)?function|const|let|class)/gm, "");
+}
 
 /**
  * Read all JSON files from a directory, validate them, and return the parsed
@@ -72,8 +94,9 @@ async function loadTemplates(dir, kind) {
 }
 
 // Authoring-only fields: kept in the JSON for humans, dropped from the shipped
-// script because nothing reads them at runtime.
-const BUILD_ONLY_FIELDS = ["example"];
+// script because nothing reads them at runtime. (`example` used to be one; the
+// settings page now links to it.)
+const BUILD_ONLY_FIELDS = [];
 
 /**
  * Format a single template object as a JS object literal string (indented for readability).
@@ -93,7 +116,8 @@ function formatTemplateEntry(obj, indent) {
         .join("\n")
         .replace(/\\/g, "\\\\")
         .replace(/`/g, "\\`")
-        .replace(/\$/g, "\\$");
+        // Only "${" starts an interpolation; a lone "$" (regex anchors) is fine.
+        .replace(/\$\{/g, "\\${");
       lines.push(`${indent}  ${key}: \`${backtickContent}\`,`);
     } else {
       lines.push(`${indent}  ${key}: ${JSON.stringify(value)},`);
@@ -158,8 +182,15 @@ function processConditionals(code, includeQLever) {
   return result;
 }
 
-// Load settings
-const settings = JSON.parse(await readFile(settingsPath, "utf8"));
+// Load settings. configName names the user's config page
+// (User:<name>/<configName>.json) and the settings page; each build gets its
+// own, so a lens and the main script can be configured separately.
+const settings = {
+  configName: baseName,
+  displayName: profileName ? `usefulQueries (${profileName})` : "usefulQueries",
+  repositoryUrl: "https://github.com/kristbaum/usefulQueries",
+  ...JSON.parse(await readFile(settingsPath, "utf8")),
+};
 const isWikidata = settings.queryServiceUrl.includes("query.wikidata.org");
 const includeQLever = isWikidata && settings.enableQLever;
 
@@ -176,6 +207,16 @@ try {
   links = await loadTemplates(linksDir, "link");
 } catch (err) {
   console.error(`[assemble] ${err.message}`);
+  process.exit(1);
+}
+
+// Users hide built-ins by id, which must therefore be unique across both kinds.
+const linkIds = new Set(links.map((t) => t.id));
+const clashes = queries.filter((t) => linkIds.has(t.id)).map((t) => t.id);
+if (clashes.length) {
+  console.error(
+    `[assemble] Query and link templates share id(s): ${clashes.join(", ")}`,
+  );
   process.exit(1);
 }
 
@@ -196,41 +237,59 @@ for (const file of SRC_FILES) {
   console.log(`[assemble] Loaded src/${file}`);
 }
 
+const sharedBlock = (
+  await Promise.all(
+    SHARED_MODULES.map(async (file) =>
+      inlineModule(await readFile(path.join(repoRoot, file), "utf8")).trim(),
+    ),
+  )
+).join("\n\n");
+
 // Build the formatted template arrays
 const queriesBlock = formatTemplateArray(queries, "    ");
 const linksBlock = formatTemplateArray(links, "    ");
 const settingsBlock = formatSettings(settings);
 
-// Inject everything into framework
-let assembled = framework;
-assembled = assembled.replace("    /* __USEFUL_QUERIES__ */", queriesBlock);
-assembled = assembled.replace("    /* __USEFUL_LINKS__ */", linksBlock);
-assembled = assembled.replace("  /* __SETTINGS__ */", settingsBlock);
-assembled = assembled.replace(
-  "  /* __HELPERS__ */",
-  srcContents["helpers.js"].trimEnd(),
-);
-assembled = assembled.replace(
-  "  /* __QLEVER__ */",
-  srcContents["qlever.js"].trimEnd(),
-);
-assembled = assembled.replace("  /* __UI__ */", srcContents["ui.js"].trimEnd());
-assembled = assembled.replace(
-  "  /* __DOM__ */",
-  srcContents["dom.js"].trimEnd(),
-);
-assembled = assembled.replace(
-  "  /* __PROCESSING__ */",
-  srcContents["processing.js"].trimEnd(),
-);
-assembled = assembled.replace(
-  "  /* __MAIN__ */",
-  srcContents["main.js"].trimEnd(),
-);
+/**
+ * Inject settings, templates and sources into the framework.
+ * @param {Object<string, string>} srcContents - src file name → code
+ */
+function assembleWith(srcContents) {
+  let assembled = framework;
+  assembled = assembled.replace("    /* __USEFUL_QUERIES__ */", () => queriesBlock);
+  assembled = assembled.replace("    /* __USEFUL_LINKS__ */", () => linksBlock);
+  assembled = assembled.replace("  /* __SETTINGS__ */", () => settingsBlock);
+  assembled = assembled.replace("  /* __HELPERS__ */", () => srcContents["helpers.js"].trimEnd());
+  assembled = assembled.replace("  /* __SHARED__ */", () => sharedBlock);
+  assembled = assembled.replace("  /* __QLEVER__ */", () => srcContents["qlever.js"].trimEnd());
+  assembled = assembled.replace("  /* __UI__ */", () => srcContents["ui.js"].trimEnd());
+  assembled = assembled.replace("  /* __DOM__ */", () => srcContents["dom.js"].trimEnd());
+  assembled = assembled.replace("  /* __PROCESSING__ */", () => srcContents["processing.js"].trimEnd());
+  for (const [marker, file] of [
+    ["  /* __CONFIG__ */", "config.js"],
+    ["  /* __EDITOR__ */", "editor.js"],
+    ["  /* __SETTINGS_PAGE__ */", "settings-page.js"],
+  ]) {
+    assembled = assembled.replace(marker, () => srcContents[file].trimEnd());
+  }
+  assembled = assembled.replace("  /* __MAIN__ */", () => srcContents["main.js"].trimEnd());
+  // Clean up any double blank lines left from omitted sections
+  return assembled.replace(/\n{3,}/g, "\n\n");
+}
 
-// Clean up any double blank lines left from omitted sections
-assembled = assembled.replace(/\n{3,}/g, "\n\n");
+/**
+ * Collapse the whitespace of inline Vue templates (`template: \`<…>\``). Terser
+ * keeps string contents verbatim, and the indentation is most of their size.
+ * Only for the minified build; the readable one stays as written.
+ * @param {string} code
+ */
+function compactVueTemplates(code) {
+  return code.replace(/template: `([\s\S]*?)`/g, (match, body) =>
+    body.includes("<") ? "template: `" + body.replace(/\s*\n\s*/g, " ").trim() + "`" : match,
+  );
+}
 
+const assembled = assembleWith(srcContents);
 // Write the assembled output
 await writeFile(outputPath, assembled, "utf8");
 const assembledBytes = Buffer.byteLength(assembled, "utf8");
@@ -239,13 +298,18 @@ console.log(
 );
 
 // Minify
+const forMinify = assembleWith(
+  Object.fromEntries(
+    Object.entries(srcContents).map(([file, code]) => [file, compactVueTemplates(code)]),
+  ),
+);
 let header = "";
-let code = assembled;
-if (assembled.startsWith("/*")) {
-  const endIndex = assembled.indexOf("*/");
+let code = forMinify;
+if (forMinify.startsWith("/*")) {
+  const endIndex = forMinify.indexOf("*/");
   if (endIndex !== -1) {
-    header = assembled.slice(0, endIndex + 2).trimEnd() + "\n";
-    code = assembled.slice(endIndex + 2);
+    header = forMinify.slice(0, endIndex + 2).trimEnd() + "\n";
+    code = forMinify.slice(endIndex + 2);
   }
 }
 

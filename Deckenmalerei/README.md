@@ -79,7 +79,7 @@ one item and compared directly.
 
 - **Paintings** are reached through the statements that matter for them:
   `P1257` (Iconclass), `P276` (location), `P88` (commissioned by). These use
-  `scope: "value"` and query `{valueQid}`, so a painting with two Iconclass
+  `scope: "value"` and query `wd:{valueId}` (or `{valueSparql}` for Iconclass strings), so a painting with two Iconclass
   notations or two patrons gets one button per statement, each answering for
   the value it sits next to.
 - **People** are matched with `scope: "value"` on `P31` = `Q5`.
@@ -89,7 +89,7 @@ one item and compared directly.
   Matching is on the direct `P31` value with no subclass inference, which is why
   the list is explicit rather than a `P279*` walk.
 - **Coordinates** use `scope: "value"` on `P625`, which is what makes the
-  `{valueLat}` / `{valueLon}` placeholders available to the radius queries.
+  `{valueLatitude}` / `{valueLongitude}` placeholders available to the radius queries.
 
 ## Data notes
 
