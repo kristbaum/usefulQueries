@@ -1,0 +1,28 @@
+{
+  "id": "successionGraph",
+  "example": "Q76",
+  "scope": "property",
+  "section": "qualifiers",
+  "propertyId": ["P1365", "P1366"],
+  "template": [
+    "#defaultView:Graph",
+    "# The chain of predecessors and successors of everyone with the same",
+    "# statement, e.g. all presidents of a country, from the replaces (P1365) and",
+    "# replaced by (P1366) qualifiers. Each row is one link of the chain.",
+    "SELECT ?from ?fromLabel ?to ?toLabel WHERE {",
+    "  {",
+    "    ?from p:{statementPropertyId} ?statement.",
+    "    ?statement ps:{statementPropertyId} {statementValueSparql};",
+    "               pq:P1366 ?to.",
+    "  } UNION {",
+    "    ?to p:{statementPropertyId} ?statement.",
+    "    ?statement ps:{statementPropertyId} {statementValueSparql};",
+    "               pq:P1365 ?from.",
+    "  }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
+    "}",
+    "LIMIT 2000"
+  ],
+  "emoji": "⛓️",
+  "title": "Succession of {statementValueLabel}"
+}
