@@ -29,9 +29,11 @@ const outputPath = path.join(buildDir, `${baseName}.js`);
 const minifiedPath = path.join(buildDir, `minified_${baseName}.js`);
 const wikiPath = path.join(buildDir, `${baseName}.wiki`);
 
-// Source files to include, in dependency order
+// Source files to include, in dependency order. "<shared>" marks where the
+// shared ES modules below are inlined.
 const SRC_FILES = [
   "helpers.js",
+  "<shared>",
   "qlever.js",
   "ui.js",
   "dom.js",
@@ -132,12 +134,7 @@ function formatTemplateEntry(obj, indent) {
  * Format an array of template objects as a JS array body (entries only, no brackets).
  */
 function formatTemplateArray(templates, indent) {
-  return templates
-    .map((t, i) => {
-      const entry = formatTemplateEntry(t, indent);
-      return i < templates.length - 1 ? entry + "," : entry + ",";
-    })
-    .join("\n");
+  return templates.map((t) => formatTemplateEntry(t, indent) + ",").join("\n");
 }
 
 /**
@@ -145,41 +142,11 @@ function formatTemplateArray(templates, indent) {
  */
 function formatSettings(settings) {
   const lines = ["  // ===== GLOBAL SETTINGS =====", "  const SETTINGS = {"];
-  const entries = Object.entries(settings);
-  entries.forEach(([key, value], i) => {
-    const comma = i < entries.length - 1 ? "," : ",";
-    lines.push(`    ${key}: ${JSON.stringify(value)}${comma}`);
-  });
+  for (const [key, value] of Object.entries(settings)) {
+    lines.push(`    ${key}: ${JSON.stringify(value)},`);
+  }
   lines.push("  };");
   return lines.join("\n");
-}
-
-/**
- * Strip conditional blocks from source code based on QLever inclusion.
- * Markers: __IF_QLEVER__ / __ENDIF_QLEVER__ and __IF_NOT_QLEVER__ / __ENDIF_NOT_QLEVER__
- */
-function processConditionals(code, includeQLever) {
-  let result = code;
-
-  if (includeQLever) {
-    // Keep __IF_QLEVER__ content, remove __IF_NOT_QLEVER__ content
-    result = result.replace(/^.*\/\* __IF_QLEVER__ \*\/.*\n/gm, "");
-    result = result.replace(/^.*\/\* __ENDIF_QLEVER__ \*\/.*\n/gm, "");
-    result = result.replace(
-      /^.*\/\* __IF_NOT_QLEVER__ \*\/.*\n[\s\S]*?^.*\/\* __ENDIF_NOT_QLEVER__ \*\/.*\n/gm,
-      "",
-    );
-  } else {
-    // Keep __IF_NOT_QLEVER__ content, remove __IF_QLEVER__ content
-    result = result.replace(/^.*\/\* __IF_NOT_QLEVER__ \*\/.*\n/gm, "");
-    result = result.replace(/^.*\/\* __ENDIF_NOT_QLEVER__ \*\/.*\n/gm, "");
-    result = result.replace(
-      /^.*\/\* __IF_QLEVER__ \*\/.*\n[\s\S]*?^.*\/\* __ENDIF_QLEVER__ \*\/.*\n/gm,
-      "",
-    );
-  }
-
-  return result;
 }
 
 // Load settings. configName names the user's config page
@@ -194,11 +161,13 @@ const settings = {
   helpUrl: "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries#Your_own_buttons",
   ...JSON.parse(await readFile(settingsPath, "utf8")),
 };
+// QLever (via the To QLever tool) only indexes Wikidata, so the runtime only
+// ever sees enableQLever: true on Wikidata builds.
 const isWikidata = settings.queryServiceUrl.includes("query.wikidata.org");
-const includeQLever = isWikidata && settings.enableQLever;
+settings.enableQLever = isWikidata && settings.enableQLever === true;
 
 console.log(
-  `[assemble] Target: ${isWikidata ? "Wikidata" : "non-Wikidata"}, QLever: ${includeQLever ? "included" : "omitted"}`,
+  `[assemble] Target: ${isWikidata ? "Wikidata" : "non-Wikidata"}, QLever: ${settings.enableQLever ? "on" : "off"}`,
 );
 
 // Load framework and templates. A malformed template is an authoring mistake,
@@ -227,26 +196,19 @@ console.log(
   `[assemble] Loaded ${queries.length} query template(s) and ${links.length} link template(s)`,
 );
 
-// Load and concatenate source files
+// Load the source files (the shared ES modules as one inlined block)
 const srcContents = {};
 for (const file of SRC_FILES) {
-  if (file === "qlever.js" && !includeQLever) {
-    console.log(`[assemble] Skipping src/${file} (QLever not applicable)`);
-    srcContents[file] = "";
-    continue;
+  if (file === "<shared>") {
+    const modules = await Promise.all(
+      SHARED_MODULES.map((m) => readFile(path.join(repoRoot, m), "utf8")),
+    );
+    srcContents[file] = modules.map((code) => inlineModule(code).trim()).join("\n\n");
+  } else {
+    srcContents[file] = await readFile(path.join(srcDir, file), "utf8");
   }
-  const content = await readFile(path.join(srcDir, file), "utf8");
-  srcContents[file] = processConditionals(content, includeQLever);
-  console.log(`[assemble] Loaded src/${file}`);
 }
-
-const sharedBlock = (
-  await Promise.all(
-    SHARED_MODULES.map(async (file) =>
-      inlineModule(await readFile(path.join(repoRoot, file), "utf8")).trim(),
-    ),
-  )
-).join("\n\n");
+console.log(`[assemble] Loaded ${SRC_FILES.length - 1} source files and ${SHARED_MODULES.length} shared modules`);
 
 // Build the formatted template arrays
 const queriesBlock = formatTemplateArray(queries, "    ");
@@ -258,26 +220,12 @@ const settingsBlock = formatSettings(settings);
  * @param {Object<string, string>} srcContents - src file name → code
  */
 function assembleWith(srcContents) {
-  let assembled = framework;
-  assembled = assembled.replace("    /* __USEFUL_QUERIES__ */", () => queriesBlock);
-  assembled = assembled.replace("    /* __USEFUL_LINKS__ */", () => linksBlock);
-  assembled = assembled.replace("  /* __SETTINGS__ */", () => settingsBlock);
-  assembled = assembled.replace("  /* __HELPERS__ */", () => srcContents["helpers.js"].trimEnd());
-  assembled = assembled.replace("  /* __SHARED__ */", () => sharedBlock);
-  assembled = assembled.replace("  /* __QLEVER__ */", () => srcContents["qlever.js"].trimEnd());
-  assembled = assembled.replace("  /* __UI__ */", () => srcContents["ui.js"].trimEnd());
-  assembled = assembled.replace("  /* __DOM__ */", () => srcContents["dom.js"].trimEnd());
-  assembled = assembled.replace("  /* __PROCESSING__ */", () => srcContents["processing.js"].trimEnd());
-  for (const [marker, file] of [
-    ["  /* __CONFIG__ */", "config.js"],
-    ["  /* __EDITOR__ */", "editor.js"],
-    ["  /* __SETTINGS_PAGE__ */", "settings-page.js"],
-  ]) {
-    assembled = assembled.replace(marker, () => srcContents[file].trimEnd());
-  }
-  assembled = assembled.replace("  /* __MAIN__ */", () => srcContents["main.js"].trimEnd());
-  // Clean up any double blank lines left from omitted sections
-  return assembled.replace(/\n{3,}/g, "\n\n");
+  const sources = SRC_FILES.map((file) => srcContents[file].trimEnd()).join("\n\n");
+  return framework
+    .replace("    /* __USEFUL_QUERIES__ */", () => queriesBlock)
+    .replace("    /* __USEFUL_LINKS__ */", () => linksBlock)
+    .replace("  /* __SETTINGS__ */", () => settingsBlock)
+    .replace("  /* __SOURCES__ */", () => sources);
 }
 
 /**

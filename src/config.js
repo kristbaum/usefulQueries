@@ -17,6 +17,18 @@ function settingsPageTitle() {
   return "Special:BlankPage/" + SETTINGS.configName;
 }
 
+/**
+ * URL of an item page (in the configured item namespace), optionally with
+ * query parameters and a "#P123" anchor in `qid`.
+ * @param {string} qid - e.g. "Q42" or "Q42#P19"
+ * @param {Object} [params]
+ */
+function itemPageUrl(qid, params) {
+  const ns = SETTINGS.allowedNamespace;
+  const prefix = ns ? mw.config.get("wgFormattedNamespaces")[ns] + ":" : "";
+  return mw.util.getUrl(prefix + qid, params);
+}
+
 /** Whether the visitor can have a config at all. */
 function canConfigure() {
   return !!mw.config.get("wgUserName");
@@ -50,74 +62,71 @@ function loadConfig(userName) {
 }
 
 /**
- * Change the logged-in user's config. `mutate` receives the config as it is
- * saved on the wiki right now (not a possibly stale copy) and changes it in
- * place, so edits from two tabs never overwrite each other.
- * @param {function(object): void} mutate
+ * Save the logged-in user's config. `transform` gets the config as it is on
+ * the wiki right now (empty if the page does not exist yet) and the page text
+ * (null if missing), and returns the config to save. It may throw an error
+ * code (a string) to abort. One read, then either an edit or, for a missing
+ * page, a create; a concurrent change makes MediaWiki reject the edit instead
+ * of silently overwriting it.
+ * @param {function(object, ?string): object} transform
  * @param {string} summary - Edit summary
  * @returns {Promise<object>} The saved config
  */
-function updateConfig(mutate, summary) {
+function saveConfig(transform, summary) {
   const title = configPageTitle();
-  const fullSummary = summary + " (usefulQueries)";
+  const params = { summary: summary + " (usefulQueries)" };
+  let saved = null;
+
+  function apply(text) {
+    const current = parseUserConfig(text, BUILTIN_IDS);
+    if (text !== null && current.errors.some((e) => e.startsWith("not valid JSON"))) {
+      throw "usefulqueries-invalid-json";
+    }
+    saved = transform(current.config, text);
+    return serializeConfig(saved);
+  }
+
   return mw.loader.using("mediawiki.api").then(function () {
     const api = new mw.Api();
-    let saved = null;
-    return loadConfig().then(function (current) {
-      if (!current.exists) {
-        const config = emptyConfig(BUILTIN_IDS);
-        mutate(config);
-        saved = config;
-        return api.create(title, { summary: fullSummary }, serializeConfig(config)).then(() => saved);
-      }
-      return api
-        .edit(title, function (revision) {
-          const fresh = parseUserConfig(revision.content, BUILTIN_IDS);
-          if (fresh.errors.length && fresh.errors[0].startsWith("not valid JSON")) {
-            return $.Deferred().reject("usefulqueries-invalid-json").promise();
-          }
-          mutate(fresh.config);
-          saved = fresh.config;
-          return { text: serializeConfig(fresh.config), summary: fullSummary };
-        })
-        .then(() => saved);
-    });
+    return api
+      .edit(title, (revision) => ({ ...params, text: apply(revision.content) }))
+      .catch(function (code) {
+        if (code !== "nocreate-missing") return $.Deferred().reject(code).promise();
+        return api.create(title, params, apply(null));
+      })
+      .then(() => saved);
   });
 }
 
 /**
- * Overwrite the config with `config`, but only if the page still holds
- * `expectedText` (what the settings page loaded). Rejects with
- * "usefulqueries-conflict" otherwise.
- * @param {object} config
- * @param {string|null} expectedText - null if the page did not exist
+ * Change the config in place, starting from what is saved right now, so edits
+ * from two tabs never overwrite each other.
+ * @param {function(object): void} mutate
  * @param {string} summary
  */
+function updateConfig(mutate, summary) {
+  return saveConfig(function (config) {
+    mutate(config);
+    return config;
+  }, summary);
+}
+
+/**
+ * Overwrite the config with `config`, but only if the page still holds
+ * `expectedText` (what the settings page loaded; null if it did not exist).
+ * Rejects with "usefulqueries-conflict" otherwise.
+ */
 function replaceConfig(config, expectedText, summary) {
-  const title = configPageTitle();
-  const fullSummary = summary + " (usefulQueries)";
-  const text = serializeConfig(config);
-  return mw.loader.using("mediawiki.api").then(function () {
-    const api = new mw.Api();
-    if (expectedText === null) {
-      return api.create(title, { summary: fullSummary }, text).catch(function (code) {
-        return $.Deferred()
-          .reject(code === "articleexists" ? "usefulqueries-conflict" : code)
-          .promise();
-      });
-    }
-    return api.edit(title, function (revision) {
-      if (revision.content !== expectedText) {
-        return $.Deferred().reject("usefulqueries-conflict").promise();
-      }
-      return { text, summary: fullSummary };
-    });
-  });
+  return saveConfig(function (current, text) {
+    if (text !== expectedText) throw "usefulqueries-conflict";
+    return config;
+  }, summary);
 }
 
 /** Human-readable message for a failed save. */
 function describeSaveError(code) {
-  if (code === "usefulqueries-conflict") {
+  // articleexists / editconflict: someone saved between our read and write.
+  if (code === "usefulqueries-conflict" || code === "articleexists" || code === "editconflict") {
     return "Your usefulQueries config was changed elsewhere (another tab?). Reload this page and try again.";
   }
   if (code === "usefulqueries-invalid-json") {

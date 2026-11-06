@@ -1,5 +1,7 @@
-// Runs the built script against a stubbed MediaWiki: as an item page (logged
-// out and logged in with a config page) and as the settings page. The stubs
+// Runs the built script (readable and minified, the files that get uploaded)
+// against a stubbed MediaWiki: as an item page (logged out and logged in with
+// a config page), as the settings page, and on pages it must ignore. A syntax
+// error in either file fails every test here. The stubs
 // are shallow — this catches ReferenceErrors and broken wiring between the
 // src/ files, not rendering bugs (Codex never "loads" here).
 
@@ -184,6 +186,15 @@ for (const file of ["usefulQueries.js", "minified_usefulQueries.js"]) {
       },
     });
     assert.equal(state.hooks.length, 0, "no entity hook on the settings page");
+  });
+
+  test(`${file}: pages outside the item namespace are left alone`, async () => {
+    const state = await run({
+      file,
+      config: { wgNamespaceNumber: 1, wgPageName: "Talk:Q1", wgTitle: "Q1", wgUserName: "Example" },
+    });
+    assert.equal(state.hooks.length, 0);
+    assert.equal(state.apiCalls.length, 0);
   });
 
   test(`${file}: other special pages are left alone`, async () => {

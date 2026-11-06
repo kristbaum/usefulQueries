@@ -96,28 +96,24 @@ function renderSettingsPage() {
   $content.append(mountPoint);
   $(mountPoint).text("Loading…");
 
-  $.when(mw.loader.using(["@wikimedia/codex", "mediawiki.api", "mediawiki.util"]))
-    .then(function (require) {
+  loadCodex(SETTINGS_COMPONENTS, ["mediawiki.api", "mediawiki.util"])
+    .then(function (codex) {
+      if (codex.missing) return { codex };
       return loadConfig().then(function (loaded) {
         const ids = [];
         for (const t of [...USEFUL_QUERIES, ...USEFUL_LINKS, ...loaded.config.queries, ...loaded.config.links]) {
           ids.push(...(t.propertyId || []), ...(t.valueId || []));
         }
-        return fetchLabels(ids).then((labels) => ({ require, loaded, labels }));
+        return fetchLabels(ids).then((labels) => ({ codex, loaded, labels }));
       });
     })
-    .then(function ({ require, loaded, labels }) {
-      const Vue = require("vue");
-      const Codex = require("@wikimedia/codex");
-      const missing = SETTINGS_COMPONENTS.filter((name) => !Codex[name]);
-      if (missing.length) {
-        $(mountPoint).text(
-          "This page needs a newer Codex than this wiki has. Edit " + configPageTitle() + " by hand instead.",
-        );
+    .then(function ({ codex, loaded, labels }) {
+      if (codex.missing) {
+        $(mountPoint).text(codex.missing);
         return;
       }
       $(mountPoint).empty();
-      mountSettingsApp(Vue, Codex, mountPoint, loaded, labels);
+      mountSettingsApp(codex.Vue, codex.Codex, mountPoint, loaded, labels);
     })
     .catch(function (err) {
       $(mountPoint).text("Could not load your usefulQueries config: " + err);
@@ -238,8 +234,7 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
         return suggestionIssueUrl(entry.t, entry.kind, SETTINGS.repositoryUrl);
       },
       removeOwn: function (entry) {
-        const key = entry.kind === "query" ? "queries" : "links";
-        this.config[key] = this.config[key].filter((t) => t.id !== entry.t.id);
+        removeTemplate(this.config, entry.t.id);
         this.confirmDelete = null;
       },
       loadImport: function () {

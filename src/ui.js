@@ -6,7 +6,12 @@ const _pendingButtons = [];
 
 // What is currently on the page, so it can be torn down and rebuilt when the
 // active templates or edit mode change.
-const _mounted = { app: null, mountPoint: null, slots: [], generation: 0 };
+const _mounted = { app: null, mountPoint: null, slots: [], generation: 0, styled: false };
+
+const BUTTON_CSS =
+  ".usefulqueries-popover { max-width: none !important; }" +
+  ".usefulqueries-add .cdx-button, .usefulqueries-edit .cdx-button { min-width: 0; padding: 0 4px; opacity: .75; }" +
+  ".usefulqueries-add .cdx-button { border: 1px dashed currentColor; }";
 
 /**
  * Append an empty slot to an anchor element; the button is teleported into it
@@ -86,13 +91,6 @@ function createQueryPopup(
   scope,
   ref,
 ) {
-  /* __IF_QLEVER__ */
-  const qleverHref = getQLeverUrl(querystring);
-  /* __ENDIF_QLEVER__ */
-  /* __IF_NOT_QLEVER__ */
-  const qleverHref = null;
-  /* __ENDIF_NOT_QLEVER__ */
-
   _pendingButtons.push({
     kind: "popup",
     slot: addButtonSlot(element),
@@ -100,7 +98,7 @@ function createQueryPopup(
     title,
     queryServiceHref: SETTINGS.queryServiceUrl + querystring,
     embedHref: SETTINGS.queryEmbedUrl + querystring,
-    qleverHref,
+    qleverHref: getQLeverUrl(querystring),
     placement: (scope === "value") ? "bottom" : "bottom-start",
     ref: ref || null,
   });
@@ -182,6 +180,29 @@ const UsefulQueriesPopover = {
 };
 
 /**
+ * Load Vue and Codex, and check that the given Codex components exist (older
+ * wikis, e.g. some Wikibase Cloud instances, ship an older Codex).
+ * @param {string[]} components - Component names, e.g. ["CdxDialog"]
+ * @param {string[]} [modules] - Further ResourceLoader modules to load
+ * @returns {Promise<{Vue: Object, Codex: Object, missing: string|null}>}
+ *   `missing` is a message for the user when components are absent, else null
+ */
+function loadCodex(components, modules = []) {
+  return mw.loader.using(["@wikimedia/codex", ...modules]).then(function (require) {
+    const Codex = require("@wikimedia/codex");
+    const absent = components.filter((name) => !Codex[name]);
+    return {
+      Vue: require("vue"),
+      Codex,
+      missing: absent.length
+        ? "This needs a newer version of Codex than this wiki has (missing " +
+          absent.join(", ") + "). You can still edit " + configPageTitle() + " by hand."
+        : null,
+    };
+  });
+}
+
+/**
  * Render all queued buttons with a single Vue app that teleports each button
  * into its slot.
  */
@@ -205,11 +226,12 @@ function mountButtons() {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
 
-    if (Codex.CdxPopover) {
-      if (buttons.some((b) => b.kind === "popup")) {
-        mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
-      }
-    } else {
+    if (!_mounted.styled) {
+      mw.util.addCSS(BUTTON_CSS);
+      _mounted.styled = true;
+    }
+
+    if (!Codex.CdxPopover) {
       // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
       // fall back to plain link buttons to avoid rendering the component inline.
       for (const b of buttons) {
@@ -218,13 +240,6 @@ function mountButtons() {
           b.url = b.queryServiceHref;
         }
       }
-    }
-
-    if (editMode) {
-      mw.util.addCSS(
-        ".usefulqueries-add .cdx-button, .usefulqueries-edit .cdx-button { min-width: 0; padding: 0 4px; opacity: .75; }" +
-          ".usefulqueries-add .cdx-button { border: 1px dashed currentColor; }",
-      );
     }
 
     const mountPoint = document.createElement("div");

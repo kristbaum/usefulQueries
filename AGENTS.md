@@ -49,11 +49,8 @@ npm test        # checks the built output files are valid, runnable JS
 
 **Run tests on changes:** after editing anything in `src/` or `templates/`, run
 `npm run build && npm test`. The test suite (Node's built-in runner — no extra
-deps) covers two things:
+deps) covers:
 
-- `test/build-output.test.mjs` verifies that both `usefulQueries.js` and
-  `minified_usefulQueries.js` exist, parse as valid JavaScript, and execute their
-  top-level IIFE without throwing.
 - `test/validate-templates.test.mjs` checks every shipped template against the
   schema and pins the rejection cases.
 - `test/wiki-overview.test.mjs` fails if the generated overviews in
@@ -61,8 +58,10 @@ deps) covers two things:
 - `test/check-sparql.test.mjs` pins the WDQS/QLever portability rules described
   below, and asserts that every shipped query template still satisfies them.
 - `test/user-config.test.mjs` covers parsing, validating and merging user configs.
-- `test/runtime-smoke.test.mjs` runs the built script against stubbed `mw`/`$` as an
-  item page (logged out, logged in, broken config) and as the settings page.
+- `test/runtime-smoke.test.mjs` runs both built files (`usefulQueries.js` and
+  `minified_usefulQueries.js`) against stubbed `mw`/`$`: as an item page (logged
+  out, logged in, broken config), as the settings page, and on pages it must
+  ignore.
 
 Keep them green before committing.
 
@@ -80,13 +79,16 @@ Keep them green before committing.
    `import`/`export` keywords stripped, so the runtime validates user configs
    with the same code the build uses. Keep their top-level names distinct from
    the `src/` files, since they all share one scope.
-   Then concatenates the `src/` files in this fixed order: `helpers.js`, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `config.js`, `editor.js`, `settings-page.js`, `main.js`.
-6. Strips conditional QLever blocks (`/* __IF_QLEVER__ */` … `/* __ENDIF_QLEVER__ */`) based on `enableQLever` in settings.
-7. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified;
+   Then concatenates everything at the framework's single `/* __SOURCES__ */`
+   marker, in the order of `SRC_FILES` in `assemble.mjs`: `helpers.js`, the shared
+   modules, `qlever.js`, `ui.js`, `dom.js`, `processing.js`, `config.js`,
+   `editor.js`, `settings-page.js`, `main.js`. A new source file only needs an
+   entry there.
+6. Writes `usefulQueries.js` (readable) and `minified_usefulQueries.js` (terser-minified;
    the whitespace inside inline Vue `template:` strings is collapsed first).
    A profile built with `--profile <Name>` writes `<Name>/<Name>_usefulQueries.js`
    and `<Name>/minified_<Name>_usefulQueries.js` instead — same names, prefixed.
-8. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
+7. Regenerates the `== Query overview ==` and `== Link overview ==` sections of
    `usefulQueries.wiki` from the templates (`scripts/generate-wiki.mjs`).
    Everything from a managed heading up to the next top-level heading is
    replaced, so the rest of the page is safe to edit by hand; a missing heading
@@ -125,7 +127,7 @@ a ready SPARQL term; the old names (`{itemQid}`, `{valueQid}`, …) are rejected
 - Template matching is done via pre-built lookup indexes in `processing.js` (`_templateIndex`), keyed `<scope>:<section>:<propertyId>`. They are rebuilt by `setActiveTemplates()` when the user's config loads.
 - `section` (`statement` | `qualifiers` | `references`) places property/value buttons on qualifiers or reference snaks. These are located by snak hash (`.wikibase-snakview-<hash>` on desktop, `[data-snak-hash]` on mobile); mobile references are not rendered at load and get no buttons.
 - On viewports narrower than 900 px the popup is replaced with a plain link button (no iframe).
-- The QLever integration is toggled by `enableQLever` in `src/settings.json`. The build strips the inactive branch entirely. The popup's QLever action just hands the WDQS URL to the [To QLever](https://to-qlever.toolforge.org/) Toolforge tool, which converts the query server-side and redirects to QLever — the script does no SPARQL rewriting itself.
+- The QLever integration is toggled by `enableQLever` in `src/settings.json`. The build forces it off for any query service other than Wikidata's, and `getQLeverUrl()` returns null when it is off. The popup's QLever action just hands the WDQS URL to the [To QLever](https://to-qlever.toolforge.org/) Toolforge tool, which converts the query server-side and redirects to QLever — the script does no SPARQL rewriting itself.
 - The script uses Wikimedia Codex (Vue 3 components) loaded via `mw.loader`. Do not import external libraries.
 
 ## Settings (`src/settings.json`)

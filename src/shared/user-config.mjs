@@ -8,7 +8,6 @@
 // inlines it into the shipped script, like validate-templates.mjs.
 
 import { validateTemplate } from "../../scripts/validate-templates.mjs";
-import { checkSparql } from "../../scripts/check-sparql.mjs";
 
 export const CONFIG_VERSION = 1;
 
@@ -236,6 +235,17 @@ export function generalizeQuery(text, ctx) {
 }
 
 /**
+ * Remove a user template from a config, whichever kind it is. Changes
+ * `config` in place (it may be reactive Vue state).
+ * @param {object} config
+ * @param {string} id
+ */
+export function removeTemplate(config, id) {
+  config.queries = config.queries.filter((t) => t.id !== id);
+  config.links = config.links.filter((t) => t.id !== id);
+}
+
+/**
  * A new id for a user template, unique among `existingIds`.
  * @param {string} title - Used to make the id readable in the JSON page
  * @param {Iterable<string>} existingIds
@@ -281,16 +291,6 @@ export function importTemplates(config, picked, builtinIds = []) {
     (kind === "query" ? next.queries : next.links).push({ ...template, id });
   }
   return next;
-}
-
-/**
- * Warnings for a query template that do not stop it from working on WDQS but
- * would make it slow or broken on QLever. Shown in the editor, never enforced
- * on a user's own config.
- * @param {string[]} lines
- */
-export function sparqlWarnings(lines) {
-  return checkSparql(lines);
 }
 
 /**

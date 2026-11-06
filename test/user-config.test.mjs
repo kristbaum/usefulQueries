@@ -8,6 +8,7 @@ import {
   mergeTemplates,
   parseUserConfig,
   queryFromServiceUrl,
+  removeTemplate,
   serializeConfig,
   suggestionIssueUrl,
   validateUserConfig,
@@ -161,6 +162,15 @@ test("generalising a qualifier query also swaps the statement's value", () => {
     text,
     "SELECT ?p WHERE { ?p p:P39 ?s. ?s ps:P39 wd:{statementValueId}; pq:P768 wd:{valueId}. FILTER(?p != wd:{itemId}) }",
   );
+});
+
+test("removeTemplate drops the id from whichever list holds it", () => {
+  const config = { ...emptyConfig(), queries: [userQuery()], links: [{ id: "u_link" }] };
+  removeTemplate(config, "u_link");
+  assert.deepEqual(config.links, []);
+  assert.equal(config.queries.length, 1);
+  removeTemplate(config, "u_bornHere");
+  assert.deepEqual(config.queries, []);
 });
 
 test("new ids are readable, prefixed and unique", () => {

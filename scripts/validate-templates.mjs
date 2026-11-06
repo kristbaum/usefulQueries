@@ -40,6 +40,25 @@ export const STATEMENT_PLACEHOLDERS = [
 // the statement's own value.
 export const SECTIONS = ["statement", "qualifiers", "references"];
 
+// One-line help per placeholder, shown as tooltips in the button editor.
+// In triple terms: the item is the subject, the property the predicate and the
+// statement's value the object.
+export const PLACEHOLDER_HELP = {
+  itemId: "ID of the item (the subject), e.g. Q42. Write wd:{itemId}.",
+  itemLabel: "Label of the item in your language, falling back to other languages, then to its ID.",
+  userLanguage: "Code of your interface language, e.g. en or de.",
+  propertyId: "The property (predicate) the button sits on, e.g. P19. Write wdt:{propertyId}.",
+  valueId: "ID of the object (the statement's value) if it is an item, e.g. Q64. Write wd:{valueId}. Empty for text, dates and numbers.",
+  valueSparql: "The object of any type, already written as SPARQL: wd:Q64, \"91E23\" (with quotes), a date… Use as is, without extra quotes.",
+  valueLabel: "Readable form of the object, for titles.",
+  valueLatitude: "Latitude of a coordinate object (P625); empty for other values.",
+  valueLongitude: "Longitude of a coordinate object (P625); empty for other values.",
+  statementPropertyId: "Property of the statement this qualifier or reference belongs to, e.g. P39. Write p:/ps:{statementPropertyId}.",
+  statementValueId: "Value of that statement if it is an item, e.g. Q11696. Write wd:{statementValueId}.",
+  statementValueSparql: "Value of that statement of any type, already written as SPARQL.",
+  statementValueLabel: "Readable form of that statement's value, for titles.",
+};
+
 // Names used before the placeholders were renamed, with what to write now.
 const RENAMED_PLACEHOLDERS = {
   itemQid: "{itemId}",

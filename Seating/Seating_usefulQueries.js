@@ -43,37 +43,9 @@ $(function () {
     return;
   }
 
-  // ===== CONFIGURATION =====
-
-  /**
-   * @typedef {Object} UsefulQuery
-   * @property {string} id - Unique identifier for the query
-   * @property {"entity"|"property"|"value"} scope - Where to attach the query button
-   *   - "entity": Attaches to the entity title (entity-wide query)
-   *   - "property": Attaches to a property label
-   *   - "value": Attaches to a specific property+value combination
-   * @property {string[]} [propertyId] - Property IDs to match (required for "property" and "value" scope)
-   * @property {string[]|null} [valueId] - Value entity IDs to match ("value" scope; null matches any value)
-   * @property {string} template - SPARQL query template with placeholders
-   * @property {string} emoji - Emoji/text label for the button
-   * @property {string} title - Button tooltip and popup heading (supports {itemLabel}, {itemId} placeholders)
-   */
-
-  /**
-   * @typedef {Object} UsefulLink
-   * @property {string} id - Unique identifier for the link
-   * @property {"entity"|"property"|"value"} scope - Where to attach the link button
-   * @property {string[]} [propertyId] - Property IDs to match (required for "property" and "value" scope)
-   * @property {string[]|null} [valueId] - Value entity IDs to match ("value" scope; null matches any value)
-   * @property {string} urlTemplate - URL template with placeholders ({itemId}, {valueId}, …)
-   * @property {string} emoji - Emoji/text label for the button
-   * @property {string} title - Button tooltip text
-   */
-
-  // ===== USEFUL QUERIES CONFIGURATION =====
-  // Add new queries here - they will automatically be attached to the right places
-
-  /** @type {UsefulQuery[]} */
+  // Built-in templates, inlined from templates/queries/*.json and
+  // templates/links/*.json by the build. Field reference: TEMPLATE_GUIDE.md.
+  // (The build joins each query's SPARQL lines into one string.)
   const USEFUL_QUERIES = [
     {
       id: "coParticipantGraph",
@@ -236,10 +208,6 @@ LIMIT 200`,
     },
   ];
 
-  // ===== USEFUL LINKS CONFIGURATION =====
-  // Add new external links here - they will automatically be attached to the right places
-
-  /** @type {UsefulLink[]} */
   const USEFUL_LINKS = [
 
   ];
@@ -489,6 +457,7 @@ function checkSparql(lines) {
 // malformed one produces no build error and no runtime error — the button just
 // silently never appears. These checks turn that into a failed build instead.
 
+
 const SCOPES = ["entity", "property", "value"];
 
 // Placeholders replaced by replacePlaceholders() in src/helpers.js. Anything
@@ -522,6 +491,25 @@ const STATEMENT_PLACEHOLDERS = [
 // Where on a statement a property/value template hangs. Omitted = "statement",
 // the statement's own value.
 const SECTIONS = ["statement", "qualifiers", "references"];
+
+// One-line help per placeholder, shown as tooltips in the button editor.
+// In triple terms: the item is the subject, the property the predicate and the
+// statement's value the object.
+const PLACEHOLDER_HELP = {
+  itemId: "ID of the item (the subject), e.g. Q42. Write wd:{itemId}.",
+  itemLabel: "Label of the item in your language, falling back to other languages, then to its ID.",
+  userLanguage: "Code of your interface language, e.g. en or de.",
+  propertyId: "The property (predicate) the button sits on, e.g. P19. Write wdt:{propertyId}.",
+  valueId: "ID of the object (the statement's value) if it is an item, e.g. Q64. Write wd:{valueId}. Empty for text, dates and numbers.",
+  valueSparql: "The object of any type, already written as SPARQL: wd:Q64, \"91E23\" (with quotes), a date… Use as is, without extra quotes.",
+  valueLabel: "Readable form of the object, for titles.",
+  valueLatitude: "Latitude of a coordinate object (P625); empty for other values.",
+  valueLongitude: "Longitude of a coordinate object (P625); empty for other values.",
+  statementPropertyId: "Property of the statement this qualifier or reference belongs to, e.g. P39. Write p:/ps:{statementPropertyId}.",
+  statementValueId: "Value of that statement if it is an item, e.g. Q11696. Write wd:{statementValueId}.",
+  statementValueSparql: "Value of that statement of any type, already written as SPARQL.",
+  statementValueLabel: "Readable form of that statement's value, for titles.",
+};
 
 // Names used before the placeholders were renamed, with what to write now.
 const RENAMED_PLACEHOLDERS = {
@@ -779,6 +767,7 @@ function assertTemplatesValid(loaded, kind, label) {
 // import it directly; the build strips the `import`/`export` keywords and
 // inlines it into the shipped script, like validate-templates.mjs.
 
+
 const CONFIG_VERSION = 1;
 
 // Prefix for ids of user-made templates, so they never collide with built-ins.
@@ -1005,6 +994,17 @@ function generalizeQuery(text, ctx) {
 }
 
 /**
+ * Remove a user template from a config, whichever kind it is. Changes
+ * `config` in place (it may be reactive Vue state).
+ * @param {object} config
+ * @param {string} id
+ */
+function removeTemplate(config, id) {
+  config.queries = config.queries.filter((t) => t.id !== id);
+  config.links = config.links.filter((t) => t.id !== id);
+}
+
+/**
  * A new id for a user template, unique among `existingIds`.
  * @param {string} title - Used to make the id readable in the JSON page
  * @param {Iterable<string>} existingIds
@@ -1053,16 +1053,6 @@ function importTemplates(config, picked, builtinIds = []) {
 }
 
 /**
- * Warnings for a query template that do not stop it from working on WDQS but
- * would make it slow or broken on QLever. Shown in the editor, never enforced
- * on a user's own config.
- * @param {string[]} lines
- */
-function sparqlWarnings(lines) {
-  return checkSparql(lines);
-}
-
-/**
  * Prefilled "new issue" link proposing a user template for everyone.
  * @param {object} tpl - Template in JSON form
  * @param {"query"|"link"} kind
@@ -1088,28 +1078,19 @@ function suggestionIssueUrl(tpl, kind, repoUrl) {
   );
 }
 
-// ===== QLEVER FUNCTIONS =====
-
-/**
- * Check if the current Wikibase is Wikidata
- * @returns {boolean} True if using Wikidata
- */
-function isWikidata() {
-  return SETTINGS.queryServiceUrl.includes("query.wikidata.org");
-}
+// ===== QLEVER =====
 
 /**
  * Build a "To QLever" link for a query. The Toolforge tool
  * (https://to-qlever.toolforge.org/) parses the WDQS query, rewrites the
  * Blazegraph-specific parts (label service, named subqueries, query hints,
  * missing prefixes) and redirects to QLever with the converted query.
+ * The build turns enableQLever off for every wiki but Wikidata.
  * @param {string} querystring - The encoded query string (starts with "#")
- * @returns {string|null} To QLever URL or null if disabled
+ * @returns {string|null} To QLever URL, or null if disabled
  */
 function getQLeverUrl(querystring) {
-  if (!SETTINGS.enableQLever || !isWikidata()) {
-    return null;
-  }
+  if (!SETTINGS.enableQLever) return null;
   const queryServiceHref = SETTINGS.queryServiceUrl + querystring;
   return SETTINGS.toQLeverUrl + "?url=" + encodeURIComponent(queryServiceHref);
 }
@@ -1122,7 +1103,12 @@ const _pendingButtons = [];
 
 // What is currently on the page, so it can be torn down and rebuilt when the
 // active templates or edit mode change.
-const _mounted = { app: null, mountPoint: null, slots: [], generation: 0 };
+const _mounted = { app: null, mountPoint: null, slots: [], generation: 0, styled: false };
+
+const BUTTON_CSS =
+  ".usefulqueries-popover { max-width: none !important; }" +
+  ".usefulqueries-add .cdx-button, .usefulqueries-edit .cdx-button { min-width: 0; padding: 0 4px; opacity: .75; }" +
+  ".usefulqueries-add .cdx-button { border: 1px dashed currentColor; }";
 
 /**
  * Append an empty slot to an anchor element; the button is teleported into it
@@ -1202,8 +1188,6 @@ function createQueryPopup(
   scope,
   ref,
 ) {
-  const qleverHref = getQLeverUrl(querystring);
-
   _pendingButtons.push({
     kind: "popup",
     slot: addButtonSlot(element),
@@ -1211,7 +1195,7 @@ function createQueryPopup(
     title,
     queryServiceHref: SETTINGS.queryServiceUrl + querystring,
     embedHref: SETTINGS.queryEmbedUrl + querystring,
-    qleverHref,
+    qleverHref: getQLeverUrl(querystring),
     placement: (scope === "value") ? "bottom" : "bottom-start",
     ref: ref || null,
   });
@@ -1293,6 +1277,29 @@ const UsefulQueriesPopover = {
 };
 
 /**
+ * Load Vue and Codex, and check that the given Codex components exist (older
+ * wikis, e.g. some Wikibase Cloud instances, ship an older Codex).
+ * @param {string[]} components - Component names, e.g. ["CdxDialog"]
+ * @param {string[]} [modules] - Further ResourceLoader modules to load
+ * @returns {Promise<{Vue: Object, Codex: Object, missing: string|null}>}
+ *   `missing` is a message for the user when components are absent, else null
+ */
+function loadCodex(components, modules = []) {
+  return mw.loader.using(["@wikimedia/codex", ...modules]).then(function (require) {
+    const Codex = require("@wikimedia/codex");
+    const absent = components.filter((name) => !Codex[name]);
+    return {
+      Vue: require("vue"),
+      Codex,
+      missing: absent.length
+        ? "This needs a newer version of Codex than this wiki has (missing " +
+          absent.join(", ") + "). You can still edit " + configPageTitle() + " by hand."
+        : null,
+    };
+  });
+}
+
+/**
  * Render all queued buttons with a single Vue app that teleports each button
  * into its slot.
  */
@@ -1316,11 +1323,12 @@ function mountButtons() {
     const Vue = require("vue");
     const Codex = require("@wikimedia/codex");
 
-    if (Codex.CdxPopover) {
-      if (buttons.some((b) => b.kind === "popup")) {
-        mw.util.addCSS(".usefulqueries-popover { max-width: none !important; }");
-      }
-    } else {
+    if (!_mounted.styled) {
+      mw.util.addCSS(BUTTON_CSS);
+      _mounted.styled = true;
+    }
+
+    if (!Codex.CdxPopover) {
       // Older Codex versions (e.g. some Wikibase Cloud instances) lack CdxPopover;
       // fall back to plain link buttons to avoid rendering the component inline.
       for (const b of buttons) {
@@ -1329,13 +1337,6 @@ function mountButtons() {
           b.url = b.queryServiceHref;
         }
       }
-    }
-
-    if (editMode) {
-      mw.util.addCSS(
-        ".usefulqueries-add .cdx-button, .usefulqueries-edit .cdx-button { min-width: 0; padding: 0 4px; opacity: .75; }" +
-          ".usefulqueries-add .cdx-button { border: 1px dashed currentColor; }",
-      );
     }
 
     const mountPoint = document.createElement("div");
@@ -2008,6 +2009,18 @@ function settingsPageTitle() {
   return "Special:BlankPage/" + SETTINGS.configName;
 }
 
+/**
+ * URL of an item page (in the configured item namespace), optionally with
+ * query parameters and a "#P123" anchor in `qid`.
+ * @param {string} qid - e.g. "Q42" or "Q42#P19"
+ * @param {Object} [params]
+ */
+function itemPageUrl(qid, params) {
+  const ns = SETTINGS.allowedNamespace;
+  const prefix = ns ? mw.config.get("wgFormattedNamespaces")[ns] + ":" : "";
+  return mw.util.getUrl(prefix + qid, params);
+}
+
 /** Whether the visitor can have a config at all. */
 function canConfigure() {
   return !!mw.config.get("wgUserName");
@@ -2041,74 +2054,71 @@ function loadConfig(userName) {
 }
 
 /**
- * Change the logged-in user's config. `mutate` receives the config as it is
- * saved on the wiki right now (not a possibly stale copy) and changes it in
- * place, so edits from two tabs never overwrite each other.
- * @param {function(object): void} mutate
+ * Save the logged-in user's config. `transform` gets the config as it is on
+ * the wiki right now (empty if the page does not exist yet) and the page text
+ * (null if missing), and returns the config to save. It may throw an error
+ * code (a string) to abort. One read, then either an edit or, for a missing
+ * page, a create; a concurrent change makes MediaWiki reject the edit instead
+ * of silently overwriting it.
+ * @param {function(object, ?string): object} transform
  * @param {string} summary - Edit summary
  * @returns {Promise<object>} The saved config
  */
-function updateConfig(mutate, summary) {
+function saveConfig(transform, summary) {
   const title = configPageTitle();
-  const fullSummary = summary + " (usefulQueries)";
+  const params = { summary: summary + " (usefulQueries)" };
+  let saved = null;
+
+  function apply(text) {
+    const current = parseUserConfig(text, BUILTIN_IDS);
+    if (text !== null && current.errors.some((e) => e.startsWith("not valid JSON"))) {
+      throw "usefulqueries-invalid-json";
+    }
+    saved = transform(current.config, text);
+    return serializeConfig(saved);
+  }
+
   return mw.loader.using("mediawiki.api").then(function () {
     const api = new mw.Api();
-    let saved = null;
-    return loadConfig().then(function (current) {
-      if (!current.exists) {
-        const config = emptyConfig(BUILTIN_IDS);
-        mutate(config);
-        saved = config;
-        return api.create(title, { summary: fullSummary }, serializeConfig(config)).then(() => saved);
-      }
-      return api
-        .edit(title, function (revision) {
-          const fresh = parseUserConfig(revision.content, BUILTIN_IDS);
-          if (fresh.errors.length && fresh.errors[0].startsWith("not valid JSON")) {
-            return $.Deferred().reject("usefulqueries-invalid-json").promise();
-          }
-          mutate(fresh.config);
-          saved = fresh.config;
-          return { text: serializeConfig(fresh.config), summary: fullSummary };
-        })
-        .then(() => saved);
-    });
+    return api
+      .edit(title, (revision) => ({ ...params, text: apply(revision.content) }))
+      .catch(function (code) {
+        if (code !== "nocreate-missing") return $.Deferred().reject(code).promise();
+        return api.create(title, params, apply(null));
+      })
+      .then(() => saved);
   });
 }
 
 /**
- * Overwrite the config with `config`, but only if the page still holds
- * `expectedText` (what the settings page loaded). Rejects with
- * "usefulqueries-conflict" otherwise.
- * @param {object} config
- * @param {string|null} expectedText - null if the page did not exist
+ * Change the config in place, starting from what is saved right now, so edits
+ * from two tabs never overwrite each other.
+ * @param {function(object): void} mutate
  * @param {string} summary
  */
+function updateConfig(mutate, summary) {
+  return saveConfig(function (config) {
+    mutate(config);
+    return config;
+  }, summary);
+}
+
+/**
+ * Overwrite the config with `config`, but only if the page still holds
+ * `expectedText` (what the settings page loaded; null if it did not exist).
+ * Rejects with "usefulqueries-conflict" otherwise.
+ */
 function replaceConfig(config, expectedText, summary) {
-  const title = configPageTitle();
-  const fullSummary = summary + " (usefulQueries)";
-  const text = serializeConfig(config);
-  return mw.loader.using("mediawiki.api").then(function () {
-    const api = new mw.Api();
-    if (expectedText === null) {
-      return api.create(title, { summary: fullSummary }, text).catch(function (code) {
-        return $.Deferred()
-          .reject(code === "articleexists" ? "usefulqueries-conflict" : code)
-          .promise();
-      });
-    }
-    return api.edit(title, function (revision) {
-      if (revision.content !== expectedText) {
-        return $.Deferred().reject("usefulqueries-conflict").promise();
-      }
-      return { text, summary: fullSummary };
-    });
-  });
+  return saveConfig(function (current, text) {
+    if (text !== expectedText) throw "usefulqueries-conflict";
+    return config;
+  }, summary);
 }
 
 /** Human-readable message for a failed save. */
 function describeSaveError(code) {
-  if (code === "usefulqueries-conflict") {
+  // articleexists / editconflict: someone saved between our read and write.
+  if (code === "usefulqueries-conflict" || code === "articleexists" || code === "editconflict") {
     return "Your usefulQueries config was changed elsewhere (another tab?). Reload this page and try again.";
   }
   if (code === "usefulqueries-invalid-json") {
@@ -2142,13 +2152,6 @@ let _editorVm = null;
 /** SPARQL endpoint of the configured query service. */
 function sparqlEndpoint() {
   return SETTINGS.sparqlEndpoint || new URL("sparql", SETTINGS.queryServiceUrl).href;
-}
-
-/** URL of an item page, optionally with query parameters. */
-function itemPageUrl(qid, params) {
-  const ns = SETTINGS.allowedNamespace;
-  const prefix = ns ? mw.config.get("wgFormattedNamespaces")[ns] + ":" : "";
-  return mw.util.getUrl(prefix + qid, params);
 }
 
 /** Label of a property as shown on the current page, or its ID. */
@@ -2250,19 +2253,30 @@ function toggleEditMode() {
  * @param {string} title - For the edit summary
  */
 function hideBuiltinButton(ref, title) {
-  updateConfig(function (config) {
-    if (!config.disabled.includes(ref.id)) config.disabled.push(ref.id);
-  }, "Hide button: " + title)
-    .then(function (config) {
-      applyUserConfig(config);
-      mw.notify("Hidden. Bring it back on the " + SETTINGS.displayName + " settings page.", {
-        tag: "usefulqueries",
-      });
-    })
-    .catch(function (code) {
-      mw.notify(describeSaveError(code), { type: "error", tag: "usefulqueries" });
-    });
+  saveAndApply(
+    function (config) {
+      if (!config.disabled.includes(ref.id)) config.disabled.push(ref.id);
+    },
+    "Hide button: " + title,
+    "Hidden. Bring it back on the " + SETTINGS.displayName + " settings page.",
+  ).catch(function (code) {
+    mw.notify(describeSaveError(code), { type: "error", tag: "usefulqueries" });
+  });
 }
+
+/**
+ * Save a config change, redraw the buttons with it and confirm.
+ * @param {function(object): void} mutate - See updateConfig()
+ * @param {string} summary - Edit summary
+ * @param {string} message - Shown when saved
+ */
+function saveAndApply(mutate, summary, message) {
+  return updateConfig(mutate, summary).then(function (config) {
+    applyUserConfig(config);
+    mw.notify(message, { tag: "usefulqueries" });
+  });
+}
+
 
 /**
  * Open the editor dialog, either for a new button at `target` or for an
@@ -2283,22 +2297,44 @@ function openTemplateEditor(target, ref) {
     target = target || findTargetForTemplate(tpl);
   }
 
-  mw.loader.using(["@wikimedia/codex", "mediawiki.api"]).then(function (require) {
-    const Vue = require("vue");
-    const Codex = require("@wikimedia/codex");
-    const missing = EDITOR_COMPONENTS.filter((name) => !Codex[name]);
-    if (missing.length) {
-      mw.notify(
-        "The usefulQueries editor needs a newer Codex than this wiki has (missing " +
-          missing.join(", ") + "). Edit " + configPageTitle() + " by hand instead.",
-        { type: "error" },
-      );
+  loadCodex(EDITOR_COMPONENTS, ["mediawiki.api"]).then(function ({ Vue, Codex, missing }) {
+    if (missing) {
+      mw.notify(missing, { type: "error" });
       return;
     }
     if (!_editorVm) _editorVm = mountEditor(Vue, Codex);
     _editorVm.start(target, existing);
   });
 }
+
+/**
+ * One row of placeholder chips. Hovering a chip explains the placeholder and
+ * shows its value on the current item; clicking emits `pick` with its name.
+ * mousedown is prevented so the input being typed in keeps focus (and its
+ * cursor position) for the insertion.
+ */
+const UqPlaceholderChips = {
+  name: "UqPlaceholderChips",
+  props: {
+    names: { type: Array, required: true },
+    context: { type: Object, required: true },
+  },
+  emits: ["pick"],
+  methods: {
+    tooltip: function (name) {
+      const value = this.context[name];
+      const example =
+        value === undefined ? "" : "\nOn this item: " + (value === "" ? "(empty)" : value);
+      return (PLACEHOLDER_HELP[name] || "") + example + "\nClick to insert.";
+    },
+  },
+  template: `
+    <div class="uq-chips">
+      <button v-for="name in names" :key="name" type="button" class="uq-chip" :title="tooltip(name)"
+        @mousedown.prevent @click="$emit('pick', name)">{{ '{' + name + '}' }}</button>
+    </div>
+  `,
+};
 
 /**
  * Create the dialog's Vue app.
@@ -2442,7 +2478,7 @@ function mountEditor(Vue, Codex) {
       },
       warnings: function () {
         if (this.kind !== "query" || !this.sparql.trim()) return [];
-        return sparqlWarnings(this.sparqlLines);
+        return checkSparql(this.sparqlLines);
       },
       filledQuery: function () {
         return replacePlaceholders(this.sparql, this.context);
@@ -2608,43 +2644,31 @@ function mountEditor(Vue, Codex) {
           .finally(() => clearTimeout(timer));
       },
       save: function () {
-        const vm = this;
-        vm.triedSave = true;
-        vm.saveError = null;
-        if (vm.errors.length) return;
-        const tpl = vm.draft;
-        const kind = vm.kind;
-        const replacing = vm.existingId;
-        vm.saving = true;
-        updateConfig(function (config) {
-          config.queries = config.queries.filter((t) => t.id !== replacing);
-          config.links = config.links.filter((t) => t.id !== replacing);
-          (kind === "query" ? config.queries : config.links).push(tpl);
-        }, (replacing ? "Edit button: " : "Add button: ") + tpl.title)
-          .then(function (config) {
-            vm.open = false;
-            applyUserConfig(config);
-            mw.notify(replacing ? "Button saved." : "Button added.", { tag: "usefulqueries" });
-          })
-          .catch(function (code) {
-            vm.saveError = describeSaveError(code);
-          })
-          .always(function () {
-            vm.saving = false;
-          });
+        this.triedSave = true;
+        if (this.errors.length) return;
+        const tpl = this.draft;
+        const kind = this.kind;
+        const replacing = this.existingId;
+        this.persist(
+          function (config) {
+            removeTemplate(config, replacing);
+            (kind === "query" ? config.queries : config.links).push(tpl);
+          },
+          (replacing ? "Edit button: " : "Add button: ") + tpl.title,
+          replacing ? "Button saved." : "Button added.",
+        );
       },
       remove: function () {
+        const id = this.existingId;
+        this.persist((config) => removeTemplate(config, id), "Delete button: " + this.title, "Button deleted.");
+      },
+      persist: function (mutate, summary, message) {
         const vm = this;
-        const id = vm.existingId;
         vm.saving = true;
-        updateConfig(function (config) {
-          config.queries = config.queries.filter((t) => t.id !== id);
-          config.links = config.links.filter((t) => t.id !== id);
-        }, "Delete button: " + vm.title)
-          .then(function (config) {
+        vm.saveError = null;
+        saveAndApply(mutate, summary, message)
+          .then(function () {
             vm.open = false;
-            applyUserConfig(config);
-            mw.notify("Button deleted.", { tag: "usefulqueries" });
           })
           .catch(function (code) {
             vm.saveError = describeSaveError(code);
@@ -2712,10 +2736,8 @@ function mountEditor(Vue, Codex) {
               Easiest: write it in the Query Service for this item, then paste the link below — the IDs of
               this item and value are swapped for placeholders automatically.
             </template>
-            <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
-                @mousedown.prevent @click="insert('sparqlInput', 'sparql', p)">{{ '{' + p + '}' }}</button>
-            </div>
+            <uq-placeholder-chips :names="placeholders" :context="context"
+              @pick="insert('sparqlInput', 'sparql', $event)"></uq-placeholder-chips>
             <p v-if="section !== 'statement' && scope !== 'entity'" class="uq-muted" style="margin: 4px 0;">
               The <code>{statement…}</code> placeholders refer to the statement this {{ sectionNoun.trim() }} belongs to
               ({{ statementText || 'its property and value' }}).
@@ -2762,10 +2784,8 @@ function mountEditor(Vue, Codex) {
           <cdx-field>
             <template #label>Link address</template>
             <template #help-text>Must start with https://. Placeholders are filled in for each item.</template>
-            <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
-                @mousedown.prevent @click="insert('urlInput', 'urlTemplate', p)">{{ '{' + p + '}' }}</button>
-            </div>
+            <uq-placeholder-chips :names="placeholders" :context="context"
+              @pick="insert('urlInput', 'urlTemplate', $event)"></uq-placeholder-chips>
             <cdx-text-input ref="urlInput" v-model="urlTemplate" class="uq-mono"
               placeholder="https://example.org/{itemId}"></cdx-text-input>
           </cdx-field>
@@ -2786,10 +2806,8 @@ function mountEditor(Vue, Codex) {
           <cdx-field>
             <template #label>Title</template>
             <template #help-text>Tooltip and popup heading.</template>
-            <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
-                @mousedown.prevent @click="insert('titleInput', 'title', p)">{{ '{' + p + '}' }}</button>
-            </div>
+            <uq-placeholder-chips :names="placeholders" :context="context"
+              @pick="insert('titleInput', 'title', $event)"></uq-placeholder-chips>
             <cdx-text-input ref="titleInput" v-model="title" placeholder="People born in {valueLabel}"></cdx-text-input>
           </cdx-field>
           <p v-if="title.trim()" class="uq-muted">On this item: <strong>{{ emoji }}</strong> {{ titlePreview }}</p>
@@ -2817,6 +2835,7 @@ function mountEditor(Vue, Codex) {
   });
 
   for (const name of EDITOR_COMPONENTS) app.component(name, Codex[name]);
+  app.component("UqPlaceholderChips", UqPlaceholderChips);
   return app.mount(mountPoint);
 }
 
@@ -2924,28 +2943,24 @@ function renderSettingsPage() {
   $content.append(mountPoint);
   $(mountPoint).text("Loading…");
 
-  $.when(mw.loader.using(["@wikimedia/codex", "mediawiki.api", "mediawiki.util"]))
-    .then(function (require) {
+  loadCodex(SETTINGS_COMPONENTS, ["mediawiki.api", "mediawiki.util"])
+    .then(function (codex) {
+      if (codex.missing) return { codex };
       return loadConfig().then(function (loaded) {
         const ids = [];
         for (const t of [...USEFUL_QUERIES, ...USEFUL_LINKS, ...loaded.config.queries, ...loaded.config.links]) {
           ids.push(...(t.propertyId || []), ...(t.valueId || []));
         }
-        return fetchLabels(ids).then((labels) => ({ require, loaded, labels }));
+        return fetchLabels(ids).then((labels) => ({ codex, loaded, labels }));
       });
     })
-    .then(function ({ require, loaded, labels }) {
-      const Vue = require("vue");
-      const Codex = require("@wikimedia/codex");
-      const missing = SETTINGS_COMPONENTS.filter((name) => !Codex[name]);
-      if (missing.length) {
-        $(mountPoint).text(
-          "This page needs a newer Codex than this wiki has. Edit " + configPageTitle() + " by hand instead.",
-        );
+    .then(function ({ codex, loaded, labels }) {
+      if (codex.missing) {
+        $(mountPoint).text(codex.missing);
         return;
       }
       $(mountPoint).empty();
-      mountSettingsApp(Vue, Codex, mountPoint, loaded, labels);
+      mountSettingsApp(codex.Vue, codex.Codex, mountPoint, loaded, labels);
     })
     .catch(function (err) {
       $(mountPoint).text("Could not load your usefulQueries config: " + err);
@@ -3066,8 +3081,7 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
         return suggestionIssueUrl(entry.t, entry.kind, SETTINGS.repositoryUrl);
       },
       removeOwn: function (entry) {
-        const key = entry.kind === "query" ? "queries" : "links";
-        this.config[key] = this.config[key].filter((t) => t.id !== entry.t.id);
+        removeTemplate(this.config, entry.t.id);
         this.confirmDelete = null;
       },
       loadImport: function () {

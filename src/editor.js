@@ -25,13 +25,6 @@ function sparqlEndpoint() {
   return SETTINGS.sparqlEndpoint || new URL("sparql", SETTINGS.queryServiceUrl).href;
 }
 
-/** URL of an item page, optionally with query parameters. */
-function itemPageUrl(qid, params) {
-  const ns = SETTINGS.allowedNamespace;
-  const prefix = ns ? mw.config.get("wgFormattedNamespaces")[ns] + ":" : "";
-  return mw.util.getUrl(prefix + qid, params);
-}
-
 /** Label of a property as shown on the current page, or its ID. */
 function propertyLabelOnPage(propertyId) {
   const $el = getPropertyElement(propertyId);
@@ -131,19 +124,30 @@ function toggleEditMode() {
  * @param {string} title - For the edit summary
  */
 function hideBuiltinButton(ref, title) {
-  updateConfig(function (config) {
-    if (!config.disabled.includes(ref.id)) config.disabled.push(ref.id);
-  }, "Hide button: " + title)
-    .then(function (config) {
-      applyUserConfig(config);
-      mw.notify("Hidden. Bring it back on the " + SETTINGS.displayName + " settings page.", {
-        tag: "usefulqueries",
-      });
-    })
-    .catch(function (code) {
-      mw.notify(describeSaveError(code), { type: "error", tag: "usefulqueries" });
-    });
+  saveAndApply(
+    function (config) {
+      if (!config.disabled.includes(ref.id)) config.disabled.push(ref.id);
+    },
+    "Hide button: " + title,
+    "Hidden. Bring it back on the " + SETTINGS.displayName + " settings page.",
+  ).catch(function (code) {
+    mw.notify(describeSaveError(code), { type: "error", tag: "usefulqueries" });
+  });
 }
+
+/**
+ * Save a config change, redraw the buttons with it and confirm.
+ * @param {function(object): void} mutate - See updateConfig()
+ * @param {string} summary - Edit summary
+ * @param {string} message - Shown when saved
+ */
+function saveAndApply(mutate, summary, message) {
+  return updateConfig(mutate, summary).then(function (config) {
+    applyUserConfig(config);
+    mw.notify(message, { tag: "usefulqueries" });
+  });
+}
+
 
 /**
  * Open the editor dialog, either for a new button at `target` or for an
@@ -164,22 +168,44 @@ function openTemplateEditor(target, ref) {
     target = target || findTargetForTemplate(tpl);
   }
 
-  mw.loader.using(["@wikimedia/codex", "mediawiki.api"]).then(function (require) {
-    const Vue = require("vue");
-    const Codex = require("@wikimedia/codex");
-    const missing = EDITOR_COMPONENTS.filter((name) => !Codex[name]);
-    if (missing.length) {
-      mw.notify(
-        "The usefulQueries editor needs a newer Codex than this wiki has (missing " +
-          missing.join(", ") + "). Edit " + configPageTitle() + " by hand instead.",
-        { type: "error" },
-      );
+  loadCodex(EDITOR_COMPONENTS, ["mediawiki.api"]).then(function ({ Vue, Codex, missing }) {
+    if (missing) {
+      mw.notify(missing, { type: "error" });
       return;
     }
     if (!_editorVm) _editorVm = mountEditor(Vue, Codex);
     _editorVm.start(target, existing);
   });
 }
+
+/**
+ * One row of placeholder chips. Hovering a chip explains the placeholder and
+ * shows its value on the current item; clicking emits `pick` with its name.
+ * mousedown is prevented so the input being typed in keeps focus (and its
+ * cursor position) for the insertion.
+ */
+const UqPlaceholderChips = {
+  name: "UqPlaceholderChips",
+  props: {
+    names: { type: Array, required: true },
+    context: { type: Object, required: true },
+  },
+  emits: ["pick"],
+  methods: {
+    tooltip: function (name) {
+      const value = this.context[name];
+      const example =
+        value === undefined ? "" : "\nOn this item: " + (value === "" ? "(empty)" : value);
+      return (PLACEHOLDER_HELP[name] || "") + example + "\nClick to insert.";
+    },
+  },
+  template: `
+    <div class="uq-chips">
+      <button v-for="name in names" :key="name" type="button" class="uq-chip" :title="tooltip(name)"
+        @mousedown.prevent @click="$emit('pick', name)">{{ '{' + name + '}' }}</button>
+    </div>
+  `,
+};
 
 /**
  * Create the dialog's Vue app.
@@ -323,7 +349,7 @@ function mountEditor(Vue, Codex) {
       },
       warnings: function () {
         if (this.kind !== "query" || !this.sparql.trim()) return [];
-        return sparqlWarnings(this.sparqlLines);
+        return checkSparql(this.sparqlLines);
       },
       filledQuery: function () {
         return replacePlaceholders(this.sparql, this.context);
@@ -394,14 +420,6 @@ function mountEditor(Vue, Codex) {
           this.title = "";
         }
         this.open = true;
-      },
-      chipTitle: function (name) {
-        const value = this.context[name];
-        const example =
-          value === undefined
-            ? ""
-            : "\nOn this item: " + (value === "" ? "(empty)" : value);
-        return (PLACEHOLDER_HELP[name] || "") + example + "\nClick to insert.";
       },
       insert: function (refName, field, name) {
         const token = "{" + name + "}";
@@ -497,43 +515,31 @@ function mountEditor(Vue, Codex) {
           .finally(() => clearTimeout(timer));
       },
       save: function () {
-        const vm = this;
-        vm.triedSave = true;
-        vm.saveError = null;
-        if (vm.errors.length) return;
-        const tpl = vm.draft;
-        const kind = vm.kind;
-        const replacing = vm.existingId;
-        vm.saving = true;
-        updateConfig(function (config) {
-          config.queries = config.queries.filter((t) => t.id !== replacing);
-          config.links = config.links.filter((t) => t.id !== replacing);
-          (kind === "query" ? config.queries : config.links).push(tpl);
-        }, (replacing ? "Edit button: " : "Add button: ") + tpl.title)
-          .then(function (config) {
-            vm.open = false;
-            applyUserConfig(config);
-            mw.notify(replacing ? "Button saved." : "Button added.", { tag: "usefulqueries" });
-          })
-          .catch(function (code) {
-            vm.saveError = describeSaveError(code);
-          })
-          .always(function () {
-            vm.saving = false;
-          });
+        this.triedSave = true;
+        if (this.errors.length) return;
+        const tpl = this.draft;
+        const kind = this.kind;
+        const replacing = this.existingId;
+        this.persist(
+          function (config) {
+            removeTemplate(config, replacing);
+            (kind === "query" ? config.queries : config.links).push(tpl);
+          },
+          (replacing ? "Edit button: " : "Add button: ") + tpl.title,
+          replacing ? "Button saved." : "Button added.",
+        );
       },
       remove: function () {
+        const id = this.existingId;
+        this.persist((config) => removeTemplate(config, id), "Delete button: " + this.title, "Button deleted.");
+      },
+      persist: function (mutate, summary, message) {
         const vm = this;
-        const id = vm.existingId;
         vm.saving = true;
-        updateConfig(function (config) {
-          config.queries = config.queries.filter((t) => t.id !== id);
-          config.links = config.links.filter((t) => t.id !== id);
-        }, "Delete button: " + vm.title)
-          .then(function (config) {
+        vm.saveError = null;
+        saveAndApply(mutate, summary, message)
+          .then(function () {
             vm.open = false;
-            applyUserConfig(config);
-            mw.notify("Button deleted.", { tag: "usefulqueries" });
           })
           .catch(function (code) {
             vm.saveError = describeSaveError(code);
@@ -601,10 +607,8 @@ function mountEditor(Vue, Codex) {
               Easiest: write it in the Query Service for this item, then paste the link below — the IDs of
               this item and value are swapped for placeholders automatically.
             </template>
-            <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
-                @mousedown.prevent @click="insert('sparqlInput', 'sparql', p)">{{ '{' + p + '}' }}</button>
-            </div>
+            <uq-placeholder-chips :names="placeholders" :context="context"
+              @pick="insert('sparqlInput', 'sparql', $event)"></uq-placeholder-chips>
             <p v-if="section !== 'statement' && scope !== 'entity'" class="uq-muted" style="margin: 4px 0;">
               The <code>{statement…}</code> placeholders refer to the statement this {{ sectionNoun.trim() }} belongs to
               ({{ statementText || 'its property and value' }}).
@@ -651,10 +655,8 @@ function mountEditor(Vue, Codex) {
           <cdx-field>
             <template #label>Link address</template>
             <template #help-text>Must start with https://. Placeholders are filled in for each item.</template>
-            <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
-                @mousedown.prevent @click="insert('urlInput', 'urlTemplate', p)">{{ '{' + p + '}' }}</button>
-            </div>
+            <uq-placeholder-chips :names="placeholders" :context="context"
+              @pick="insert('urlInput', 'urlTemplate', $event)"></uq-placeholder-chips>
             <cdx-text-input ref="urlInput" v-model="urlTemplate" class="uq-mono"
               placeholder="https://example.org/{itemId}"></cdx-text-input>
           </cdx-field>
@@ -675,10 +677,8 @@ function mountEditor(Vue, Codex) {
           <cdx-field>
             <template #label>Title</template>
             <template #help-text>Tooltip and popup heading.</template>
-            <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
-                @mousedown.prevent @click="insert('titleInput', 'title', p)">{{ '{' + p + '}' }}</button>
-            </div>
+            <uq-placeholder-chips :names="placeholders" :context="context"
+              @pick="insert('titleInput', 'title', $event)"></uq-placeholder-chips>
             <cdx-text-input ref="titleInput" v-model="title" placeholder="People born in {valueLabel}"></cdx-text-input>
           </cdx-field>
           <p v-if="title.trim()" class="uq-muted">On this item: <strong>{{ emoji }}</strong> {{ titlePreview }}</p>
@@ -706,6 +706,7 @@ function mountEditor(Vue, Codex) {
   });
 
   for (const name of EDITOR_COMPONENTS) app.component(name, Codex[name]);
+  app.component("UqPlaceholderChips", UqPlaceholderChips);
   return app.mount(mountPoint);
 }
 
