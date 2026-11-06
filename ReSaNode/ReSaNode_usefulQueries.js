@@ -58,7 +58,7 @@ PREFIX rs: <https://resanode.wikibase.cloud/entity/>
 SELECT ?work ?workLabel ?coordinate WHERE {
   rs:{itemId} rst:P17 ?work.
   ?work rst:P7 ?coordinate.
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de". }
 }`,
       emoji: "📍",
       title: "Lokalisierung der Kunstwerke von {itemLabel}",
@@ -79,7 +79,7 @@ SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WH
   OPTIONAL {
     ?person ( rst:P14 | rst:P29 ) ?fieldofwork.
   }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de". }
 }`,
       emoji: "🕸️",
       title: "Personennetzwerk von {itemLabel} über Ereignisse",
@@ -124,7 +124,9 @@ SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WH
 // under "Writing the SPARQL".
 //
 // These are deliberately syntactic. They are not a SPARQL parser and cannot
-// judge selectivity — they pin the three mistakes that have actually shipped.
+// judge selectivity — they pin the mistakes that have actually shipped. One is
+// about results rather than speed: a label service without "mul" shows bare
+// IDs for the many items named only by a language-independent label.
 
 /**
  * Strip `#` comments, ignoring `#` inside string literals.
@@ -316,6 +318,27 @@ function checkNoDuplicateOptionals(query) {
 }
 
 /**
+ * Rule: the label service's language list must include "mul". Wikidata
+ * stores many names once, language-independently, as a "mul" label (Q42's
+ * "Douglas Adams" is one); without it those items show up as bare IDs.
+ * @param {string} query - Comment-stripped query
+ * @returns {string[]}
+ */
+function checkLabelLanguages(query) {
+  const errors = [];
+  for (const m of query.matchAll(/wikibase:language\s+"([^"]*)"/g)) {
+    const languages = m[1].split(",").map((l) => l.trim());
+    if (!languages.includes("mul")) {
+      errors.push(
+        `SERVICE wikibase:label languages "${m[1]}" lack "mul" — items named only by a ` +
+          `language-independent label (e.g. Q42) would show their ID; use e.g. "[AUTO_LANGUAGE],mul,en"`,
+      );
+    }
+  }
+  return errors;
+}
+
+/**
  * Run every SPARQL portability check over one query template's lines.
  * @param {string[]} lines - The `template` array of a query template
  * @returns {string[]} Human-readable problems; empty means clean.
@@ -326,6 +349,7 @@ function checkSparql(lines) {
     ...checkLabelServiceLast(lines),
     ...checkOptionalsConnected(query),
     ...checkNoDuplicateOptionals(query),
+    ...checkLabelLanguages(query),
   ];
 }
 

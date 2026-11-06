@@ -29,7 +29,7 @@
     "    GROUP BY ?building ?coordinates",
     "  }",
     "  OPTIONAL { ?building wdt:P18 ?buildingImage. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "ORDER BY DESC(?ceilings)",
     "LIMIT 200"

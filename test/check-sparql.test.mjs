@@ -20,11 +20,31 @@ function accepts(lines) {
   assert.deepEqual(checkSparql(lines), []);
 }
 
+test("the label service must ask for mul labels", () => {
+  rejects(
+    [
+      "SELECT ?x ?xLabel WHERE {",
+      "  ?x wdt:P31 wd:Q5.",
+      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }',
+      "}",
+    ],
+    'lack "mul"',
+  );
+  accepts([
+    "SELECT ?x ?xLabel WHERE {",
+    "  ?x wdt:P31 wd:Q5.",
+    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }',
+    "}",
+  ]);
+  // A comment mentioning the label service is not a call.
+  accepts(["# wikibase:language \"en\" is not used here", "SELECT ?x WHERE { ?x wdt:P31 wd:Q5. }"]);
+});
+
 test("the label service must be the last pattern in the WHERE clause", () => {
   rejects(
     [
       "SELECT ?x WHERE {",
-      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }',
+      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "mul,en". }',
       "  ?x wdt:P31 wd:Q5.",
       "}",
     ],
@@ -34,7 +54,7 @@ test("the label service must be the last pattern in the WHERE clause", () => {
   accepts([
     "SELECT ?x WHERE {",
     "  ?x wdt:P31 wd:Q5.",
-    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }',
+    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "mul,en". }',
     "}",
   ]);
 });
@@ -43,7 +63,7 @@ test("solution modifiers and comments may follow the label service", () => {
   accepts([
     "SELECT ?x ?date WHERE {",
     "  ?x wdt:P569 ?date.",
-    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }',
+    '  SERVICE wikibase:label { bd:serviceParam wikibase:language "mul,en". }',
     "  # trailing comments are not patterns",
     "}",
     "ORDER BY DESC(?date)",

@@ -26,7 +26,7 @@
     "  BIND(IF(?childNode = wd:{itemId}, \"E8A33D\", \"7DCEA0\") AS ?rgb)",
     "  OPTIONAL { ?node wdt:P18 ?nodeImage. }",
     "  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "LIMIT 300"
   ],

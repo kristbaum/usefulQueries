@@ -19,7 +19,7 @@
     "  ?building wdt:P625 ?coordinates.",
     "  OPTIONAL { ?work wdt:P571 ?inception. }",
     "  OPTIONAL { ?work wdt:P170 ?creator. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "LIMIT 300"
   ],

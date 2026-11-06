@@ -105,7 +105,7 @@ handed to an LLM on its own, so script users can create buttons without reading
 this file. Read it before adding or changing anything in `templates/` or a
 profile's `templates/`.
 
-The build enforces the schema (`scripts/validate-templates.mjs`) and three
+The build enforces the schema (`scripts/validate-templates.mjs`) and four
 syntactic SPARQL rules (`scripts/check-sparql.mjs`). It cannot check that the
 scope is right: a template whose result depends on the statement's value (its object) must be
 `scope: "value"` and use `wd:{valueId}` / `{valueSparql}`, not read the property

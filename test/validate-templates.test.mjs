@@ -267,7 +267,7 @@ test("SPARQL braces are not mistaken for placeholders", () => {
       "  ?item wdt:P170 wd:{itemId}.",
       "  OPTIONAL { ?item wdt:P18 ?image. }",
       "  VALUES ?org { wd:Q42 }",
-      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }',
+      '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }',
       "}",
     ],
   });

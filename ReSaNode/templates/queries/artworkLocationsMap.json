@@ -12,7 +12,7 @@
     "SELECT ?work ?workLabel ?coordinate WHERE {",
     "  rs:{itemId} rst:P17 ?work.",
     "  ?work rst:P7 ?coordinate.",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de\". }",
     "}"
   ],
   "emoji": "📍",

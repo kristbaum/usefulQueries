@@ -18,7 +18,7 @@
     "  OPTIONAL { ?work wdt:P170 ?creator. }",
     "  OPTIONAL { ?work wdt:P276 ?location. }",
     "  OPTIONAL { ?work wdt:P10626 ?cbddId. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "ORDER BY ?inception",
     "LIMIT 400"

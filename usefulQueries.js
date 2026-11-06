@@ -192,7 +192,7 @@ LIMIT 100`,
 SELECT ?item ?creator ?creatorLabel ?image WHERE {
   ?item wdt:P170 wd:{itemId}.
   OPTIONAL { ?item wdt:P18 ?image. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
 LIMIT 100`,
       emoji: "🖼️",
@@ -249,7 +249,7 @@ SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNod
   ?statement pq:P405 ?node.
   OPTIONAL { ?node wdt:P18 ?nodeImage. }
   OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,mul". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
 LIMIT 500`,
       emoji: "🍄",
@@ -379,7 +379,7 @@ SELECT ?person ?personLabel ?start ?end WHERE {
              pq:{propertyId} wd:{valueId}.
   OPTIONAL { ?statement pq:P580 ?start. }
   OPTIONAL { ?statement pq:P582 ?end. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
 ORDER BY ?start`,
       emoji: "🗳️",
@@ -399,7 +399,7 @@ SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHER
   ?employee wdt:P108 ?org.
   OPTIONAL { ?employee wdt:P18 ?imageEmp. }
   OPTIONAL { ?org wdt:P154 ?imageOrg. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
 LIMIT 100`,
       emoji: "👥",
@@ -429,7 +429,7 @@ SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage ?r
   }
   OPTIONAL { ?node wdt:P18 ?nodeImage. }
   OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage}". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "{userLanguage},mul,en". }
 }`,
       emoji: "🔗",
       title: "Entity Graph of {itemLabel}",
@@ -670,7 +670,7 @@ SELECT ?item ?itemLabel ?statements WHERE {
     }
     GROUP BY ?item
   }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
 ORDER BY DESC(?statements)
 LIMIT 500`,
@@ -697,7 +697,7 @@ SELECT ?from ?fromLabel ?to ?toLabel WHERE {
     ?statement ps:{statementPropertyId} {statementValueSparql};
                pq:P1365 ?from.
   }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }
 }
 LIMIT 2000`,
       emoji: "⛓️",
@@ -791,7 +791,9 @@ LIMIT 2000`,
 // under "Writing the SPARQL".
 //
 // These are deliberately syntactic. They are not a SPARQL parser and cannot
-// judge selectivity — they pin the three mistakes that have actually shipped.
+// judge selectivity — they pin the mistakes that have actually shipped. One is
+// about results rather than speed: a label service without "mul" shows bare
+// IDs for the many items named only by a language-independent label.
 
 /**
  * Strip `#` comments, ignoring `#` inside string literals.
@@ -983,6 +985,27 @@ function checkNoDuplicateOptionals(query) {
 }
 
 /**
+ * Rule: the label service's language list must include "mul". Wikidata
+ * stores many names once, language-independently, as a "mul" label (Q42's
+ * "Douglas Adams" is one); without it those items show up as bare IDs.
+ * @param {string} query - Comment-stripped query
+ * @returns {string[]}
+ */
+function checkLabelLanguages(query) {
+  const errors = [];
+  for (const m of query.matchAll(/wikibase:language\s+"([^"]*)"/g)) {
+    const languages = m[1].split(",").map((l) => l.trim());
+    if (!languages.includes("mul")) {
+      errors.push(
+        `SERVICE wikibase:label languages "${m[1]}" lack "mul" — items named only by a ` +
+          `language-independent label (e.g. Q42) would show their ID; use e.g. "[AUTO_LANGUAGE],mul,en"`,
+      );
+    }
+  }
+  return errors;
+}
+
+/**
  * Run every SPARQL portability check over one query template's lines.
  * @param {string[]} lines - The `template` array of a query template
  * @returns {string[]} Human-readable problems; empty means clean.
@@ -993,6 +1016,7 @@ function checkSparql(lines) {
     ...checkLabelServiceLast(lines),
     ...checkOptionalsConnected(query),
     ...checkNoDuplicateOptionals(query),
+    ...checkLabelLanguages(query),
   ];
 }
 

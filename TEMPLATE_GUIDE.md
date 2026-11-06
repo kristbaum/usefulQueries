@@ -304,8 +304,8 @@ Every query is run on the Wikidata Query Service (WDQS, Blazegraph) and is
 also offered as a link to QLever. Both speak SPARQL 1.1 but plan it very
 differently, so a query can be instant on one and time out on the other.
 
-The first three rules are enforced by the build and fail it; the rest need a
-human and a stopwatch.
+The first four rules are enforced by the build and fail it (the button editor
+shows them as warnings); the rest need a human and a stopwatch.
 
 **Never put two unconnected patterns in one `OPTIONAL`.** If the patterns in an
 `OPTIONAL` body share no variable with each other, write one `OPTIONAL` per
@@ -335,6 +335,11 @@ joint `OPTIONAL` on the end to fill the gaps. (The build rejects the same
 **Keep `SERVICE wikibase:label` as the last pattern of the WHERE clause.** The
 QLever converter rewrites it into `OPTIONAL { ?x rdfs:label ?xLabel. FILTER(LANG(...)) }`
 blocks and places them well only when it can see what binds each variable.
+
+**Ask the label service for `mul`.** Wikidata stores many names only once, as
+a language-independent `mul` label — Q42's "Douglas Adams" is one. A language
+list without it shows those items as bare IDs. Put it right after the user's
+language, as Wikidata's own fallback does: `"[AUTO_LANGUAGE],mul,en"`.
 
 Also:
 
@@ -375,7 +380,7 @@ if any is malformed:
 - Every `{placeholder}` must be a known name available on the template's
   scope — `{valueId}` on a `property` template is an error. Old names
   (`{itemQid}`, `{valueQid}`, …) are rejected with the new name to use.
-- The three SPARQL rules above.
+- The four SPARQL rules above.
 
 The validator cannot tell whether a *valid* template uses the right scope. That
 is the job of the checklist below.

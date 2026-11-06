@@ -16,7 +16,7 @@
     "             pq:{propertyId} wd:{valueId}.",
     "  OPTIONAL { ?statement pq:P580 ?start. }",
     "  OPTIONAL { ?statement pq:P582 ?end. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "ORDER BY ?start"
   ],

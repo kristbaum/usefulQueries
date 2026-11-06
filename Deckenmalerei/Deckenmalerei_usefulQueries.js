@@ -70,7 +70,7 @@ SELECT DISTINCT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNod
   BIND(IF(?childNode = wd:{itemId}, "E8A33D", "7DCEA0") AS ?rgb)
   OPTIONAL { ?node wdt:P18 ?nodeImage. }
   OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 LIMIT 300`,
       emoji: "🕸️",
@@ -102,7 +102,7 @@ SELECT DISTINCT ?building ?buildingLabel ?coordinates ?buildingImage ?ceilings ?
     GROUP BY ?building ?coordinates
   }
   OPTIONAL { ?building wdt:P18 ?buildingImage. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 ORDER BY DESC(?ceilings)
 LIMIT 200`,
@@ -133,7 +133,7 @@ SELECT DISTINCT ?painting ?paintingLabel ?inception ?creator ?creatorLabel ?patr
   OPTIONAL { ?painting wdt:P170 ?creator. }
   OPTIONAL { ?painting wdt:P88 ?patron. }
   OPTIONAL { ?painting wdt:P2079 ?technique. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 ORDER BY ?inception ?paintingLabel
 LIMIT 300`,
@@ -166,7 +166,7 @@ SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?co
   ?building wdt:P625 ?coordinates.
   OPTIONAL { ?painting wdt:P170 ?creator. }
   OPTIONAL { ?painting wdt:P571 ?inception. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 LIMIT 200`,
       emoji: "🎭",
@@ -198,7 +198,7 @@ SELECT ?place ?placeLabel ?coordinates ?distanceKm ?placeImage (COUNT(DISTINCT ?
   ?painting wdt:P10626 [];
             wdt:P276 ?place.
   OPTIONAL { ?place wdt:P18 ?placeImage. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 GROUP BY ?place ?placeLabel ?coordinates ?distanceKm ?placeImage
 ORDER BY ?distanceKm
@@ -224,7 +224,7 @@ SELECT DISTINCT ?work ?workLabel ?building ?buildingLabel ?coordinates ?inceptio
   ?building wdt:P625 ?coordinates.
   OPTIONAL { ?work wdt:P571 ?inception. }
   OPTIONAL { ?work wdt:P170 ?creator. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 LIMIT 300`,
       emoji: "👑",
@@ -252,7 +252,7 @@ SELECT DISTINCT ?sibling ?siblingLabel ?inception ?creator ?creatorLabel ?themes
   }
   OPTIONAL { ?sibling wdt:P571 ?inception. }
   OPTIONAL { ?sibling wdt:P170 ?creator. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 ORDER BY ?inception ?siblingLabel
 LIMIT 300`,
@@ -278,7 +278,7 @@ SELECT DISTINCT ?work ?workLabel ?kind ?kindLabel ?inception ?location ?location
   OPTIONAL { ?work wdt:P195 ?collection. }
   OPTIONAL { ?work wdt:P18 ?image. }
   OPTIONAL { ?work wdt:P10626 ?cbddId. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 ORDER BY ?inception
 LIMIT 400`,
@@ -315,7 +315,7 @@ SELECT DISTINCT ?artwork ?artworkLabel ?artworkDescription ?iconclass ?creator ?
   OPTIONAL { ?artwork wdt:P571 ?inception. }
   OPTIONAL { ?artwork wdt:P18 ?image. }
   OPTIONAL { ?artwork wdt:P10626 ?cbddId. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }`,
       emoji: "🌍",
       title: "All of Wikidata — the Iconclass branch of {valueLabel} beyond the Corpus",
@@ -341,7 +341,7 @@ SELECT DISTINCT ?place ?placeLabel ?placeDescription ?coordinates ?distanceKm ?d
   ?place wdt:P1435 ?designation.
   OPTIONAL { ?place wdt:P18 ?placeImage. }
   OPTIONAL { ?place wdt:P10626 ?cbddId. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 ORDER BY ?distanceKm
 LIMIT 250`,
@@ -365,7 +365,7 @@ SELECT DISTINCT ?work ?workLabel ?workDescription ?kind ?kindLabel ?inception ?c
   OPTIONAL { ?work wdt:P170 ?creator. }
   OPTIONAL { ?work wdt:P276 ?location. }
   OPTIONAL { ?work wdt:P10626 ?cbddId. }
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],de,en". }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,de,en". }
 }
 ORDER BY ?inception
 LIMIT 400`,
@@ -412,7 +412,9 @@ LIMIT 400`,
 // under "Writing the SPARQL".
 //
 // These are deliberately syntactic. They are not a SPARQL parser and cannot
-// judge selectivity — they pin the three mistakes that have actually shipped.
+// judge selectivity — they pin the mistakes that have actually shipped. One is
+// about results rather than speed: a label service without "mul" shows bare
+// IDs for the many items named only by a language-independent label.
 
 /**
  * Strip `#` comments, ignoring `#` inside string literals.
@@ -604,6 +606,27 @@ function checkNoDuplicateOptionals(query) {
 }
 
 /**
+ * Rule: the label service's language list must include "mul". Wikidata
+ * stores many names once, language-independently, as a "mul" label (Q42's
+ * "Douglas Adams" is one); without it those items show up as bare IDs.
+ * @param {string} query - Comment-stripped query
+ * @returns {string[]}
+ */
+function checkLabelLanguages(query) {
+  const errors = [];
+  for (const m of query.matchAll(/wikibase:language\s+"([^"]*)"/g)) {
+    const languages = m[1].split(",").map((l) => l.trim());
+    if (!languages.includes("mul")) {
+      errors.push(
+        `SERVICE wikibase:label languages "${m[1]}" lack "mul" — items named only by a ` +
+          `language-independent label (e.g. Q42) would show their ID; use e.g. "[AUTO_LANGUAGE],mul,en"`,
+      );
+    }
+  }
+  return errors;
+}
+
+/**
  * Run every SPARQL portability check over one query template's lines.
  * @param {string[]} lines - The `template` array of a query template
  * @returns {string[]} Human-readable problems; empty means clean.
@@ -614,6 +637,7 @@ function checkSparql(lines) {
     ...checkLabelServiceLast(lines),
     ...checkOptionalsConnected(query),
     ...checkNoDuplicateOptionals(query),
+    ...checkLabelLanguages(query),
   ];
 }
 

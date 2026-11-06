@@ -17,7 +17,7 @@
     "  OPTIONAL {",
     "    ?person ( rst:P14 | rst:P29 ) ?fieldofwork.",
     "  }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de\". }",
     "}"
   ],
   "emoji": "🕸️",

@@ -57,7 +57,7 @@
     "  OPTIONAL { ?painting wdt:P170 ?creator. }",
     "  OPTIONAL { ?painting wdt:P88 ?patron. }",
     "  OPTIONAL { ?painting wdt:P2079 ?technique. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "ORDER BY ?inception ?paintingLabel",
     "LIMIT 300"

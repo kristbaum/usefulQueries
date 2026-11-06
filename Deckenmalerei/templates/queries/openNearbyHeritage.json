@@ -22,7 +22,7 @@
     "  ?place wdt:P1435 ?designation.",
     "  OPTIONAL { ?place wdt:P18 ?placeImage. }",
     "  OPTIONAL { ?place wdt:P10626 ?cbddId. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "ORDER BY ?distanceKm",
     "LIMIT 250"

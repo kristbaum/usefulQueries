@@ -23,7 +23,7 @@
     "  }",
     "  OPTIONAL { ?sibling wdt:P571 ?inception. }",
     "  OPTIONAL { ?sibling wdt:P170 ?creator. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "ORDER BY ?inception ?siblingLabel",
     "LIMIT 300"

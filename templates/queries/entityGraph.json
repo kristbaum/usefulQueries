@@ -23,7 +23,7 @@
     "  }",
     "  OPTIONAL { ?node wdt:P18 ?nodeImage. }",
     "  OPTIONAL { ?childNode wdt:P18 ?childNodeImage. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"{userLanguage}\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"{userLanguage},mul,en\". }",
     "}"
   ],
   "emoji": "🔗",

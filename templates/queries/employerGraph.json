@@ -15,7 +15,7 @@
     "  ?employee wdt:P108 ?org.",
     "  OPTIONAL { ?employee wdt:P18 ?imageEmp. }",
     "  OPTIONAL { ?org wdt:P154 ?imageOrg. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 100"
   ],

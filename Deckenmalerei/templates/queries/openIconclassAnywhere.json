@@ -31,7 +31,7 @@
     "  OPTIONAL { ?artwork wdt:P571 ?inception. }",
     "  OPTIONAL { ?artwork wdt:P18 ?image. }",
     "  OPTIONAL { ?artwork wdt:P10626 ?cbddId. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}"
   ],
   "emoji": "🌍",

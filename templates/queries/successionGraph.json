@@ -19,7 +19,7 @@
     "    ?statement ps:{statementPropertyId} {statementValueSparql};",
     "               pq:P1365 ?from.",
     "  }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",
     "}",
     "LIMIT 2000"
   ],

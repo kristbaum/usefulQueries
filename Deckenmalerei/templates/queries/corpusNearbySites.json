@@ -27,7 +27,7 @@
     "  ?painting wdt:P10626 [];",
     "            wdt:P276 ?place.",
     "  OPTIONAL { ?place wdt:P18 ?placeImage. }",
-    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],de,en\". }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,de,en\". }",
     "}",
     "GROUP BY ?place ?placeLabel ?coordinates ?distanceKm ?placeImage",
     "ORDER BY ?distanceKm",
