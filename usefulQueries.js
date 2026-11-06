@@ -1068,6 +1068,25 @@ const STATEMENT_PLACEHOLDERS = [
 // the statement's own value.
 const SECTIONS = ["statement", "qualifiers", "references"];
 
+// One-line help per placeholder, shown as tooltips in the button editor.
+// In triple terms: the item is the subject, the property the predicate and the
+// statement's value the object.
+const PLACEHOLDER_HELP = {
+  itemId: "ID of the item (the subject), e.g. Q42. Write wd:{itemId}.",
+  itemLabel: "Label of the item in your language, falling back to other languages, then to its ID.",
+  userLanguage: "Code of your interface language, e.g. en or de.",
+  propertyId: "The property (predicate) the button sits on, e.g. P19. Write wdt:{propertyId}.",
+  valueId: "ID of the object (the statement's value) if it is an item, e.g. Q64. Write wd:{valueId}. Empty for text, dates and numbers.",
+  valueSparql: "The object of any type, already written as SPARQL: wd:Q64, \"91E23\" (with quotes), a date… Use as is, without extra quotes.",
+  valueLabel: "Readable form of the object, for titles.",
+  valueLatitude: "Latitude of a coordinate object (P625); empty for other values.",
+  valueLongitude: "Longitude of a coordinate object (P625); empty for other values.",
+  statementPropertyId: "Property of the statement this qualifier or reference belongs to, e.g. P39. Write p:/ps:{statementPropertyId}.",
+  statementValueId: "Value of that statement if it is an item, e.g. Q11696. Write wd:{statementValueId}.",
+  statementValueSparql: "Value of that statement of any type, already written as SPARQL.",
+  statementValueLabel: "Readable form of that statement's value, for titles.",
+};
+
 // Names used before the placeholders were renamed, with what to write now.
 const RENAMED_PLACEHOLDERS = {
   itemQid: "{itemId}",
@@ -3059,6 +3078,14 @@ function mountEditor(Vue, Codex) {
         }
         this.open = true;
       },
+      chipTitle: function (name) {
+        const value = this.context[name];
+        const example =
+          value === undefined
+            ? ""
+            : "\nOn this item: " + (value === "" ? "(empty)" : value);
+        return (PLACEHOLDER_HELP[name] || "") + example + "\nClick to insert.";
+      },
       insert: function (refName, field, name) {
         const token = "{" + name + "}";
         const ref = this.$refs[refName];
@@ -3258,7 +3285,7 @@ function mountEditor(Vue, Codex) {
               this item and value are swapped for placeholders automatically.
             </template>
             <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
+              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
                 @mousedown.prevent @click="insert('sparqlInput', 'sparql', p)">{{ '{' + p + '}' }}</button>
             </div>
             <p v-if="section !== 'statement' && scope !== 'entity'" class="uq-muted" style="margin: 4px 0;">
@@ -3308,7 +3335,7 @@ function mountEditor(Vue, Codex) {
             <template #label>Link address</template>
             <template #help-text>Must start with https://. Placeholders are filled in for each item.</template>
             <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
+              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
                 @mousedown.prevent @click="insert('urlInput', 'urlTemplate', p)">{{ '{' + p + '}' }}</button>
             </div>
             <cdx-text-input ref="urlInput" v-model="urlTemplate" class="uq-mono"
@@ -3332,7 +3359,7 @@ function mountEditor(Vue, Codex) {
             <template #label>Title</template>
             <template #help-text>Tooltip and popup heading.</template>
             <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
+              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
                 @mousedown.prevent @click="insert('titleInput', 'title', p)">{{ '{' + p + '}' }}</button>
             </div>
             <cdx-text-input ref="titleInput" v-model="title" placeholder="People born in {valueLabel}"></cdx-text-input>

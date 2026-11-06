@@ -395,6 +395,14 @@ function mountEditor(Vue, Codex) {
         }
         this.open = true;
       },
+      chipTitle: function (name) {
+        const value = this.context[name];
+        const example =
+          value === undefined
+            ? ""
+            : "\nOn this item: " + (value === "" ? "(empty)" : value);
+        return (PLACEHOLDER_HELP[name] || "") + example + "\nClick to insert.";
+      },
       insert: function (refName, field, name) {
         const token = "{" + name + "}";
         const ref = this.$refs[refName];
@@ -594,7 +602,7 @@ function mountEditor(Vue, Codex) {
               this item and value are swapped for placeholders automatically.
             </template>
             <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
+              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
                 @mousedown.prevent @click="insert('sparqlInput', 'sparql', p)">{{ '{' + p + '}' }}</button>
             </div>
             <p v-if="section !== 'statement' && scope !== 'entity'" class="uq-muted" style="margin: 4px 0;">
@@ -644,7 +652,7 @@ function mountEditor(Vue, Codex) {
             <template #label>Link address</template>
             <template #help-text>Must start with https://. Placeholders are filled in for each item.</template>
             <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
+              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
                 @mousedown.prevent @click="insert('urlInput', 'urlTemplate', p)">{{ '{' + p + '}' }}</button>
             </div>
             <cdx-text-input ref="urlInput" v-model="urlTemplate" class="uq-mono"
@@ -668,7 +676,7 @@ function mountEditor(Vue, Codex) {
             <template #label>Title</template>
             <template #help-text>Tooltip and popup heading.</template>
             <div class="uq-chips">
-              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip"
+              <button v-for="p in placeholders" :key="p" type="button" class="uq-chip" :title="chipTitle(p)"
                 @mousedown.prevent @click="insert('titleInput', 'title', p)">{{ '{' + p + '}' }}</button>
             </div>
             <cdx-text-input ref="titleInput" v-model="title" placeholder="People born in {valueLabel}"></cdx-text-input>

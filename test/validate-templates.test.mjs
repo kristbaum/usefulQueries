@@ -2,7 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { validateTemplate } from "../scripts/validate-templates.mjs";
+import {
+  BASE_PLACEHOLDERS,
+  PLACEHOLDER_HELP,
+  PROPERTY_PLACEHOLDERS,
+  STATEMENT_PLACEHOLDERS,
+  validateTemplate,
+  VALUE_PLACEHOLDERS,
+} from "../scripts/validate-templates.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
@@ -324,6 +331,17 @@ test("statement placeholders exist only inside qualifiers and references", () =>
     [],
   );
   assertRejected(validQuery({ template: query }), "query", '"section": "qualifiers" or "references"');
+});
+
+test("every placeholder has editor help, and nothing else does", () => {
+  const all = [
+    ...BASE_PLACEHOLDERS,
+    ...PROPERTY_PLACEHOLDERS,
+    ...VALUE_PLACEHOLDERS,
+    ...STATEMENT_PLACEHOLDERS,
+  ];
+  assert.deepEqual(Object.keys(PLACEHOLDER_HELP).sort(), [...all].sort());
+  for (const name of all) assert.ok(PLACEHOLDER_HELP[name].trim(), name);
 });
 
 test("non-objects are rejected", () => {
