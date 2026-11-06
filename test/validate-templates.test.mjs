@@ -26,7 +26,7 @@ function validQuery(overrides = {}) {
       example: "Q42",
       scope: "property",
       propertyId: ["P106"],
-      template: ["SELECT ?x WHERE { wd:{itemQid} wdt:P31 ?x. }"],
+      template: ["SELECT ?x WHERE { wd:{itemId} wdt:P31 ?x. }"],
       emoji: "🔍",
       title: "Example for {itemLabel}",
     },
@@ -41,7 +41,7 @@ function validLink(overrides = {}) {
       example: "Q42",
       scope: "property",
       propertyId: ["P106"],
-      urlTemplate: "https://example.org/{itemQid}",
+      urlTemplate: "https://example.org/{itemId}",
       emoji: "🔗",
       title: "Example",
     },
@@ -172,7 +172,7 @@ test("links need an absolute http(s) urlTemplate", () => {
     '"urlTemplate"',
   );
   assertRejected(
-    validLink({ urlTemplate: "/relative/{itemQid}" }),
+    validLink({ urlTemplate: "/relative/{itemId}" }),
     "link",
     "http",
   );
@@ -212,7 +212,7 @@ test("value placeholders require value scope", () => {
   const onValue = validQuery({
     scope: "value",
     valueId: null,
-    template: ["SELECT ?x WHERE { wd:{valueQid} ?p ?x. }"],
+    template: ["SELECT ?x WHERE { wd:{valueId} ?p ?x. }"],
     title: "Others at {valueLabel}",
   });
   assert.deepEqual(validateTemplate(onValue, "query"), []);
@@ -220,7 +220,7 @@ test("value placeholders require value scope", () => {
   assertRejected(
     validQuery({
       scope: "property",
-      template: ["SELECT ?x WHERE { wd:{valueQid} ?p ?x. }"],
+      template: ["SELECT ?x WHERE { wd:{valueId} ?p ?x. }"],
     }),
     "query",
     "only available with scope",
@@ -229,14 +229,14 @@ test("value placeholders require value scope", () => {
 
 test("the matched-property placeholder requires property or value scope", () => {
   const onProperty = validQuery({
-    template: ["SELECT ?x WHERE { ?x wdt:{propertyPid} wd:{itemQid}. }"],
+    template: ["SELECT ?x WHERE { ?x wdt:{propertyId} wd:{itemId}. }"],
   });
   assert.deepEqual(validateTemplate(onProperty, "query"), []);
 
   const onValue = validQuery({
     scope: "value",
     valueId: null,
-    template: ["SELECT ?x WHERE { ?x wdt:{propertyPid} wd:{valueQid}. }"],
+    template: ["SELECT ?x WHERE { ?x wdt:{propertyId} wd:{valueId}. }"],
   });
   assert.deepEqual(validateTemplate(onValue, "query"), []);
 
@@ -246,7 +246,7 @@ test("the matched-property placeholder requires property or value scope", () => 
     validQuery({
       scope: "entity",
       propertyId: undefined,
-      template: ["SELECT ?x WHERE { ?x wdt:{propertyPid} wd:{itemQid}. }"],
+      template: ["SELECT ?x WHERE { ?x wdt:{propertyId} wd:{itemId}. }"],
     }),
     "query",
     'only available with scope "property" or "value"',
@@ -257,7 +257,7 @@ test("SPARQL braces are not mistaken for placeholders", () => {
   const sparqlHeavy = validQuery({
     template: [
       "SELECT ?item WHERE {",
-      "  ?item wdt:P170 wd:{itemQid}.",
+      "  ?item wdt:P170 wd:{itemId}.",
       "  OPTIONAL { ?item wdt:P18 ?image. }",
       "  VALUES ?org { wd:Q42 }",
       '  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }',
@@ -265,6 +265,65 @@ test("SPARQL braces are not mistaken for placeholders", () => {
     ],
   });
   assert.deepEqual(validateTemplate(sparqlHeavy, "query"), []);
+});
+
+test("renamed placeholders are rejected with the new name", () => {
+  for (const [old, hint] of [
+    ["itemQid", "{itemId}"],
+    ["propertyPid", "{propertyId}"],
+    ["valueQid", "{valueSparql}"],
+    ["valueLat", "{valueLatitude}"],
+    ["valueLon", "{valueLongitude}"],
+  ]) {
+    assertRejected(
+      validQuery({ scope: "value", valueId: null, template: [`SELECT ?x WHERE { ?x ?p {${old}} }`] }),
+      "query",
+      hint,
+    );
+  }
+});
+
+test("valueSparql is a value placeholder", () => {
+  assert.deepEqual(
+    validateTemplate(
+      validQuery({ scope: "value", valueId: null, template: ["SELECT ?x WHERE { ?x wdt:P214 {valueSparql} }"] }),
+      "query",
+    ),
+    [],
+  );
+  assertRejected(
+    validQuery({ template: ["SELECT ?x WHERE { ?x wdt:P214 {valueSparql} }"] }),
+    "query",
+    "only available with scope",
+  );
+});
+
+test("section places property/value templates in qualifiers or references", () => {
+  for (const section of ["statement", "qualifiers", "references"]) {
+    assert.deepEqual(validateTemplate(validQuery({ section }), "query"), []);
+  }
+  assertRejected(validQuery({ section: "qualifier" }), "query", '"section" must be one of');
+  assertRejected(
+    validQuery({ scope: "entity", propertyId: undefined, section: "qualifiers" }),
+    "query",
+    'not used with scope "entity"',
+  );
+});
+
+test("statement placeholders exist only inside qualifiers and references", () => {
+  const query = ["SELECT ?x WHERE { ?x p:{statementPropertyId} ?s. ?s ps:{statementPropertyId} {statementValueSparql}. }"];
+  assert.deepEqual(
+    validateTemplate(validQuery({ section: "qualifiers", template: query }), "query"),
+    [],
+  );
+  assert.deepEqual(
+    validateTemplate(
+      validQuery({ scope: "value", valueId: null, section: "references", template: query, title: "{statementValueLabel}" }),
+      "query",
+    ),
+    [],
+  );
+  assertRejected(validQuery({ template: query }), "query", '"section": "qualifiers" or "references"');
 });
 
 test("non-objects are rejected", () => {
