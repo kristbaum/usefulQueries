@@ -4,7 +4,7 @@
   "scope": "value",
   "propertyId": ["P106"],
   "valueId": ["Q1650915"],
-  "urlTemplate": "https://scholia.toolforge.org/author/{itemQid}",
+  "urlTemplate": "https://scholia.toolforge.org/author/{itemId}",
   "emoji": "📚",
   "title": "Page on Scholia"
 }

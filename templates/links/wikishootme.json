@@ -6,7 +6,7 @@
     "P625"
   ],
   "valueId": null,
-  "urlTemplate": "https://wikishootme.toolforge.org/#lat={valueLat}&lng={valueLon}&zoom=19",
+  "urlTemplate": "https://wikishootme.toolforge.org/#lat={valueLatitude}&lng={valueLongitude}&zoom=19",
   "emoji": "📷",
   "title": "Items in the immediate surroundings on WikiShootMe"
 }

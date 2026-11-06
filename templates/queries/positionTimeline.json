@@ -22,7 +22,7 @@
     "    (p:P169 ps:P169)",
     "    (p:P1037 ps:P1037)",
     "  }",
-    "  wd:{itemQid} ?p ?statement.",
+    "  wd:{itemId} ?p ?statement.",
     "  ?statement ?ps ?positionHolder;",
     "    pq:P580 ?startTime.",
     "  ?role wikibase:claim ?p.",

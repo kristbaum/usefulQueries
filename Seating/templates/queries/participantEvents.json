@@ -15,7 +15,7 @@
     "# that the SELECT projects by name.",
     "SELECT DISTINCT ?event ?eventLabel ?date ?image ?edgeLabel WHERE {",
     "  ?event p:P710 ?statement.",
-    "  ?statement ps:P710 wd:{valueQid}.",
+    "  ?statement ps:P710 wd:{valueId}.",
     "  # Ceremonies carry a point in time, longer events a start time.",
     "  OPTIONAL { ?event wdt:P585 ?pointInTime. }",
     "  OPTIONAL { ?event wdt:P580 ?startTime. }",

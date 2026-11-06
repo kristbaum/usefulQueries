@@ -11,7 +11,7 @@
     "SELECT DISTINCT ?laureate ?laureateLabel ?date ?image WHERE {",
     "  # The date of the award lives on the statement, not on the laureate.",
     "  ?laureate p:P166 ?statement.",
-    "  ?statement ps:P166 wd:{valueQid};",
+    "  ?statement ps:P166 wd:{valueId};",
     "    pq:P585 ?date.",
     "  OPTIONAL { ?laureate wdt:P18 ?image. }",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],mul,en\". }",

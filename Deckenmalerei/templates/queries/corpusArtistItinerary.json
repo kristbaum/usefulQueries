@@ -21,7 +21,7 @@
     "  {",
     "    SELECT ?building ?coordinates (COUNT(DISTINCT ?work) AS ?ceilings) (MIN(?date) AS ?earliest) (MAX(?date) AS ?latest) WHERE {",
     "      ?work wdt:P10626 [];",
-    "            wdt:P170 wd:{itemQid};",
+    "            wdt:P170 wd:{itemId};",
     "            wdt:P276 ?building.",
     "      ?building wdt:P625 ?coordinates.",
     "      OPTIONAL { ?work wdt:P571 ?date. }",

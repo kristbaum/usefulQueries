@@ -15,7 +15,7 @@
     "# paintings, drawings and prints, wherever they now hang. Sorting by ?cbddId",
     "# separates the documented ceiling work from the rest of the oeuvre.",
     "SELECT DISTINCT ?work ?workLabel ?kind ?kindLabel ?inception ?location ?locationLabel ?collection ?collectionLabel ?image ?cbddId WHERE {",
-    "  ?work wdt:P170 wd:{itemQid}.",
+    "  ?work wdt:P170 wd:{itemId}.",
     "  OPTIONAL { ?work wdt:P31 ?kind. }",
     "  OPTIONAL { ?work wdt:P571 ?inception. }",
     "  OPTIONAL { ?work wdt:P276 ?location. }",

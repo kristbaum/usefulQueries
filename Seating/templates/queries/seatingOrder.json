@@ -24,7 +24,7 @@
     "# opposite them. On a ceremony without seating qualifiers it degrades to",
     "# the plain participant list with whatever roles are recorded.",
     "SELECT ?seat ?rank ?participant ?participantLabel ?roleLabel ?afterLabel ?beforeLabel ?oppositeLabel WHERE {",
-    "  wd:{itemQid} p:P710 ?statement.",
+    "  wd:{itemId} p:P710 ?statement.",
     "  ?statement ps:P710 ?value.",
     "  OPTIONAL { ?statement pq:P1545 ?ordinal. }",
     "  OPTIONAL { ?statement pq:P1352 ?ranking. }",

@@ -11,7 +11,7 @@
   "template": [
     "#defaultView:Timeline",
     "SELECT DISTINCT ?building ?buildingLabel ?date ?image WHERE {",
-    "  ?building wdt:P84 wd:{itemQid}.",
+    "  ?building wdt:P84 wd:{itemId}.",
     "  # Inception, falling back to the date the building opened.",
     "  OPTIONAL { ?building wdt:P571 ?inception. }",
     "  OPTIONAL { ?building wdt:P1619 ?opening. }",

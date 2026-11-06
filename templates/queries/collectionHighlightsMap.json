@@ -9,7 +9,7 @@
   "template": [
     "#defaultView:ImageGrid",
     "SELECT ?work ?workLabel ?creatorLabel ?inception ?image WHERE {",
-    "  ?work wdt:P195 wd:{valueQid};",
+    "  ?work wdt:P195 wd:{valueId};",
     "    wdt:P18 ?image.",
     "  OPTIONAL { ?work wdt:P170 ?creator. }",
     "  OPTIONAL { ?work wdt:P571 ?inception. }",

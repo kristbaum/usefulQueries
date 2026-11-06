@@ -9,8 +9,8 @@
 	"template": [
 		"SELECT DISTINCT ?item ?itemLabel ?page ?volume ?image WHERE {",
 		"  ?item p:P1343 ?statement.",
-		"  ?statement ps:P1343 wd:{valueQid}.",
-		"  FILTER(?item != wd:{itemQid})",
+		"  ?statement ps:P1343 wd:{valueId}.",
+		"  FILTER(?item != wd:{itemId})",
 		"  OPTIONAL { ?statement pq:P304 ?page. }",
 		"  OPTIONAL { ?statement pq:P478 ?volume. }",
 		"  OPTIONAL { ?item wdt:P18 ?image. }",

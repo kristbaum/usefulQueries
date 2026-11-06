@@ -12,7 +12,7 @@
     "#defaultView:Graph",
     "",
     "SELECT ?person ?personLabel ?event ?eventLabel ?fieldofwork ?fieldofworkLabel WHERE {",
-    "  rs:{itemQid} rst:P35 ?event.",
+    "  rs:{itemId} rst:P35 ?event.",
     "  ?event rst:P38 ?person.",
     "  OPTIONAL {",
     "    ?person ( rst:P14 | rst:P29 ) ?fieldofwork.",

@@ -25,7 +25,7 @@
     "# where the neighbour is an unknown value those qualifiers are anonymous",
     "# blank nodes and carry no link, while the ordinals cover every guest.",
     "SELECT ?node ?nodeLabel ?nodeImage ?childNode ?childNodeLabel ?childNodeImage WHERE {",
-    "  wd:{itemQid} p:P710 ?statement, ?nextStatement.",
+    "  wd:{itemId} p:P710 ?statement, ?nextStatement.",
     "  ?statement pq:P1545 ?ordinal.",
     "  ?nextStatement pq:P1545 ?nextOrdinal.",
     "  FILTER(xsd:integer(?nextOrdinal) = xsd:integer(?ordinal) + 1)",

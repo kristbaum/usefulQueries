@@ -1,0 +1,11 @@
+{
+  "id": "referenceUrlArchive",
+  "example": "Q42",
+  "scope": "value",
+  "section": "references",
+  "propertyId": ["P854"],
+  "valueId": null,
+  "urlTemplate": "https://web.archive.org/web/*/{valueLabel}",
+  "emoji": "🗄️",
+  "title": "Archived copies of this reference URL (Wayback Machine)"
+}

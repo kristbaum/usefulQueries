@@ -12,7 +12,7 @@
   "template": [
     "#defaultView:ImageGrid",
     "SELECT ?item ?creator ?creatorLabel ?image WHERE {",
-    "  ?item wdt:P170 wd:{itemQid}.",
+    "  ?item wdt:P170 wd:{itemId}.",
     "  OPTIONAL { ?item wdt:P18 ?image. }",
     "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
     "}",

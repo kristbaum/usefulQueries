@@ -17,7 +17,7 @@
     "  # six-figure membership (P102 on a large party) — see AGENTS.md.",
     "  {",
     "    SELECT DISTINCT ?member WHERE {",
-    "      ?member wdt:{propertyPid} wd:{valueQid}.",
+    "      ?member wdt:{propertyId} wd:{valueId}.",
     "    }",
     "    LIMIT 300",
     "  }",

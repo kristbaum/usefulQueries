@@ -13,7 +13,7 @@
   "template": [
     "#defaultView:Table",
     "SELECT ?work ?workLabel ?publication_date ?image WHERE {",
-    "  ?work wdt:P50 wd:{itemQid}.",
+    "  ?work wdt:P50 wd:{itemId}.",
     "  ?work wdt:P31 wd:Q7725634.",
     "  OPTIONAL { ?work wdt:P577 ?publication_date. }",
     "  OPTIONAL { ?work wdt:P18 ?image. }",

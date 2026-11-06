@@ -1,5 +1,5 @@
 {
-  "id": "entitree",
+  "id": "entitree_family",
   "example": "Q9682",
   "scope": "property",
   "propertyId": [
@@ -12,7 +12,7 @@
     "P3448",
     "P8810"
   ],
-  "urlTemplate": "https://entitree.com/{userLanguage}/family_tree/{itemQid}",
+  "urlTemplate": "https://entitree.com/{userLanguage}/family_tree/{itemId}",
   "emoji": "🌳",
   "title": "Family tree on Entitree"
 }

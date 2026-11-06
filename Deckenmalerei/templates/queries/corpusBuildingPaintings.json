@@ -47,7 +47,7 @@
     "  {",
     "    SELECT ?painting ?deckenmalereiUrl (GROUP_CONCAT(DISTINCT ?ic; separator=\", \") AS ?themes) WHERE {",
     "      ?painting wdt:P10626 ?dmId;",
-    "                wdt:P276 wd:{itemQid}.",
+    "                wdt:P276 wd:{itemId}.",
     "      BIND(IRI(CONCAT(\"https://www.deckenmalerei.eu/\", ?dmId)) AS ?deckenmalereiUrl)",
     "      OPTIONAL { ?painting wdt:P1257 ?ic. }",
     "    }",

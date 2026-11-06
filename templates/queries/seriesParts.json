@@ -13,7 +13,7 @@
     "  {",
     "    SELECT DISTINCT ?part ?ordinal WHERE {",
     "      ?part p:P179 ?seriesStatement.",
-    "      ?seriesStatement ps:P179 wd:{valueQid}.",
+    "      ?seriesStatement ps:P179 wd:{valueId}.",
     "      OPTIONAL { ?seriesStatement pq:P1545 ?ordinal. }",
     "    }",
     "    LIMIT 500",

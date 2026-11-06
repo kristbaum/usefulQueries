@@ -1,12 +1,12 @@
 {
-  "id": "entitree",
+  "id": "entitree_student",
   "example": "Q868",
   "scope": "property",
   "propertyId": [
     "P1066",
     "P802"
   ],
-  "urlTemplate": "https://entitree.com/{userLanguage}/student/{itemQid}",
+  "urlTemplate": "https://entitree.com/{userLanguage}/student/{itemId}",
   "emoji": "🎓",
   "title": "Academic lineage on Entitree"
 }

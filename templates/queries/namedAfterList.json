@@ -8,7 +8,7 @@
   "valueId": null,
   "template": [
     "SELECT DISTINCT ?item ?itemLabel ?typeLabel ?countryLabel ?image WHERE {",
-    "  ?item wdt:P138 wd:{valueQid}.",
+    "  ?item wdt:P138 wd:{valueId}.",
     "  OPTIONAL { ?item wdt:P31 ?type. }",
     "  OPTIONAL { ?item wdt:P17 ?country. }",
     "  OPTIONAL { ?item wdt:P18 ?image. }",

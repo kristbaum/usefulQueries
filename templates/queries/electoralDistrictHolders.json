@@ -1,0 +1,25 @@
+{
+  "id": "electoralDistrictHolders",
+  "example": "Q567",
+  "scope": "value",
+  "section": "qualifiers",
+  "propertyId": [
+    "P768"
+  ],
+  "valueId": null,
+  "template": [
+    "# Everyone with the same statement in the same electoral district: all",
+    "# members of a parliament for one constituency, all candidates in one election, …",
+    "SELECT ?person ?personLabel ?start ?end WHERE {",
+    "  ?person p:{statementPropertyId} ?statement.",
+    "  ?statement ps:{statementPropertyId} {statementValueSparql};",
+    "             pq:{propertyId} wd:{valueId}.",
+    "  OPTIONAL { ?statement pq:P580 ?start. }",
+    "  OPTIONAL { ?statement pq:P582 ?end. }",
+    "  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }",
+    "}",
+    "ORDER BY ?start"
+  ],
+  "emoji": "🗳️",
+  "title": "Everyone with “{statementValueLabel}” in {valueLabel}"
+}

@@ -20,7 +20,7 @@
     "SELECT ?place ?placeLabel ?coordinates ?distanceKm ?placeImage (COUNT(DISTINCT ?painting) AS ?ceilings) WHERE {",
     "  SERVICE wikibase:around {",
     "    ?place wdt:P625 ?coordinates.",
-    "    bd:serviceParam wikibase:center \"Point({valueLon} {valueLat})\"^^geo:wktLiteral.",
+    "    bd:serviceParam wikibase:center \"Point({valueLongitude} {valueLatitude})\"^^geo:wktLiteral.",
     "    bd:serviceParam wikibase:radius \"30\".",
     "    bd:serviceParam wikibase:distance ?distanceKm.",
     "  }",

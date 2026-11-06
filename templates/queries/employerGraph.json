@@ -10,7 +10,7 @@
     "#defaultView:Graph",
     "SELECT DISTINCT ?employee ?employeeLabel ?imageEmp ?org ?orgLabel ?imageOrg WHERE {",
     "  VALUES ?org {",
-    "    wd:{valueQid}",
+    "    wd:{valueId}",
     "  }",
     "  ?employee wdt:P108 ?org.",
     "  OPTIONAL { ?employee wdt:P18 ?imageEmp. }",
