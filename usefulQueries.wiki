@@ -199,6 +199,8 @@ These buttons appear next to each value of the listed property (or only next to 
 |-
 | 🏰 || Map of all monuments on {valueLabel} || {{P|P2817}} || ''any value'' || Map || [[Q2319704#P2817|{{Label|Q2319704}} <small>(Q2319704)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/heritageMonumentsMap.json heritageMonumentsMap.json]
 |-
+| ⏳ || Timeline of the life of {itemLabel} || {{P|P31}} || {{Q|Q5}} || Timeline || [[Q937#P31|{{Label|Q937}} <small>(Q937)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/lifeTimeline.json lifeTimeline.json]
+|-
 | 🧑‍🤝‍🧑 || Members of {valueLabel} || {{P|P54}}, {{P|P102}}, {{P|P1344}}, {{P|P53}}, {{P|P5096}}, {{P|P463}} || ''any value'' || Table || [[Q25909967#P54|{{Label|Q25909967}} <small>(Q25909967)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/memberList.json memberList.json]
 |-
 | 📋 || Everything named after {valueLabel} || {{P|P138}} || ''any value'' || Table || [[Q2319704#P138|{{Label|Q2319704}} <small>(Q2319704)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterList.json namedAfterList.json]

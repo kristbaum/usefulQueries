@@ -1178,6 +1178,41 @@ const UsefulQueriesPopover = {
     `,
 };
 
+// Icons for the Tools-menu links (Codex's cdxIconEdit / cdxIconSettings, 20×20).
+const TOOLS_ICONS = {
+  edit: '<path d="m16.77 8 1.94-2a1 1 0 000-1.41l-3.34-3.3a1 1 0 00-1.41 0L12 3.23zM1 14.25V19h4.75l9.96-9.96-4.75-4.75z"/>',
+  settings:
+    '<g transform="translate(10 10)"><path id="a" d="M1.5-10h-3l-1 6.5h5m0 7h-5l1 6.5h3"/>' +
+    '<use xlink:href="#a" transform="rotate(45)"/><use xlink:href="#a" transform="rotate(90)"/>' +
+    '<use xlink:href="#a" transform="rotate(135)"/></g>' +
+    '<path d="M10 2.5a7.5 7.5 0 000 15 7.5 7.5 0 000-15v4a3.5 3.5 0 010 7 3.5 3.5 0 010-7"/>',
+};
+
+/**
+ * Add a link to the Tools menu. On the mobile skin (Minerva) the link shows an
+ * icon: Minerva puts an empty <span class="minerva-icon
+ * minerva-icon-portletlink-<id>"> before every added link and leaves styling
+ * it to the script, so this adds the matching CSS mask. Other skins ignore it.
+ * @param {string} key - Short name, part of the link's id
+ * @param {string} href
+ * @param {string} text
+ * @param {string} tooltip
+ * @param {"edit"|"settings"} icon
+ * @returns {Promise<HTMLElement|null>} The list item, or null if the skin has no Tools menu
+ */
+function addToolsLink(key, href, text, tooltip, icon) {
+  return mw.loader.using("mediawiki.util").then(function () {
+    const id = "t-usefulqueries-" + key + "-" + SETTINGS.configName;
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 20 20">' +
+      TOOLS_ICONS[icon] +
+      "</svg>";
+    const mask = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") center / contain no-repeat';
+    mw.util.addCSS(".minerva-icon-portletlink-" + id + "{-webkit-mask:" + mask + ";mask:" + mask + "}");
+    return mw.util.addPortletLink("p-tb", href, text, id, tooltip);
+  });
+}
+
 /**
  * Load Vue and Codex, and check that the given Codex components exist (older
  * wikis, e.g. some Wikibase Cloud instances, ship an older Codex).
@@ -2817,12 +2852,12 @@ function humanizeTitle(title) {
 /** Tools-menu link to the settings page. */
 function addSettingsPortletLink() {
   mw.loader.using("mediawiki.util").then(function () {
-    mw.util.addPortletLink(
-      "p-tb",
+    addToolsLink(
+      "settings",
       mw.util.getUrl(settingsPageTitle()),
       SETTINGS.displayName + " settings",
-      "t-usefulqueries-settings-" + SETTINGS.configName,
       "Choose which usefulQueries buttons you see and make your own",
+      "settings",
     );
   });
 }
@@ -3217,14 +3252,13 @@ function loadOwnConfig() {
 
 /** Tools-menu entries on item pages. */
 function addItemPortletLinks() {
-  mw.loader.using("mediawiki.util").then(function () {
-    const link = mw.util.addPortletLink(
-      "p-tb",
-      "#",
-      SETTINGS.displayName + ": edit buttons",
-      "t-usefulqueries-edit-" + SETTINGS.configName,
-      "Add your own usefulQueries buttons on this page, or hide built-in ones",
-    );
+  addToolsLink(
+    "edit",
+    "#",
+    SETTINGS.displayName + ": edit buttons",
+    "Add your own usefulQueries buttons on this page, or hide built-in ones",
+    "edit",
+  ).then(function (link) {
     if (link) {
       $(link).on("click", function (e) {
         e.preventDefault();
