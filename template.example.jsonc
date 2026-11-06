@@ -22,7 +22,7 @@
   //   "property" → next to the property label; for queries that use ALL of
   //                the property's values together, or none of them
   //   "value"    → next to each statement value; for queries whose result
-  //                depends on the clicked value ({valueId}), or — with
+  //                depends on the statement's value, its object ({valueId}), or — with
   //                valueId — to show the button only for certain values
   "scope": "value",
 
@@ -49,9 +49,10 @@
   //   {itemLabel}    label of the current item (all scopes)
   //   {userLanguage} user's interface language code (all scopes)
   //   {propertyId}   property the button sits on, e.g. P19 ("property", "value")
-  //   {valueId}      ID of the clicked value if it is an item/property, e.g.
+  //   {valueId}      ID of the object (the statement's value) if it is an
+  //                    item/property, e.g.
   //                    Q1726 — write wd:{valueId}; empty otherwise ("value")
-  //   {valueSparql}  the clicked value of any datatype as a SPARQL term:
+  //   {valueSparql}  the object of any datatype as a SPARQL term:
   //                    wd:Q1726, "91E23" (quotes included), dates, … ("value")
   //   {valueLabel}   readable form of the value ("value" only)
   //   {valueLatitude} / {valueLongitude} — coordinates of a P625 value ("value")

@@ -4,9 +4,9 @@ Code for usefulQueries
 
 Documentation: <https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries>
 
-## Configure on-wiki (beta)
+## Configure on-wiki
 
-Logged-in users can choose their buttons without npm, straight on the wiki:
+Logged-in users can choose their buttons without npm, straight on the wiki. The user guide, with every control and step, is the [“Your own buttons” section of the on-wiki documentation](https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries#Your_own_buttons) (source: [usefulQueries.wiki](usefulQueries.wiki)).
 
 - **Settings page** (`Special:BlankPage/usefulQueries`, or *usefulQueries settings* in the Tools menu): switch built-in buttons on and off, delete or suggest your own buttons, and copy buttons from another user.
 - **Edit mode** (*usefulQueries: edit buttons* in the Tools menu on any item): a “+” appears next to the item title, every property and every value, including qualifiers and references. Click it where the new button should go. The dialog works out the scope from that spot, takes a query written in the Query Service (paste the link back and the item/value IDs become placeholders), tests it on the current item and saves it. ✕ hides a built-in button and ✎ edits one of your own.
@@ -51,7 +51,7 @@ In short, each button is one JSON file with a `scope`:
   property's values together, or none of them (the property just signals the
   right kind of item).
 - **`value`**: next to each statement value; for queries whose answer depends
-  on the clicked value (`wd:{valueId}`, or `{valueSparql}` for non-item values), or, with `valueId`, for buttons that
+  on the statement's value, its object (`wd:{valueId}`, or `{valueSparql}` for non-item values), or, with `valueId`, for buttons that
   should only appear when a value matches (e.g. occupation = painter).
 
 With `"section": "qualifiers"` or `"references"`, `property`/`value` buttons hang

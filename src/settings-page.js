@@ -45,6 +45,18 @@ function fetchLabels(ids) {
   });
 }
 
+/**
+ * A template's example item with the anchor of the statement group that
+ * triggers it (Q454172#P937), so the link scrolls to where the button is.
+ * Qualifier/reference and entity buttons link to the item itself. If the
+ * example lacks that property, the browser simply stays at the top.
+ */
+function withAnchor(t) {
+  return t.scope !== "entity" && sectionOf(t) === "statement" && t.propertyId
+    ? t.example + "#" + t.propertyId[0]
+    : t.example;
+}
+
 /** Show placeholders in a title as readable markers. */
 function humanizeTitle(title) {
   return title
@@ -148,6 +160,7 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
         importList: [],
         importPicked: [],
         displayName: SETTINGS.displayName,
+        helpUrl: SETTINGS.helpUrl,
       };
     },
     computed: {
@@ -216,10 +229,10 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
         return humanizeTitle(t.title);
       },
       exampleUrl: function (t) {
-        return t.example ? itemPageUrl(t.example) : null;
+        return t.example ? itemPageUrl(withAnchor(t)) : null;
       },
       editUrl: function (t) {
-        return itemPageUrl(t.example, { "usefulqueries-edit": t.id });
+        return itemPageUrl(withAnchor(t), { "usefulqueries-edit": t.id });
       },
       suggestUrl: function (entry) {
         return suggestionIssueUrl(entry.t, entry.kind, SETTINGS.repositoryUrl);
@@ -289,10 +302,14 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
     },
     template: `
       <div class="uq-settings">
+        <p class="uq-meta" style="float: right; margin: 0 0 8px 12px;">
+          <a :href="helpUrl" target="_blank" rel="noopener">Help: how to add and edit buttons ↗</a>
+        </p>
         <p>
           Choose which buttons {{ displayName }} adds to item pages, and manage buttons you made yourself.
           To make a new button, open an item and choose <em>{{ displayName }}: edit buttons</em> in the Tools menu,
-          then click “+” where the button should go.
+          then click “+” where the button should go. The <a :href="helpUrl" target="_blank" rel="noopener">help page</a>
+          explains every step and control.
         </p>
         <p class="uq-meta">
           Your choices are stored on <a :href="configPageUrl">{{ configTitle }}</a>,

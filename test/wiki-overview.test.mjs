@@ -32,13 +32,23 @@ test("the generated sections in usefulQueries.wiki are up to date", async () => 
   );
 });
 
+/**
+ * The example cell: anchored to the triggering statement group for property and
+ * value buttons on statements (Q454172#P937), a plain {{Q|…}} otherwise.
+ */
+function expectedExample(tpl) {
+  return tpl.scope !== "entity" && (tpl.section ?? "statement") === "statement"
+    ? `[[${tpl.example}#${tpl.propertyId[0]}|{{Label|${tpl.example}}} <small>(${tpl.example})</small>]]`
+    : `{{Q|${tpl.example}}}`;
+}
+
 test("every query template shows up in the query overview", async () => {
   const templates = await queries();
   const section = renderQuerySection(templates);
 
   for (const tpl of templates) {
     assert.ok(section.includes(tpl.file), `${tpl.file} is missing`);
-    assert.ok(section.includes(`{{Q|${tpl.example}}}`), `${tpl.id} example`);
+    assert.ok(section.includes(expectedExample(tpl)), `${tpl.id} example`);
   }
 });
 
@@ -49,7 +59,7 @@ test("every link template shows up in the link overview", async () => {
   for (const tpl of templates) {
     assert.ok(section.includes(tpl.file), `${tpl.file} is missing`);
     assert.ok(section.includes(tpl.urlTemplate), `${tpl.id} target URL`);
-    assert.ok(section.includes(`{{Q|${tpl.example}}}`), `${tpl.id} example`);
+    assert.ok(section.includes(expectedExample(tpl)), `${tpl.id} example`);
   }
 });
 

@@ -189,6 +189,9 @@ const settings = {
   configName: baseName,
   displayName: profileName ? `usefulQueries (${profileName})` : "usefulQueries",
   repositoryUrl: "https://github.com/kristbaum/usefulQueries",
+  // Help for the settings page and editor (the "Your own buttons" section of
+  // usefulQueries.wiki, published as User:Kristbaum/usefulQueries).
+  helpUrl: "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries#Your_own_buttons",
   ...JSON.parse(await readFile(settingsPath, "utf8")),
 };
 const isWikidata = settings.queryServiceUrl.includes("query.wikidata.org");

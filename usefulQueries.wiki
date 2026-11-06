@@ -17,9 +17,98 @@ On Wikidata, the popup also offers a link to run the same query on [https://qlev
 
 The script hands the Query Service URL to [https://to-qlever.toolforge.org/ To QLever], a Toolforge tool that parses the query, converts the Blazegraph-specific parts (the <code>SERVICE wikibase:label</code> block, named subqueries, query hints, missing prefixes) and redirects to QLever with the converted query. The same tool works on any WDQS link, so it is also handy outside this script.
 
-== Add your own queries ==
+== Your own buttons ==
 
-You can add your own query templates to the project by following the [https://github.com/kristbaum/usefulQueries#adding-your-own-queries tutorial on GitHub]. It requires installing {{Q|Q7067518}} (npm), but the process is straightforward: copy an existing JSON template, fill in your query, rebuild, and upload.
+You can hide built-in buttons and make your own, directly on the wiki. Nothing needs to be installed. Your choices are saved on the page <code>User:''YourName''/usefulQueries.json</code>, which only you (and interface administrators) can edit. Anyone can read it, and every change shows up in your contributions like any other edit. You need to be logged in.
+
+There are two places to work: the '''settings page''' for an overview, and '''edit mode''' on an item page for adding buttons where they should appear.
+
+=== Settings page ===
+
+Open it from the Tools menu (''usefulQueries settings'') or go to [[Special:BlankPage/usefulQueries]]. It has four parts:
+
+; Your buttons
+: Every button you made. ''Edit on Q…'' opens the button's example item with the editor already open. ''Suggest for everyone'' opens a pre-filled GitHub issue, so the button can be added to the script for all users. ''Delete'' removes it, after asking you to confirm.
+; Built-in buttons
+: Every button that ships with the script, grouped by where it appears, with a switch to show or hide it. ''see it on Q…'' opens an item where the button appears. Buttons added in a later release are marked '''new'''. ''Show all'' and ''Hide all'' change every switch at once.
+; Import from another user
+: Enter a username to see the buttons that person made, tick the ones you want and choose ''Add selected''. You get a copy: later changes on their side don't reach you.
+; Save
+: Nothing is stored until you press ''Save''. The first save creates your config page. If the page was changed in another tab in the meantime, saving stops and asks you to reload, so nothing gets overwritten.
+
+=== Edit mode ===
+
+On any item, choose ''usefulQueries: edit buttons'' in the Tools menu. Choose it again to leave edit mode. While it is on, three small controls appear:
+
+{| class="wikitable"
+! Control !! Where !! What it does
+|-
+| '''+''' || at every spot a button can go || Opens the editor to add a new button at that spot
+|-
+| '''✕''' || after every built-in button || Hides that built-in button for you. It is saved immediately; bring it back on the settings page
+|-
+| '''✎''' || after every button you made || Opens the editor for that button
+|}
+
+The '''+''' appears in these places:
+* next to the item's ID in the title: the button is shown on '''every item'''
+* next to a property, e.g. ''place of birth'': the button is shown once for that property
+* next to each statement value, e.g. ''Berlin''
+* next to qualifiers and their values, e.g. ''electoral district'' under ''position held''
+* next to properties and values inside references, e.g. ''stated in'' (desktop only, since the mobile view only builds references when you open them)
+
+=== Adding a button, step by step ===
+
+A statement is a triple: the item is the '''subject''', the property the '''predicate''', and the value the '''object'''. The editor uses these three parts to work out where a button goes and what it can refer to.
+
+# '''Click the + where the button should appear.''' The dialog's heading repeats the spot, e.g. ''Shown next to "place of birth → Berlin"''.
+# '''Choose where it appears''' (only when you clicked + next to a value):
+#* ''Next to every "place of birth" value'': the result is about that value, the object. Example: other people born in Berlin.
+#* ''Only when "place of birth" is Berlin'': the value only decides whether the button shows; the result is about the item. Example: a button only for painters (occupation = painter).
+#* ''Once, next to the "place of birth" label'': the query uses all values of the property together, or none of them.
+# '''Properties''' (optional): add more properties, separated by commas, to show the same button for them too (e.g. P19, P20). In the query, <code><nowiki>{propertyId}</nowiki></code> stands for the one that matched.
+# '''Query or link''': a query opens its result in a popup; a link opens another website in a new tab.
+# '''Write the query.''' The easiest way:
+## Choose ''Open in Query Service ↗''. The Query Service opens with this item's IDs already filled in.
+## Write and run your query there until it shows what you want.
+## Copy the full address from the browser's address bar (short ''w.wiki'' links don't work), paste it into the field below the query and choose ''Use this query''.
+## The editor replaces this item's ID with <code><nowiki>{itemId}</nowiki></code> and the value's ID with <code><nowiki>{valueId}</nowiki></code>, so the button works on every item. A message lists what was replaced.
+#: You can also type the query directly. The chips above the field insert the placeholders that are available at this spot.
+# '''Test it.''' ''Test on this item'' runs the query and shows the number of rows, the time it took and the first five rows. A button should return results on the item you made it on. Yellow warnings mean the query will probably be slow or fail on [[#QLever integration|QLever]]; it still works on the Query Service.
+# '''Label it.''' Pick an emoji for the button and write a title, which becomes the tooltip and the popup heading. The title can use placeholders too, e.g. ''People born in <nowiki>{valueLabel}</nowiki>''; the line below the field shows how it reads on this item.
+# '''Add button.''' The button is saved to your config page and appears right away, without reloading.
+
+To change a button later, click its '''✎''' in edit mode (or ''Edit on Q…'' on the settings page). The dialog then also offers ''Delete button'' and ''Suggest this button for everyone''.
+
+=== Placeholders ===
+
+Placeholders are filled in for each item. A name ending in ''Id'' is always a bare ID (<code>Q42</code>) that you prefix yourself, e.g. <code>wd:<nowiki>{itemId}</nowiki></code>.
+
+{| class="wikitable"
+! Placeholder !! Available !! Means
+|-
+| <code><nowiki>{itemId}</nowiki></code>, <code><nowiki>{itemLabel}</nowiki></code> || everywhere || the item (subject) and its label
+|-
+| <code><nowiki>{userLanguage}</nowiki></code> || everywhere || your interface language, e.g. <code>de</code>
+|-
+| <code><nowiki>{propertyId}</nowiki></code> || next to properties and values || the property (predicate) the button is on
+|-
+| <code><nowiki>{valueId}</nowiki></code> || next to values || the object, if it is an item, e.g. <code>Q64</code>; empty for text, dates and numbers
+|-
+| <code><nowiki>{valueSparql}</nowiki></code> || next to values || the object of any type, ready to use in SPARQL: <code>wd:Q64</code>, <code>"91E23"</code>, a date…
+|-
+| <code><nowiki>{valueLabel}</nowiki></code> || next to values || a readable form of the object, for titles
+|-
+| <code><nowiki>{valueLatitude}</nowiki></code>, <code><nowiki>{valueLongitude}</nowiki></code> || next to coordinates || the coordinates of the object
+|-
+| <code><nowiki>{statementPropertyId}</nowiki></code>, <code><nowiki>{statementValueId}</nowiki></code>, <code><nowiki>{statementValueSparql}</nowiki></code>, <code><nowiki>{statementValueLabel}</nowiki></code> || in qualifiers and references || the statement the qualifier or reference belongs to, e.g. ''position held → member of the Bundestag''
+|}
+
+If your config page ever contains something the script can't use (for example after editing it by hand), those entries are skipped and a notice links to the settings page. All other buttons keep working.
+
+=== Building your own copy (advanced) ===
+
+You can also add query templates to the project itself by following the [https://github.com/kristbaum/usefulQueries#adding-your-own-queries tutorial on GitHub]. It requires installing {{Q|Q7067518}} (npm): copy an existing JSON template, fill in your query, rebuild, and upload. The [https://github.com/kristbaum/usefulQueries/blob/main/TEMPLATE_GUIDE.md template guide] describes every field.
 
 == Run on another Wikibase ==
 
@@ -64,11 +153,11 @@ These buttons appear when the item has at least one of the listed properties, wh
 {| class="wikitable sortable"
 ! Button !! Title !! Triggering property !! View !! Example item !! Template
 |-
-| 📊 || Population, members and students of {itemLabel} over time || {{P|P1082}}, {{P|P2124}}, {{P|P2196}} || LineChart || {{Q|Q64}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/countsOverTime.json countsOverTime.json]
+| 📊 || Population, members and students of {itemLabel} over time || {{P|P1082}}, {{P|P2124}}, {{P|P2196}} || LineChart || [[Q64#P1082|{{Label|Q64}} <small>(Q64)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/countsOverTime.json countsOverTime.json]
 |-
-| 🎨 || Artworks and locations related to {itemLabel} with deckenmalerei.eu data || {{P|P10626}} || Map || {{Q|Q46507847}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/deckenmalareiArtworkMap.json deckenmalareiArtworkMap.json]
+| 🎨 || Artworks and locations related to {itemLabel} with deckenmalerei.eu data || {{P|P10626}} || Map || [[Q46507847#P10626|{{Label|Q46507847}} <small>(Q46507847)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/deckenmalareiArtworkMap.json deckenmalareiArtworkMap.json]
 |-
-| 🏛️ || Officeholders of {itemLabel} || {{P|P1308}}, {{P|P488}}, {{P|P6}}, {{P|P35}}, {{P|P169}}, {{P|P1037}}, {{P|P210}} || Timeline || {{Q|Q64}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/positionTimeline.json positionTimeline.json]
+| 🏛️ || Officeholders of {itemLabel} || {{P|P6}}, {{P|P1308}}, {{P|P488}}, {{P|P35}}, {{P|P169}}, {{P|P1037}}, {{P|P210}} || Timeline || [[Q64#P6|{{Label|Q64}} <small>(Q64)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/positionTimeline.json positionTimeline.json]
 |-
 | ⛓️ || Succession of {statementValueLabel} || {{P|P1365}}, {{P|P1366}} ''(as qualifier)'' || Graph || {{Q|Q76}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/successionGraph.json successionGraph.json]
 |}
@@ -80,49 +169,49 @@ These buttons appear next to each value of the listed property (or only next to 
 {| class="wikitable sortable"
 ! Button !! Title !! Triggering property !! Value !! View !! Example item !! Template
 |-
-| 🏛️ || Map of buildings designed by {valueLabel} || {{P|P84}} || ''any value'' || Map || {{Q|Q457453}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksMap.json architectWorksMap.json]
+| 🏛️ || Map of buildings designed by {valueLabel} || {{P|P84}} || ''any value'' || Map || [[Q457453#P84|{{Label|Q457453}} <small>(Q457453)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksMap.json architectWorksMap.json]
 |-
-| 🏛️ || Map of buildings designed by {itemLabel} || {{P|P106}} || {{Q|Q42973}} || Map || {{Q|Q41508}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksMapOccupation.json architectWorksMapOccupation.json]
+| 🏛️ || Map of buildings designed by {itemLabel} || {{P|P106}} || {{Q|Q42973}} || Map || [[Q41508#P106|{{Label|Q41508}} <small>(Q41508)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksMapOccupation.json architectWorksMapOccupation.json]
 |-
-| 📅 || Timeline of buildings designed by {valueLabel} || {{P|P84}} || ''any value'' || Timeline || {{Q|Q457453}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksTimeline.json architectWorksTimeline.json]
+| 📅 || Timeline of buildings designed by {valueLabel} || {{P|P84}} || ''any value'' || Timeline || [[Q457453#P84|{{Label|Q457453}} <small>(Q457453)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksTimeline.json architectWorksTimeline.json]
 |-
-| 📅 || Timeline of buildings designed by {itemLabel} || {{P|P106}} || {{Q|Q42973}} || Timeline || {{Q|Q41508}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksTimelineOccupation.json architectWorksTimelineOccupation.json]
+| 📅 || Timeline of buildings designed by {itemLabel} || {{P|P106}} || {{Q|Q42973}} || Timeline || [[Q41508#P106|{{Label|Q41508}} <small>(Q41508)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/architectWorksTimelineOccupation.json architectWorksTimelineOccupation.json]
 |-
-| 📅 || Artistic timeline of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Timeline || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artistTimeline.json artistTimeline.json]
+| 📅 || Artistic timeline of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Timeline || [[Q454172#P106|{{Label|Q454172}} <small>(Q454172)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artistTimeline.json artistTimeline.json]
 |-
-| 📍 || Artwork locations of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworkLocationsMap.json artworkLocationsMap.json]
+| 📍 || Artwork locations of {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || [[Q454172#P106|{{Label|Q454172}} <small>(Q454172)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworkLocationsMap.json artworkLocationsMap.json]
 |-
-| 🖼️ || Artworks by {itemLabel} on Commons || {{P|P106}} || {{Q|Q1028181}} or {{Q|Q1281618}} || ImageGrid || {{Q|Q454172}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworks.json artworks.json]
+| 🖼️ || Artworks by {itemLabel} on Commons || {{P|P106}} || {{Q|Q1028181}} or {{Q|Q1281618}} || ImageGrid || [[Q454172#P106|{{Label|Q454172}} <small>(Q454172)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/artworks.json artworks.json]
 |-
-| 📖 || Literary works by {itemLabel} || {{P|P106}} || {{Q|Q18844224}} or {{Q|Q36180}} or {{Q|Q6625963}} || Table || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/authorWorks.json authorWorks.json]
+| 📖 || Literary works by {itemLabel} || {{P|P106}} || {{Q|Q18844224}} or {{Q|Q36180}} or {{Q|Q6625963}} || Table || [[Q42#P106|{{Label|Q42}} <small>(Q42)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/authorWorks.json authorWorks.json]
 |-
-| 🏅 || Everyone who received {valueLabel}, over time || {{P|P166}} || ''any value'' || Timeline || {{Q|Q937}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/awardWinnersTimeline.json awardWinnersTimeline.json]
+| 🏅 || Everyone who received {valueLabel}, over time || {{P|P166}} || ''any value'' || Timeline || [[Q937#P166|{{Label|Q937}} <small>(Q937)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/awardWinnersTimeline.json awardWinnersTimeline.json]
 |-
-| 🍄 || All taxons (co-)described by {itemLabel} || {{P|P106}} || {{Q|Q2487799}} or {{Q|Q2374149}} || Graph || {{Q|Q1043}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/biologistTaxons.json biologistTaxons.json]
+| 🍄 || All taxons (co-)described by {itemLabel} || {{P|P106}} || {{Q|Q2487799}} or {{Q|Q2374149}} || Graph || [[Q1043#P106|{{Label|Q1043}} <small>(Q1043)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/biologistTaxons.json biologistTaxons.json]
 |-
-| 👶 || Best-known people born in {valueLabel} || {{P|P19}} || ''any value'' || ImageGrid || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/birthPlacePeople.json birthPlacePeople.json]
+| 👶 || Best-known people born in {valueLabel} || {{P|P19}} || ''any value'' || ImageGrid || [[Q42#P19|{{Label|Q42}} <small>(Q42)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/birthPlacePeople.json birthPlacePeople.json]
 |-
-| 🏺 || Illustrated works in the collection of {valueLabel} || {{P|P195}} || ''any value'' || ImageGrid || {{Q|Q12418}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/collectionHighlightsMap.json collectionHighlightsMap.json]
+| 🏺 || Illustrated works in the collection of {valueLabel} || {{P|P195}} || ''any value'' || ImageGrid || [[Q12418#P195|{{Label|Q12418}} <small>(Q12418)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/collectionHighlightsMap.json collectionHighlightsMap.json]
 |-
 | 🗳️ || Everyone with “{statementValueLabel}” in {valueLabel} || {{P|P768}} ''(as qualifier)'' || ''any value'' || Table || {{Q|Q567}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/electoralDistrictHolders.json electoralDistrictHolders.json]
 |-
-| 👥 || Other employees of {valueLabel} || {{P|P108}} || ''any value'' || Graph || {{Q|Q937}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/employerGraph.json employerGraph.json]
+| 👥 || Other employees of {valueLabel} || {{P|P108}} || ''any value'' || Graph || [[Q937#P108|{{Label|Q937}} <small>(Q937)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/employerGraph.json employerGraph.json]
 |-
-| 🏰 || Map of all monuments on {valueLabel} || {{P|P2817}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/heritageMonumentsMap.json heritageMonumentsMap.json]
+| 🏰 || Map of all monuments on {valueLabel} || {{P|P2817}} || ''any value'' || Map || [[Q2319704#P2817|{{Label|Q2319704}} <small>(Q2319704)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/heritageMonumentsMap.json heritageMonumentsMap.json]
 |-
-| 🧑‍🤝‍🧑 || Members of {valueLabel} || {{P|P54}}, {{P|P102}}, {{P|P1344}}, {{P|P53}}, {{P|P5096}}, {{P|P463}} || ''any value'' || Table || {{Q|Q25909967}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/memberList.json memberList.json]
+| 🧑‍🤝‍🧑 || Members of {valueLabel} || {{P|P54}}, {{P|P102}}, {{P|P1344}}, {{P|P53}}, {{P|P5096}}, {{P|P463}} || ''any value'' || Table || [[Q25909967#P54|{{Label|Q25909967}} <small>(Q25909967)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/memberList.json memberList.json]
 |-
-| 📋 || Everything named after {valueLabel} || {{P|P138}} || ''any value'' || Table || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterList.json namedAfterList.json]
+| 📋 || Everything named after {valueLabel} || {{P|P138}} || ''any value'' || Table || [[Q2319704#P138|{{Label|Q2319704}} <small>(Q2319704)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterList.json namedAfterList.json]
 |-
-| 🗺️ || Map of places named after {valueLabel} || {{P|P138}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterMap.json namedAfterMap.json]
+| 🗺️ || Map of places named after {valueLabel} || {{P|P138}} || ''any value'' || Map || [[Q2319704#P138|{{Label|Q2319704}} <small>(Q2319704)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/namedAfterMap.json namedAfterMap.json]
 |-
-| 📖 || Other objects described by {valueLabel} || {{P|P1343}} || ''any value'' || Table || {{Q|Q346156}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsDescribedBySource.json objectsDescribedBySource.json]
+| 📖 || Other objects described by {valueLabel} || {{P|P1343}} || ''any value'' || Table || [[Q346156#P1343|{{Label|Q346156}} <small>(Q346156)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsDescribedBySource.json objectsDescribedBySource.json]
 |-
-| 📍 || Other objects on {valueLabel} || {{P|P669}} || ''any value'' || Map || {{Q|Q2319704}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsStreet.json objectsStreet.json]
+| 📍 || Other objects on {valueLabel} || {{P|P669}} || ''any value'' || Map || [[Q2319704#P669|{{Label|Q2319704}} <small>(Q2319704)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/objectsStreet.json objectsStreet.json]
 |-
-| 🗺️ || Places related to {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || {{Q|Q5598}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/painterPlacesMap.json painterPlacesMap.json]
+| 🗺️ || Places related to {itemLabel} || {{P|P106}} || {{Q|Q1028181}} || Map || [[Q5598#P106|{{Label|Q5598}} <small>(Q5598)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/painterPlacesMap.json painterPlacesMap.json]
 |-
-| 🔢 || Parts of the series {valueLabel} || {{P|P179}} || ''any value'' || Table || {{Q|Q3257270}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/seriesParts.json seriesParts.json]
+| 🔢 || Parts of the series {valueLabel} || {{P|P179}} || ''any value'' || Table || [[Q32136#P179|{{Label|Q32136}} <small>(Q32136)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/seriesParts.json seriesParts.json]
 |-
 | 📚 || Items citing {valueLabel} || {{P|P248}} ''(in references)'' || ''any value'' || Table || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/queries/statedInCitingItems.json statedInCitingItems.json]
 |}
@@ -136,13 +225,13 @@ These buttons do not run a query; they open an external tool for the current ite
 {| class="wikitable sortable"
 ! Button !! Title !! Triggering property !! Value !! Target URL !! Example item !! Template
 |-
-| 🌳 || Family tree on Entitree || {{P|P22}}, {{P|P25}}, {{P|P3373}}, {{P|P26}}, {{P|P40}}, {{P|P1038}}, {{P|P3448}}, {{P|P8810}} || ''any value'' || <code>https://entitree.com/{userLanguage}/family_tree/{itemId}</code> || {{Q|Q9682}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_family.json entitree_family.json]
+| 🌳 || Family tree on Entitree || {{P|P22}}, {{P|P25}}, {{P|P3373}}, {{P|P26}}, {{P|P40}}, {{P|P1038}}, {{P|P3448}}, {{P|P8810}} || ''any value'' || <code>https://entitree.com/{userLanguage}/family_tree/{itemId}</code> || [[Q9682#P22|{{Label|Q9682}} <small>(Q9682)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_family.json entitree_family.json]
 |-
-| 🎓 || Academic lineage on Entitree || {{P|P1066}}, {{P|P802}} || ''any value'' || <code>https://entitree.com/{userLanguage}/student/{itemId}</code> || {{Q|Q868}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_student.json entitree_student.json]
+| 🎓 || Academic lineage on Entitree || {{P|P1066}}, {{P|P802}} || ''any value'' || <code>https://entitree.com/{userLanguage}/student/{itemId}</code> || [[Q868#P1066|{{Label|Q868}} <small>(Q868)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/entitree_student.json entitree_student.json]
 |-
 | 🗄️ || Archived copies of this reference URL (Wayback Machine) || {{P|P854}} ''(in references)'' || ''any value'' || <code>https://web.archive.org/web/*/{valueLabel}</code> || {{Q|Q42}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/referenceUrlArchive.json referenceUrlArchive.json]
 |-
-| 📚 || Page on Scholia || {{P|P106}} || {{Q|Q1650915}} || <code>https://scholia.toolforge.org/author/{itemId}</code> || {{Q|Q20895241}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/scholia.json scholia.json]
+| 📚 || Page on Scholia || {{P|P106}} || {{Q|Q1650915}} || <code>https://scholia.toolforge.org/author/{itemId}</code> || [[Q20895241#P106|{{Label|Q20895241}} <small>(Q20895241)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/scholia.json scholia.json]
 |-
-| 📷 || Items in the immediate surroundings on WikiShootMe || {{P|P625}} || ''any value'' || <code>https://wikishootme.toolforge.org/#lat={valueLatitude}&lng={valueLongitude}&zoom=19</code> || {{Q|Q64}} || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/wikishootme.json wikishootme.json]
+| 📷 || Items in the immediate surroundings on WikiShootMe || {{P|P625}} || ''any value'' || <code>https://wikishootme.toolforge.org/#lat={valueLatitude}&lng={valueLongitude}&zoom=19</code> || [[Q64#P625|{{Label|Q64}} <small>(Q64)</small>]] || [https://github.com/kristbaum/usefulQueries/blob/main/templates/links/wikishootme.json wikishootme.json]
 |}

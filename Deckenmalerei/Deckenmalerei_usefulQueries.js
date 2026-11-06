@@ -15,6 +15,7 @@ $(function () {
     configName: "Deckenmalerei_usefulQueries",
     displayName: "usefulQueries (Deckenmalerei)",
     repositoryUrl: "https://github.com/kristbaum/usefulQueries",
+    helpUrl: "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries#Your_own_buttons",
     queryServiceUrl: "https://query.wikidata.org/",
     queryEmbedUrl: "https://query.wikidata.org/embed.html",
     enableQLever: true,
@@ -183,7 +184,7 @@ LIMIT 300`,
 # per code; on a map those land on the same point, which is why this is not
 # aggregated - GROUP_CONCAT here costs more than the duplicate rows do.
 SELECT DISTINCT ?painting ?paintingLabel ?iconclass ?building ?buildingLabel ?coordinates ?creator ?creatorLabel ?inception WHERE {
-  # {valueSparql} is the clicked notation as a string literal, e.g. "91E23".
+  # {valueSparql} is the notation the button belongs to, as a string literal, e.g. "91E23".
   BIND(SUBSTR({valueSparql}, 1, 3) AS ?branch)
   ?painting wdt:P10626 [];
             wdt:P1257 ?iconclass;
@@ -1123,7 +1124,8 @@ function escapeRegExp(text) {
 
 /**
  * Turn a query written for one concrete item back into a template: replace the
- * item's ID with {itemId} and, for value buttons, the clicked value with
+ * item's ID with {itemId} and, for value buttons, the object (the value the
+ * button belongs to) with
  * {valueId} (item/property values, so wd:Q64 becomes wd:{valueId}) or
  * {valueSparql} (any other datatype, e.g. "91E23"); for qualifier and
  * reference buttons also the statement's value with {statementValueId}. Only
@@ -1149,7 +1151,7 @@ function generalizeQuery(text, ctx) {
   const wholeId = (id) => new RegExp(`(^|[^A-Za-z0-9_])${id}(?![0-9])`, "g");
 
   // The value first: on a self-referencing statement the item and the value can
-  // be the same, and the clicked value is the more specific reading.
+  // be the same, and the object is the more specific reading.
   if (ctx.valueId && /^[QPL]\d+$/.test(ctx.valueId)) {
     if (ctx.valueId !== ctx.itemId) replace(wholeId(ctx.valueId), "{valueId}", ctx.valueId);
   } else if (ctx.valueSparql && ctx.valueSparql.length > 2) {
@@ -1946,16 +1948,26 @@ function matchesValueId(valueId, configValueId) {
  * @param {string|null} value - The raw value, matched against valueId; null for
  *   property/entity buttons
  * @param {Object} target - Describes this spot to the editor
+ * @param {Set<string>} [shown] - Template ids already shown in this block;
+ *   these are skipped and new ones added (one button per template per block)
  */
-function addButtons($anchor, scope, section, propertyId, placeholders, value, target) {
+function addButtons($anchor, scope, section, propertyId, placeholders, value, target, shown) {
   const key = templateKey(scope, section, propertyId);
   const queries =
     scope === "entity" ? _templateIndex.queries.entity : (_templateIndex.queries.byKey.get(key) ?? []);
   const links =
     scope === "entity" ? _templateIndex.links.entity : (_templateIndex.links.byKey.get(key) ?? []);
 
+  const fresh = (t) => {
+    if (!shown) return true;
+    if (shown.has(t.id)) return false;
+    shown.add(t.id);
+    return true;
+  };
+
   for (const query of queries) {
     if (value !== null && !matchesValueId(value, query.valueId)) continue;
+    if (!fresh(query)) continue;
     createQueryPopup(
       $anchor,
       encodeQueryString(replacePlaceholders(query.template, placeholders)),
@@ -1967,6 +1979,7 @@ function addButtons($anchor, scope, section, propertyId, placeholders, value, ta
   }
   for (const link of links) {
     if (value !== null && !matchesValueId(value, link.valueId)) continue;
+    if (!fresh(link)) continue;
     createLinkButton(
       $anchor,
       replacePlaceholders(link.urlTemplate, placeholders),
@@ -1999,6 +2012,9 @@ function processEntityFeatures($titleElement, context) {
  */
 function processSnaks($container, snaks, order, section, context, statement) {
   const all = _editMode;
+  // A property template listing several qualifiers (replaces + replaced by)
+  // would otherwise appear once per qualifier of the same statement.
+  const shownPropertyTemplates = new Set();
   for (const propertyId of order) {
     const list = snaks[propertyId] || [];
     if (!list.length) continue;
@@ -2014,6 +2030,7 @@ function processSnaks($container, snaks, order, section, context, statement) {
           { ...context, propertyId },
           null,
           { scope: "property", section, propertyId, statement },
+          shownPropertyTemplates,
         );
       }
     }
@@ -2819,7 +2836,7 @@ function mountEditor(Vue, Codex) {
           <cdx-field :is-fieldset="true">
             <template #label>Where should the button appear?</template>
             <cdx-radio v-model="placement" name="uq-placement" input-value="every">
-              Next to every {{ sectionNoun }}“{{ propertyLabel }}” value — the result is about the clicked value
+              Next to every {{ sectionNoun }}“{{ propertyLabel }}” value — the result is about that value
             </cdx-radio>
             <cdx-radio v-if="valueIsItem || placement === 'only'" v-model="placement" name="uq-placement" input-value="only">
               Only when {{ sectionNoun }}“{{ propertyLabel }}” is {{ valueLabel }} — the value only decides whether the button shows
@@ -3022,6 +3039,18 @@ function fetchLabels(ids) {
   });
 }
 
+/**
+ * A template's example item with the anchor of the statement group that
+ * triggers it (Q454172#P937), so the link scrolls to where the button is.
+ * Qualifier/reference and entity buttons link to the item itself. If the
+ * example lacks that property, the browser simply stays at the top.
+ */
+function withAnchor(t) {
+  return t.scope !== "entity" && sectionOf(t) === "statement" && t.propertyId
+    ? t.example + "#" + t.propertyId[0]
+    : t.example;
+}
+
 /** Show placeholders in a title as readable markers. */
 function humanizeTitle(title) {
   return title
@@ -3125,6 +3154,7 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
         importList: [],
         importPicked: [],
         displayName: SETTINGS.displayName,
+        helpUrl: SETTINGS.helpUrl,
       };
     },
     computed: {
@@ -3193,10 +3223,10 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
         return humanizeTitle(t.title);
       },
       exampleUrl: function (t) {
-        return t.example ? itemPageUrl(t.example) : null;
+        return t.example ? itemPageUrl(withAnchor(t)) : null;
       },
       editUrl: function (t) {
-        return itemPageUrl(t.example, { "usefulqueries-edit": t.id });
+        return itemPageUrl(withAnchor(t), { "usefulqueries-edit": t.id });
       },
       suggestUrl: function (entry) {
         return suggestionIssueUrl(entry.t, entry.kind, SETTINGS.repositoryUrl);
@@ -3266,10 +3296,14 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
     },
     template: `
       <div class="uq-settings">
+        <p class="uq-meta" style="float: right; margin: 0 0 8px 12px;">
+          <a :href="helpUrl" target="_blank" rel="noopener">Help: how to add and edit buttons ↗</a>
+        </p>
         <p>
           Choose which buttons {{ displayName }} adds to item pages, and manage buttons you made yourself.
           To make a new button, open an item and choose <em>{{ displayName }}: edit buttons</em> in the Tools menu,
-          then click “+” where the button should go.
+          then click “+” where the button should go. The <a :href="helpUrl" target="_blank" rel="noopener">help page</a>
+          explains every step and control.
         </p>
         <p class="uq-meta">
           Your choices are stored on <a :href="configPageUrl">{{ configTitle }}</a>,

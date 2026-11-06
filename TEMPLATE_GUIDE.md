@@ -35,7 +35,11 @@ Writing a new button means writing one such file; no JavaScript is involved.
 
 ## Choosing the scope
 
-`scope` decides where the button is attached. There are three:
+`scope` decides where the button is attached. Think of a statement as a
+subject–predicate–object triple: the item is the **subject**, the property the
+**predicate**, and the statement's value the **object**. The value placeholders
+(`{valueId}`, `{valueSparql}`, …) always refer to the object of the statement
+the button sits on. There are three scopes:
 
 | scope | Button sits next to | Shown when |
 | ----- | ------------------- | ---------- |
@@ -45,7 +49,7 @@ Writing a new button means writing one such file; no JavaScript is involved.
 
 The rule for choosing between `property` and `value`:
 
-> **If the result depends on which value was clicked, the button belongs on the
+> **If the result depends on the statement's object, the button belongs on the
 > value.** Only a query that uses *all* of the property's values together, or
 > *none* of them, belongs on the property.
 
@@ -72,7 +76,7 @@ The three legitimate patterns, with shipped examples:
 
 | Pattern | scope | Query uses | Example |
 | ------- | ----- | ---------- | ------- |
-| **Per value** — the answer is about the clicked value | `value`, usually no `valueId` | `wd:{valueId}` or `{valueSparql}` (and often `{valueLabel}` in the title) | `birthPlacePeople` on P19: other people born in *this* place. `memberList` on P463: members of *this* organisation |
+| **Per value** — the answer is about the object (the statement's value) | `value`, usually no `valueId` | `wd:{valueId}` or `{valueSparql}` (and often `{valueLabel}` in the title) | `birthPlacePeople` on P19: other people born in *this* place. `memberList` on P463: members of *this* organisation |
 | **Value as a gate** — the value only decides *whether* the button appears; the query is about the item itself | `value` with `valueId` | `{itemId}` only | `artistTimeline` on P106 = painter: the query is about the painter, but only painters should get the button |
 | **All or none of the values** — the query aggregates across every value, or uses the property only as a hint that the item is of the right kind | `property` | `{itemId}` only | `positionTimeline` on P6/P35/…: every office-holder in one timeline. `countsOverTime` on P1082/P2124/P2196: all series in one chart |
 
@@ -100,7 +104,7 @@ instead; `propertyId` then names the qualifier or reference property:
 | `"qualifiers"` | the qualifier's property label, once per statement | each qualifier value |
 | `"references"` | the property label inside each reference | each value inside a reference |
 
-The same scope rule applies: if the answer depends on the clicked qualifier or
+The same scope rule applies: if the answer depends on the qualifier or
 reference value, use `value`. Inside a section, the four `{statement…}`
 placeholders describe the statement the qualifier or reference belongs to (see
 [Placeholders](#placeholders)), so a query can combine both:
@@ -202,8 +206,8 @@ only one that is already a complete SPARQL term**.
 | `{itemLabel}` | all scopes | the item's label in the user's language (falls back to other languages, then to the ID) |
 | `{userLanguage}` | all scopes | the user's interface language code, e.g. `de` |
 | `{propertyId}` | `property`, `value` | the property the button hangs off (the one of the template's `propertyId` list that matched), e.g. `P54` — write `wdt:{propertyId}` |
-| `{valueId}` | `value` | ID of the clicked value if it is an item or property, e.g. `Q1726` — write `wd:{valueId}`; empty for other datatypes |
-| `{valueSparql}` | `value` | the clicked value of any datatype, written as a SPARQL term — see below |
+| `{valueId}` | `value` | ID of the object (the statement's value) if it is an item or property, e.g. `Q1726` — write `wd:{valueId}`; empty for other datatypes |
+| `{valueSparql}` | `value` | the object of any datatype, written as a SPARQL term — see below |
 | `{valueLabel}` | `value` | a human-readable form of the value, for titles |
 | `{valueLatitude}` / `{valueLongitude}` | `value` | coordinates, only on globe-coordinate values (P625); empty otherwise |
 | `{statementPropertyId}` | `section` qualifiers/references | property of the statement the qualifier/reference belongs to, e.g. `P39` — write `p:` / `ps:{statementPropertyId}` |
@@ -248,7 +252,7 @@ A radius search around a coordinate value:
 ### Querying the matched property (`{propertyId}`)
 
 A template can list several `propertyId`s, and `{propertyId}` tells the query
-which one the clicked button actually hangs off. Use it when the trigger
+which one the button actually hangs off. Use it when the trigger
 property *is* the relation being queried — then one template covers a family of
 properties without a `UNION` arm per member, and the query stays a single
 triple pattern:
@@ -381,7 +385,7 @@ is the job of the checklist below.
 - [ ] Every PID and QID was looked up, not recalled.
 - [ ] Qualifier/reference buttons set `section`, and use the `{statement…}`
       placeholders when the answer depends on the statement they belong to.
-- [ ] Scope follows the rule: result depends on the clicked value → `value`
+- [ ] Scope follows the rule: result depends on the object → `value`
       with `wd:{valueId}` / `{valueSparql}`; value only gates the button → `value` + `valueId`;
       uses all or none of the values → `property`.
 - [ ] No `wd:{itemId} wdt:<trigger property> ?x` on a `property` template

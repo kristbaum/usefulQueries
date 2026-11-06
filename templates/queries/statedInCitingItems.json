@@ -6,7 +6,7 @@
   "propertyId": ["P248"],
   "valueId": null,
   "template": [
-    "# Items with statements sourced from the clicked work, ranked by how many of",
+    "# Items with statements sourced from this work, ranked by how many of",
     "# their statements cite it. Large sources are sampled (first 2000 statements).",
     "SELECT ?item ?itemLabel ?statements WHERE {",
     "  {",

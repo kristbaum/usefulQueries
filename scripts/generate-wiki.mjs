@@ -37,6 +37,18 @@ const triggerCell = (t) => {
 const valueCell = (ids) =>
   ids ? ids.map((id) => `{{Q|${id}}}`).join(" or ") : "''any value''";
 
+/**
+ * The example item, linked straight to the statement group that triggers the
+ * button (Q454172#P937) when there is one: property and value buttons on
+ * statements. Qualifier/reference buttons sit inside some statement the
+ * template does not name, and entity buttons on the title, so those link to
+ * the item itself. Renders like {{Q|…}}.
+ */
+const exampleCell = (t) =>
+  t.scope !== "entity" && (t.section ?? "statement") === "statement"
+    ? `[[${t.example}#${t.propertyId[0]}|{{Label|${t.example}}} <small>(${t.example})</small>]]`
+    : `{{Q|${t.example}}}`;
+
 /** Link to the template file on GitHub, labelled with the file name. */
 const templateLink = (kind) => (tpl) =>
   `[${blobUrl(kind, tpl.file)} ${tpl.file}]`;
@@ -62,7 +74,7 @@ const QUERY_TABLES = [
       t.emoji,
       t.title,
       defaultView(t),
-      `{{Q|${t.example}}}`,
+      exampleCell(t),
       queryLink(t),
     ],
   },
@@ -86,7 +98,7 @@ const QUERY_TABLES = [
       t.title,
       triggerCell(t),
       defaultView(t),
-      `{{Q|${t.example}}}`,
+      exampleCell(t),
       queryLink(t),
     ],
   },
@@ -112,7 +124,7 @@ const QUERY_TABLES = [
       triggerCell(t),
       valueCell(t.valueId),
       defaultView(t),
-      `{{Q|${t.example}}}`,
+      exampleCell(t),
       queryLink(t),
     ],
   },
@@ -136,7 +148,7 @@ const LINK_TABLE = {
     triggerCell(t),
     valueCell(t.valueId),
     `<code>${t.urlTemplate}</code>`,
-    `{{Q|${t.example}}}`,
+    exampleCell(t),
     linkLink(t),
   ],
 };

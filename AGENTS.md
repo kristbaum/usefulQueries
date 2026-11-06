@@ -105,7 +105,7 @@ profile's `templates/`.
 
 The build enforces the schema (`scripts/validate-templates.mjs`) and three
 syntactic SPARQL rules (`scripts/check-sparql.mjs`). It cannot check that the
-scope is right: a template whose result depends on the clicked value must be
+scope is right: a template whose result depends on the statement's value (its object) must be
 `scope: "value"` and use `wd:{valueId}` / `{valueSparql}`, not read the property
 back out of `{itemId}`. Placeholder naming: `…Id` is a bare entity ID, `{valueSparql}`
 a ready SPARQL term; the old names (`{itemQid}`, `{valueQid}`, …) are rejected.
@@ -141,6 +141,7 @@ a ready SPARQL term; the old names (`{itemQid}`, `{valueQid}`, …) are rejected
   // "configName":    "usefulQueries",                     // User:<name>/<configName>.json
   // "displayName":   "usefulQueries",                     // Label in the Tools menu
   // "repositoryUrl": "https://github.com/kristbaum/usefulQueries",
+  // "helpUrl":       "…/User:Kristbaum/usefulQueries#Your_own_buttons", // Linked from the settings page
   // "sparqlEndpoint": "<queryServiceUrl>sparql"           // Used by the editor's preview
 }
 ```

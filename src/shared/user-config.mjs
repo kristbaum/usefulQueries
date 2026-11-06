@@ -189,7 +189,8 @@ function escapeRegExp(text) {
 
 /**
  * Turn a query written for one concrete item back into a template: replace the
- * item's ID with {itemId} and, for value buttons, the clicked value with
+ * item's ID with {itemId} and, for value buttons, the object (the value the
+ * button belongs to) with
  * {valueId} (item/property values, so wd:Q64 becomes wd:{valueId}) or
  * {valueSparql} (any other datatype, e.g. "91E23"); for qualifier and
  * reference buttons also the statement's value with {statementValueId}. Only
@@ -215,7 +216,7 @@ export function generalizeQuery(text, ctx) {
   const wholeId = (id) => new RegExp(`(^|[^A-Za-z0-9_])${id}(?![0-9])`, "g");
 
   // The value first: on a self-referencing statement the item and the value can
-  // be the same, and the clicked value is the more specific reading.
+  // be the same, and the object is the more specific reading.
   if (ctx.valueId && /^[QPL]\d+$/.test(ctx.valueId)) {
     if (ctx.valueId !== ctx.itemId) replace(wholeId(ctx.valueId), "{valueId}", ctx.valueId);
   } else if (ctx.valueSparql && ctx.valueSparql.length > 2) {

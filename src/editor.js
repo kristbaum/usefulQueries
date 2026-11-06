@@ -551,7 +551,7 @@ function mountEditor(Vue, Codex) {
           <cdx-field :is-fieldset="true">
             <template #label>Where should the button appear?</template>
             <cdx-radio v-model="placement" name="uq-placement" input-value="every">
-              Next to every {{ sectionNoun }}“{{ propertyLabel }}” value — the result is about the clicked value
+              Next to every {{ sectionNoun }}“{{ propertyLabel }}” value — the result is about that value
             </cdx-radio>
             <cdx-radio v-if="valueIsItem || placement === 'only'" v-model="placement" name="uq-placement" input-value="only">
               Only when {{ sectionNoun }}“{{ propertyLabel }}” is {{ valueLabel }} — the value only decides whether the button shows
