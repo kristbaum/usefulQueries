@@ -60,14 +60,13 @@ function loadOwnConfig() {
 
 /** Tools-menu entries on item pages. */
 function addItemPortletLinks() {
-  mw.loader.using("mediawiki.util").then(function () {
-    const link = mw.util.addPortletLink(
-      "p-tb",
-      "#",
-      SETTINGS.displayName + ": edit buttons",
-      "t-usefulqueries-edit-" + SETTINGS.configName,
-      "Add your own usefulQueries buttons on this page, or hide built-in ones",
-    );
+  addToolsLink(
+    "edit",
+    "#",
+    SETTINGS.displayName + ": edit buttons",
+    "Add your own usefulQueries buttons on this page, or hide built-in ones",
+    "edit",
+  ).then(function (link) {
     if (link) {
       $(link).on("click", function (e) {
         e.preventDefault();

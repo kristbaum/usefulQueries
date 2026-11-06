@@ -68,12 +68,12 @@ function humanizeTitle(title) {
 /** Tools-menu link to the settings page. */
 function addSettingsPortletLink() {
   mw.loader.using("mediawiki.util").then(function () {
-    mw.util.addPortletLink(
-      "p-tb",
+    addToolsLink(
+      "settings",
       mw.util.getUrl(settingsPageTitle()),
       SETTINGS.displayName + " settings",
-      "t-usefulqueries-settings-" + SETTINGS.configName,
       "Choose which usefulQueries buttons you see and make your own",
+      "settings",
     );
   });
 }
