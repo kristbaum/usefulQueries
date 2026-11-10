@@ -38,16 +38,19 @@ function isStringArray(value) {
  * one bad entry must not take the user's other buttons down with it.
  * @param {unknown} raw - The parsed JSON page
  * @param {string[]} builtinIds - Ids of the templates shipped in this build
- * @returns {{config: object, errors: string[]}} A clean config and the problems
- *   found, each prefixed with where it was found.
+ * @returns {{config: object, errors: string[], skipped: {queries: unknown[], links: unknown[]}}}
+ *   A clean config, the problems found (each prefixed with where it was
+ *   found) and the dropped template entries as they were, so a save can put
+ *   them back (see keepSkipped()).
  */
 export function validateUserConfig(raw, builtinIds = []) {
   const errors = [];
   const config = emptyConfig();
   config.seen = [];
+  const skipped = { queries: [], links: [] };
 
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { config, errors: ["the page must contain a JSON object"] };
+    return { config, errors: ["the page must contain a JSON object"], skipped };
   }
 
   if (raw.version !== undefined && raw.version !== CONFIG_VERSION) {
@@ -88,6 +91,7 @@ export function validateUserConfig(raw, builtinIds = []) {
       }
       if (problems.length) {
         errors.push(...problems.map((p) => `${where}: ${p}`));
+        skipped[field].push(tpl);
       } else {
         usedIds.add(tpl.id);
         config[field].push(tpl);
@@ -95,7 +99,31 @@ export function validateUserConfig(raw, builtinIds = []) {
     });
   }
 
-  return { config, errors };
+  return { config, errors, skipped };
+}
+
+/**
+ * Put invalid template entries back into a config before saving it, so a
+ * quick change on an item page (hiding a built-in, adding a button) never
+ * deletes a button the user can still repair by hand. This matters whenever
+ * validation gets stricter: an entry saved under the old rules becomes
+ * invalid without the user doing anything. Entries whose id has since been
+ * taken by a valid button are left out. Changes `config` in place.
+ * @param {object} config - The config about to be saved
+ * @param {{queries: unknown[], links: unknown[]}} [skipped] - From validateUserConfig()
+ * @returns {object} config
+ */
+export function keepSkipped(config, skipped) {
+  if (!skipped) return config;
+  const taken = new Set([...config.queries, ...config.links].map((t) => t.id));
+  for (const field of ["queries", "links"]) {
+    for (const tpl of skipped[field] || []) {
+      const id = tpl && typeof tpl === "object" ? tpl.id : undefined;
+      if (typeof id === "string" && taken.has(id)) continue;
+      config[field].push(tpl);
+    }
+  }
+  return config;
 }
 
 /**
@@ -115,6 +143,7 @@ export function parseUserConfig(text, builtinIds = []) {
     return {
       config: emptyConfig(builtinIds),
       errors: [`not valid JSON: ${err.message}`],
+      skipped: { queries: [], links: [] },
       exists: true,
     };
   }

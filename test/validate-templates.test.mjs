@@ -349,3 +349,32 @@ test("non-objects are rejected", () => {
   assertRejected(null, "query", "JSON object");
   assertRejected("{}", "query", "JSON object");
 });
+
+test("bare-ID placeholders need a prefix in SPARQL", () => {
+  const qualifier = (line) =>
+    validQuery({
+      scope: "value",
+      section: "qualifiers",
+      propertyId: ["P580"],
+      template: ["SELECT ?s WHERE {", line, "}"],
+    });
+  // The case that shipped from a chatbot: becomes `ps:P937 Q12892`.
+  assertRejected(
+    qualifier("  ?s ps:{statementPropertyId} {statementValueId}."),
+    "query",
+    "{statementValueId} without a prefix",
+  );
+  assertRejected(qualifier("  ?s ?p {valueId}."), "query", "wd:{valueId}, or {valueSparql}");
+  assertRejected(qualifier("  VALUES ?x { {itemId} }"), "query", "write wd:{itemId}");
+  for (const fine of [
+    "  ?s ps:{statementPropertyId} wd:{statementValueId}.",
+    "  ?s ps:{statementPropertyId} {statementValueSparql}.",
+    "  ?s ?p <http://www.wikidata.org/entity/{itemId}>.",
+    '  FILTER(STR(?s) = "{itemId}")',
+    "  ?s ?p ?o. # not wd:, just {itemId} in a comment",
+  ]) {
+    assert.deepEqual(validateTemplate(qualifier(fine), "query"), [], fine);
+  }
+  // URLs take bare IDs.
+  assert.deepEqual(validateTemplate(validLink({ urlTemplate: "https://example.org/?q={itemId}" }), "link"), []);
+});

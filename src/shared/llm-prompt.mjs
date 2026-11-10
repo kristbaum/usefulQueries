@@ -46,6 +46,59 @@ function describePromptSpot(spot) {
   );
 }
 
+// The answer format: a chatbot puts the button's title and emoji as comment
+// lines at the top of its query, so one copy carries the whole button. The
+// editor reads them off a pasted query with splitButtonHeader().
+const HEADER_LINE_RE = /^\s*#\s*(title|emoji)\s*:\s*(.*?)\s*$/i;
+
+/**
+ * Header lines for a query: "#title: …" and "#emoji: …".
+ * @param {string} [title]
+ * @param {string} [emoji]
+ * @returns {string[]}
+ */
+export function formatButtonHeader(title, emoji) {
+  const out = [];
+  if (title && title.trim()) out.push(`#title: ${title.trim()}`);
+  if (emoji && emoji.trim()) out.push(`#emoji: ${emoji.trim()}`);
+  return out;
+}
+
+/**
+ * Take the "#title:" / "#emoji:" lines off the top of a query, e.g. one pasted
+ * from a chatbot. A surrounding Markdown code fence is dropped as well. Only
+ * leading lines count: the same text further down is an ordinary comment.
+ * @param {string} text
+ * @returns {{text: string, title: string|null, emoji: string|null, found: boolean}}
+ *   `found` is true if either line was present; `text` is the rest
+ */
+export function splitButtonHeader(text) {
+  let lines = String(text).replace(/\r\n?/g, "\n").split("\n");
+  const firstCode = lines.findIndex((l) => l.trim() !== "");
+  if (firstCode !== -1 && /^\s*```/.test(lines[firstCode])) {
+    lines = lines.slice(firstCode + 1);
+    let close = lines.length - 1;
+    while (close >= 0 && !/^\s*```\s*$/.test(lines[close])) close--;
+    if (close !== -1) lines = lines.slice(0, close);
+  }
+  const header = { title: null, emoji: null };
+  let i = 0;
+  for (; i < lines.length; i++) {
+    if (lines[i].trim() === "") continue;
+    const m = HEADER_LINE_RE.exec(lines[i]);
+    if (!m) break;
+    const key = m[1].toLowerCase();
+    if (header[key] === null && m[2]) header[key] = m[2];
+  }
+  const found = header.title !== null || header.emoji !== null;
+  return {
+    text: found ? lines.slice(i).join("\n").replace(/\s+$/, "") : text,
+    title: header.title,
+    emoji: header.emoji,
+    found,
+  };
+}
+
 /**
  * What the title may contain: only the Wikidata information the script reads
  * from the page, i.e. the placeholders at this spot. Chatbots otherwise invent
@@ -84,6 +137,8 @@ function titleHint(placeholders) {
  * @param {string} opts.queryServiceUrl
  * @param {string} [opts.guideUrl] - The template guide
  * @param {string} [opts.currentQuery] - The query so far, to improve on
+ * @param {string} [opts.currentTitle] - The button's title so far
+ * @param {string} [opts.currentEmoji] - The button's emoji so far
  * @returns {string}
  */
 export function buildQueryPrompt(opts) {
@@ -137,8 +192,9 @@ export function buildQueryPrompt(opts) {
     "## Rules",
     "",
     "- Use the placeholders instead of the IDs of this item or value, so the query works on other items. " +
-      "Names ending in Id are bare IDs: write wd:{itemId}, wdt:{propertyId}. Only the …Sparql ones are " +
-      "complete SPARQL terms: use them as they are, without quotes.",
+      "Names ending in Id expand to a bare ID like Q42 and always need a prefix: wd:{itemId}, " +
+      "wdt:{propertyId}. Never write one on its own: ps:P937 {valueId} becomes ps:P937 Q12892, a syntax " +
+      "error. Only the …Sparql ones are complete SPARQL terms: use them as they are, without quotes or prefix.",
     "- No other {name} in curly braces, in the query or the title: anything else is not replaced " +
       "and the button is rejected.",
     `- Look up every property and item ID on ${wiki}; never write one from memory.`,
@@ -166,15 +222,32 @@ export function buildQueryPrompt(opts) {
   }
   const current = (opts.currentQuery || "").trim();
   if (current) {
-    add("", "## Current query (improve on this)", "", "```sparql", current, "```");
+    add(
+      "",
+      "## Current button (improve on this)",
+      "",
+      "```sparql",
+      ...formatButtonHeader(opts.currentTitle, opts.currentEmoji),
+      current,
+      "```",
+    );
   }
   add(
     "",
     "## Answer with",
     "",
-    "1. The query with placeholders, in a single ```sparql code block, ready to paste. Short # comments " +
-      "saying what it does are welcome.",
-    `2. A title for the button (tooltip and popup heading) and one emoji as its label. ${titleHint(opts.placeholders)}`,
+    "A single ```sparql code block that I paste into the editor as a whole. Its first two lines name " +
+      "the button; the editor reads them into the button's fields and removes them from the query:",
+    "",
+    "```sparql",
+    "#title: <title of the button: tooltip and popup heading>",
+    "#emoji: <one emoji as the button's label>",
+    "#defaultView:… (optional)",
+    "SELECT …",
+    "```",
+    "",
+    `${titleHint(opts.placeholders)} Below the two lines comes the query with placeholders; short # ` +
+      "comments saying what it does are welcome. Put any explanation outside the code block.",
   );
   if (opts.guideUrl) {
     add(

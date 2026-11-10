@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildQueryPrompt } from "../src/shared/llm-prompt.mjs";
+import { buildQueryPrompt, formatButtonHeader, splitButtonHeader } from "../src/shared/llm-prompt.mjs";
 
 function valueSpot(overrides = {}) {
   return {
@@ -105,9 +105,57 @@ test("carries the query rules the build enforces", () => {
 
 test("includes the current query and the guide link when given", () => {
   const without = buildQueryPrompt(valueSpot({ guideUrl: undefined }));
-  assert.doesNotMatch(without, /Current query/);
+  assert.doesNotMatch(without, /Current button/);
   assert.doesNotMatch(without, /full guide/);
   const prompt = buildQueryPrompt(valueSpot({ currentQuery: "SELECT ?p WHERE { ?p wdt:P19 wd:{valueId}. }\n" }));
-  assert.match(prompt, /## Current query \(improve on this\)\n\n```sparql\nSELECT \?p WHERE \{ \?p wdt:P19 wd:\{valueId\}\. \}\n```/);
+  assert.match(prompt, /## Current button \(improve on this\)\n\n```sparql\nSELECT \?p WHERE \{ \?p wdt:P19 wd:\{valueId\}\. \}\n```/);
   assert.match(prompt, /full guide.*https:\/\/example\.org\/TEMPLATE_GUIDE\.md/);
+});
+
+test("warns that bare-ID placeholders need a prefix", () => {
+  assert.match(buildQueryPrompt(valueSpot()), /always need a prefix.*Never write one on its own/);
+});
+
+test("asks for the title and emoji as the first lines of the query", () => {
+  const prompt = buildQueryPrompt(valueSpot());
+  assert.match(prompt, /```sparql\n#title: <[^>]+>\n#emoji: <[^>]+>\n/);
+});
+
+test("the current button carries its title and emoji in the same format", () => {
+  const prompt = buildQueryPrompt(
+    valueSpot({ currentQuery: "SELECT ?p WHERE { ?p wdt:P19 wd:{valueId}. }", currentTitle: "Born in {valueLabel}", currentEmoji: "👶" }),
+  );
+  assert.match(prompt, /```sparql\n#title: Born in \{valueLabel\}\n#emoji: 👶\nSELECT/);
+});
+
+test("splitButtonHeader reads and removes the header lines", () => {
+  const r = splitButtonHeader("#title: Born in {valueLabel}\n#emoji: 👶\n#defaultView:ImageGrid\nSELECT ?p WHERE {}\n");
+  assert.deepEqual(r, {
+    text: "#defaultView:ImageGrid\nSELECT ?p WHERE {}",
+    title: "Born in {valueLabel}",
+    emoji: "👶",
+    found: true,
+  });
+});
+
+test("splitButtonHeader drops a code fence and tolerates spacing, case and order", () => {
+  const r = splitButtonHeader("```sparql\r\n\n  # Emoji :  🗺️ \n#TITLE: Map\nSELECT ?x WHERE {}\n```\n");
+  assert.equal(r.title, "Map");
+  assert.equal(r.emoji, "🗺️");
+  assert.equal(r.text, "SELECT ?x WHERE {}");
+});
+
+test("splitButtonHeader leaves other text alone", () => {
+  const plain = "#defaultView:Map\n#title: not a header here\nSELECT ?x WHERE {}";
+  assert.deepEqual(splitButtonHeader(plain), { text: plain, title: null, emoji: null, found: false });
+  // Only one of the two lines, or an empty value.
+  assert.equal(splitButtonHeader("#emoji: 🔍\nSELECT 1").title, null);
+  assert.equal(splitButtonHeader("#emoji: 🔍\nSELECT 1").text, "SELECT 1");
+  assert.equal(splitButtonHeader("#title:\nSELECT 1").found, false);
+});
+
+test("formatButtonHeader round-trips through splitButtonHeader", () => {
+  const text = [...formatButtonHeader(" People ", "👥"), "SELECT 1"].join("\n");
+  assert.deepEqual(splitButtonHeader(text), { text: "SELECT 1", title: "People", emoji: "👥", found: true });
+  assert.deepEqual(formatButtonHeader("", " "), []);
 });

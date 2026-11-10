@@ -545,6 +545,35 @@ const RENAMED_PLACEHOLDERS = {
   valueLon: "{valueLongitude}",
 };
 
+// How to write each bare-ID placeholder in SPARQL. They expand to a plain
+// "Q42", which is not a SPARQL term on its own.
+const ID_PLACEHOLDER_USAGE = {
+  itemId: "wd:{itemId}",
+  propertyId: "wdt:{propertyId} (or p:/ps:/pq:)",
+  valueId: "wd:{valueId}, or {valueSparql}",
+  statementPropertyId: "p:/ps:{statementPropertyId}",
+  statementValueId: "wd:{statementValueId}, or {statementValueSparql}",
+};
+
+/**
+ * Bare-ID placeholders used in SPARQL without a prefix (`ps:P937 {valueId}`
+ * becomes `ps:P937 Q12892`, a syntax error). A prefix (`wd:`), an IRI path
+ * (`…/entity/{itemId}>`) or a string literal around it is fine.
+ * @param {string[]} lines - The query, one line per entry
+ * @returns {string[]} Names of the offending placeholders
+ */
+function unprefixedIdPlaceholders(lines) {
+  const code = lines
+    .map(stripComment)
+    .join("\n")
+    .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, '""');
+  const found = new Set();
+  for (const m of code.matchAll(/(^|[^A-Za-z0-9_:/])\{([A-Za-z]+Id)\}/g)) {
+    if (Object.hasOwn(ID_PLACEHOLDER_USAGE, m[2])) found.add(m[2]);
+  }
+  return [...found];
+}
+
 // Matches {itemId} but not SPARQL graph patterns like `{ bd:serviceParam … }`,
 // which always contain a space, colon or `?` before the closing brace.
 const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
@@ -693,6 +722,11 @@ function validateTemplate(tpl, kind, options = {}) {
       );
     } else {
       texts.push(["template", tpl.template.join("\n")]);
+      for (const name of unprefixedIdPlaceholders(tpl.template)) {
+        errors.push(
+          `"template" uses {${name}} without a prefix; it expands to a bare ID like Q42, so write ${ID_PLACEHOLDER_USAGE[name]}`,
+        );
+      }
       // Portability between WDQS and QLever — see TEMPLATE_GUIDE.md.
       if (sparqlChecks) errors.push(...checkSparql(tpl.template));
     }
@@ -822,16 +856,19 @@ function isStringArray(value) {
  * one bad entry must not take the user's other buttons down with it.
  * @param {unknown} raw - The parsed JSON page
  * @param {string[]} builtinIds - Ids of the templates shipped in this build
- * @returns {{config: object, errors: string[]}} A clean config and the problems
- *   found, each prefixed with where it was found.
+ * @returns {{config: object, errors: string[], skipped: {queries: unknown[], links: unknown[]}}}
+ *   A clean config, the problems found (each prefixed with where it was
+ *   found) and the dropped template entries as they were, so a save can put
+ *   them back (see keepSkipped()).
  */
 function validateUserConfig(raw, builtinIds = []) {
   const errors = [];
   const config = emptyConfig();
   config.seen = [];
+  const skipped = { queries: [], links: [] };
 
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { config, errors: ["the page must contain a JSON object"] };
+    return { config, errors: ["the page must contain a JSON object"], skipped };
   }
 
   if (raw.version !== undefined && raw.version !== CONFIG_VERSION) {
@@ -872,6 +909,7 @@ function validateUserConfig(raw, builtinIds = []) {
       }
       if (problems.length) {
         errors.push(...problems.map((p) => `${where}: ${p}`));
+        skipped[field].push(tpl);
       } else {
         usedIds.add(tpl.id);
         config[field].push(tpl);
@@ -879,7 +917,31 @@ function validateUserConfig(raw, builtinIds = []) {
     });
   }
 
-  return { config, errors };
+  return { config, errors, skipped };
+}
+
+/**
+ * Put invalid template entries back into a config before saving it, so a
+ * quick change on an item page (hiding a built-in, adding a button) never
+ * deletes a button the user can still repair by hand. This matters whenever
+ * validation gets stricter: an entry saved under the old rules becomes
+ * invalid without the user doing anything. Entries whose id has since been
+ * taken by a valid button are left out. Changes `config` in place.
+ * @param {object} config - The config about to be saved
+ * @param {{queries: unknown[], links: unknown[]}} [skipped] - From validateUserConfig()
+ * @returns {object} config
+ */
+function keepSkipped(config, skipped) {
+  if (!skipped) return config;
+  const taken = new Set([...config.queries, ...config.links].map((t) => t.id));
+  for (const field of ["queries", "links"]) {
+    for (const tpl of skipped[field] || []) {
+      const id = tpl && typeof tpl === "object" ? tpl.id : undefined;
+      if (typeof id === "string" && taken.has(id)) continue;
+      config[field].push(tpl);
+    }
+  }
+  return config;
 }
 
 /**
@@ -899,6 +961,7 @@ function parseUserConfig(text, builtinIds = []) {
     return {
       config: emptyConfig(builtinIds),
       errors: [`not valid JSON: ${err.message}`],
+      skipped: { queries: [], links: [] },
       exists: true,
     };
   }
@@ -1150,6 +1213,59 @@ function describePromptSpot(spot) {
   );
 }
 
+// The answer format: a chatbot puts the button's title and emoji as comment
+// lines at the top of its query, so one copy carries the whole button. The
+// editor reads them off a pasted query with splitButtonHeader().
+const HEADER_LINE_RE = /^\s*#\s*(title|emoji)\s*:\s*(.*?)\s*$/i;
+
+/**
+ * Header lines for a query: "#title: …" and "#emoji: …".
+ * @param {string} [title]
+ * @param {string} [emoji]
+ * @returns {string[]}
+ */
+function formatButtonHeader(title, emoji) {
+  const out = [];
+  if (title && title.trim()) out.push(`#title: ${title.trim()}`);
+  if (emoji && emoji.trim()) out.push(`#emoji: ${emoji.trim()}`);
+  return out;
+}
+
+/**
+ * Take the "#title:" / "#emoji:" lines off the top of a query, e.g. one pasted
+ * from a chatbot. A surrounding Markdown code fence is dropped as well. Only
+ * leading lines count: the same text further down is an ordinary comment.
+ * @param {string} text
+ * @returns {{text: string, title: string|null, emoji: string|null, found: boolean}}
+ *   `found` is true if either line was present; `text` is the rest
+ */
+function splitButtonHeader(text) {
+  let lines = String(text).replace(/\r\n?/g, "\n").split("\n");
+  const firstCode = lines.findIndex((l) => l.trim() !== "");
+  if (firstCode !== -1 && /^\s*```/.test(lines[firstCode])) {
+    lines = lines.slice(firstCode + 1);
+    let close = lines.length - 1;
+    while (close >= 0 && !/^\s*```\s*$/.test(lines[close])) close--;
+    if (close !== -1) lines = lines.slice(0, close);
+  }
+  const header = { title: null, emoji: null };
+  let i = 0;
+  for (; i < lines.length; i++) {
+    if (lines[i].trim() === "") continue;
+    const m = HEADER_LINE_RE.exec(lines[i]);
+    if (!m) break;
+    const key = m[1].toLowerCase();
+    if (header[key] === null && m[2]) header[key] = m[2];
+  }
+  const found = header.title !== null || header.emoji !== null;
+  return {
+    text: found ? lines.slice(i).join("\n").replace(/\s+$/, "") : text,
+    title: header.title,
+    emoji: header.emoji,
+    found,
+  };
+}
+
 /**
  * What the title may contain: only the Wikidata information the script reads
  * from the page, i.e. the placeholders at this spot. Chatbots otherwise invent
@@ -1188,6 +1304,8 @@ function titleHint(placeholders) {
  * @param {string} opts.queryServiceUrl
  * @param {string} [opts.guideUrl] - The template guide
  * @param {string} [opts.currentQuery] - The query so far, to improve on
+ * @param {string} [opts.currentTitle] - The button's title so far
+ * @param {string} [opts.currentEmoji] - The button's emoji so far
  * @returns {string}
  */
 function buildQueryPrompt(opts) {
@@ -1241,8 +1359,9 @@ function buildQueryPrompt(opts) {
     "## Rules",
     "",
     "- Use the placeholders instead of the IDs of this item or value, so the query works on other items. " +
-      "Names ending in Id are bare IDs: write wd:{itemId}, wdt:{propertyId}. Only the …Sparql ones are " +
-      "complete SPARQL terms: use them as they are, without quotes.",
+      "Names ending in Id expand to a bare ID like Q42 and always need a prefix: wd:{itemId}, " +
+      "wdt:{propertyId}. Never write one on its own: ps:P937 {valueId} becomes ps:P937 Q12892, a syntax " +
+      "error. Only the …Sparql ones are complete SPARQL terms: use them as they are, without quotes or prefix.",
     "- No other {name} in curly braces, in the query or the title: anything else is not replaced " +
       "and the button is rejected.",
     `- Look up every property and item ID on ${wiki}; never write one from memory.`,
@@ -1270,15 +1389,32 @@ function buildQueryPrompt(opts) {
   }
   const current = (opts.currentQuery || "").trim();
   if (current) {
-    add("", "## Current query (improve on this)", "", "```sparql", current, "```");
+    add(
+      "",
+      "## Current button (improve on this)",
+      "",
+      "```sparql",
+      ...formatButtonHeader(opts.currentTitle, opts.currentEmoji),
+      current,
+      "```",
+    );
   }
   add(
     "",
     "## Answer with",
     "",
-    "1. The query with placeholders, in a single ```sparql code block, ready to paste. Short # comments " +
-      "saying what it does are welcome.",
-    `2. A title for the button (tooltip and popup heading) and one emoji as its label. ${titleHint(opts.placeholders)}`,
+    "A single ```sparql code block that I paste into the editor as a whole. Its first two lines name " +
+      "the button; the editor reads them into the button's fields and removes them from the query:",
+    "",
+    "```sparql",
+    "#title: <title of the button: tooltip and popup heading>",
+    "#emoji: <one emoji as the button's label>",
+    "#defaultView:… (optional)",
+    "SELECT …",
+    "```",
+    "",
+    `${titleHint(opts.placeholders)} Below the two lines comes the query with placeholders; short # ` +
+      "comments saying what it does are welcome. Put any explanation outside the code block.",
   );
   if (opts.guideUrl) {
     add(
@@ -2310,9 +2446,11 @@ function loadConfig(userName) {
  * of silently overwriting it.
  * @param {function(object, ?string): object} transform
  * @param {string} summary - Edit summary
- * @returns {Promise<object>} The saved config
+ * @param {{keepInvalid?: boolean}} [options] - keepInvalid: write the entries
+ *   this script can't use back to the page unchanged (see keepSkipped())
+ * @returns {Promise<object>} The saved config, valid entries only
  */
-function saveConfig(transform, summary) {
+function saveConfig(transform, summary, options = {}) {
   const title = configPageTitle();
   const params = { summary: summary + " (usefulQueries)" };
   let saved = null;
@@ -2323,7 +2461,10 @@ function saveConfig(transform, summary) {
       throw "usefulqueries-invalid-json";
     }
     saved = transform(current.config, text);
-    return serializeConfig(saved);
+    if (!options.keepInvalid) return serializeConfig(saved);
+    // Copy the lists: `saved` is what the caller renders, so it must stay valid.
+    const toWrite = { ...saved, queries: [...saved.queries], links: [...saved.links] };
+    return serializeConfig(keepSkipped(toWrite, current.skipped));
   }
 
   return mw.loader.using("mediawiki.api").then(function () {
@@ -2345,10 +2486,14 @@ function saveConfig(transform, summary) {
  * @param {string} summary
  */
 function updateConfig(mutate, summary) {
-  return saveConfig(function (config) {
-    mutate(config);
-    return config;
-  }, summary);
+  return saveConfig(
+    function (config) {
+      mutate(config);
+      return config;
+    },
+    summary,
+    { keepInvalid: true },
+  );
 }
 
 /**
@@ -2735,6 +2880,13 @@ function mountEditor(Vue, Codex) {
         if (this.kind !== "query" || !this.sparql.trim()) return [];
         return checkSparql(this.sparqlLines);
       },
+      // Problems in the query itself (unknown or unprefixed placeholders),
+      // shown while typing so "Test on this item" isn't the first to fail.
+      // After a save attempt they are listed with the other errors instead.
+      queryErrors: function () {
+        if (this.kind !== "query" || !this.sparql.trim() || this.triedSave) return [];
+        return this.errors.filter((e) => e.startsWith('"template" uses'));
+      },
       filledQuery: function () {
         return replacePlaceholders(this.sparql, this.context);
       },
@@ -2773,6 +2925,8 @@ function mountEditor(Vue, Codex) {
           queryServiceUrl: SETTINGS.queryServiceUrl,
           guideUrl: SETTINGS.templateGuideUrl,
           currentQuery: this.sparql,
+          currentTitle: this.title,
+          currentEmoji: this.emoji,
         });
       },
       suggestUrl: function () {
@@ -2851,8 +3005,36 @@ function mountEditor(Vue, Codex) {
         const text = this.filledQuery.trim() || "SELECT ?item WHERE {\n  \n}";
         window.open(SETTINGS.queryServiceUrl + encodeQueryString(text), "_blank", "noopener,noreferrer");
       },
+      /**
+       * A pasted query that starts with "#title:" / "#emoji:" lines (the
+       * format the AI prompt asks for) is a whole button: it replaces the
+       * query, and its header fills the title and emoji fields.
+       */
+      onSparqlPaste: function (event) {
+        const pasted = event.clipboardData ? event.clipboardData.getData("text/plain") : "";
+        const parsed = splitButtonHeader(pasted);
+        if (!parsed.found) return;
+        event.preventDefault();
+        this.sparql = parsed.text;
+        this.pasteMessage = { type: "success", text: "Pasted the query. " + this.applyHeader(parsed) };
+      },
+      /** Copy a parsed header into the fields; returns a message saying so. */
+      applyHeader: function (parsed) {
+        const took = [];
+        if (parsed.title) {
+          this.title = parsed.title;
+          took.push("title");
+        }
+        if (parsed.emoji) {
+          this.emoji = parsed.emoji;
+          took.push("emoji");
+        }
+        return "Filled in the " + took.join(" and ") + " from the query's first lines.";
+      },
       importFromUrl: function () {
-        const text = queryFromServiceUrl(this.pasteUrl);
+        const fromUrl = queryFromServiceUrl(this.pasteUrl);
+        const header = fromUrl ? splitButtonHeader(fromUrl) : null;
+        const text = header && header.found ? header.text : fromUrl;
         if (!text) {
           this.pasteMessage = {
             type: "error",
@@ -2869,15 +3051,17 @@ function mountEditor(Vue, Codex) {
         });
         this.sparql = result.text;
         this.pasteUrl = "";
+        const headerNote = header && header.found ? " " + this.applyHeader(header) : "";
         this.pasteMessage = {
           type: "success",
-          text: result.replacements.length
+          text: (result.replacements.length
             ? "Query imported. Replaced " +
               result.replacements
                 .map((r) => r.from + " → " + r.to + (r.count > 1 ? " (" + r.count + "×)" : ""))
                 .join(", ") +
               ", so it works on other items too."
-            : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.",
+            : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.") +
+            headerNote,
         };
       },
       copyPrompt: function () {
@@ -3045,8 +3229,10 @@ function mountEditor(Vue, Codex) {
               The <code>{statement…}</code> placeholders refer to the statement this {{ sectionNoun.trim() }} belongs to
               ({{ statementText || 'its property and value' }}).
             </p>
-            <cdx-text-area ref="sparqlInput" v-model="sparql" class="uq-mono" rows="12"
-              placeholder="SELECT ?item ?itemLabel WHERE { … }"></cdx-text-area>
+            <div @paste="onSparqlPaste">
+              <cdx-text-area ref="sparqlInput" v-model="sparql" class="uq-mono" rows="12"
+                placeholder="SELECT ?item ?itemLabel WHERE { … }"></cdx-text-area>
+            </div>
           </cdx-field>
           <div class="uq-row">
             <cdx-button @click="openInQueryService">Open in Query Service ↗</cdx-button>
@@ -3064,7 +3250,8 @@ function mountEditor(Vue, Codex) {
               <template #help-text>
                 This goes at the top of a prompt that also explains usefulQueries, where the button sits and
                 which placeholders it can use here. Paste the prompt into a chatbot (best one that can look
-                things up on {{ wikiName }}), then paste its query into the field above and test it.
+                things up on {{ wikiName }}). Then paste its answer into the query field above: its first lines
+                fill in the button's title and emoji. Test it before saving.
               </template>
               <cdx-text-area v-model="aiRequest" rows="2"
                 placeholder="e.g. Other people born in this place, as a gallery with their pictures"></cdx-text-area>
@@ -3075,6 +3262,9 @@ function mountEditor(Vue, Codex) {
               <a v-if="guideUrl" :href="guideUrl" target="_blank" rel="noopener noreferrer" class="uq-muted">Template guide ↗</a>
             </div>
           </details>
+          <cdx-message v-for="e in queryErrors" :key="e" type="error" :inline="true" style="margin-top: 6px;">
+            {{ e }}
+          </cdx-message>
           <cdx-message v-for="w in warnings" :key="w" type="warning" :inline="true" style="margin-top: 6px;">
             {{ w }}
           </cdx-message>

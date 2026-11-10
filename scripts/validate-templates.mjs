@@ -4,7 +4,7 @@
 // malformed one produces no build error and no runtime error — the button just
 // silently never appears. These checks turn that into a failed build instead.
 
-import { checkSparql } from "./check-sparql.mjs";
+import { checkSparql, stripComment } from "./check-sparql.mjs";
 
 const SCOPES = ["entity", "property", "value"];
 
@@ -67,6 +67,35 @@ const RENAMED_PLACEHOLDERS = {
   valueLat: "{valueLatitude}",
   valueLon: "{valueLongitude}",
 };
+
+// How to write each bare-ID placeholder in SPARQL. They expand to a plain
+// "Q42", which is not a SPARQL term on its own.
+const ID_PLACEHOLDER_USAGE = {
+  itemId: "wd:{itemId}",
+  propertyId: "wdt:{propertyId} (or p:/ps:/pq:)",
+  valueId: "wd:{valueId}, or {valueSparql}",
+  statementPropertyId: "p:/ps:{statementPropertyId}",
+  statementValueId: "wd:{statementValueId}, or {statementValueSparql}",
+};
+
+/**
+ * Bare-ID placeholders used in SPARQL without a prefix (`ps:P937 {valueId}`
+ * becomes `ps:P937 Q12892`, a syntax error). A prefix (`wd:`), an IRI path
+ * (`…/entity/{itemId}>`) or a string literal around it is fine.
+ * @param {string[]} lines - The query, one line per entry
+ * @returns {string[]} Names of the offending placeholders
+ */
+function unprefixedIdPlaceholders(lines) {
+  const code = lines
+    .map(stripComment)
+    .join("\n")
+    .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, '""');
+  const found = new Set();
+  for (const m of code.matchAll(/(^|[^A-Za-z0-9_:/])\{([A-Za-z]+Id)\}/g)) {
+    if (Object.hasOwn(ID_PLACEHOLDER_USAGE, m[2])) found.add(m[2]);
+  }
+  return [...found];
+}
 
 // Matches {itemId} but not SPARQL graph patterns like `{ bd:serviceParam … }`,
 // which always contain a space, colon or `?` before the closing brace.
@@ -216,6 +245,11 @@ export function validateTemplate(tpl, kind, options = {}) {
       );
     } else {
       texts.push(["template", tpl.template.join("\n")]);
+      for (const name of unprefixedIdPlaceholders(tpl.template)) {
+        errors.push(
+          `"template" uses {${name}} without a prefix; it expands to a bare ID like Q42, so write ${ID_PLACEHOLDER_USAGE[name]}`,
+        );
+      }
       // Portability between WDQS and QLever — see TEMPLATE_GUIDE.md.
       if (sparqlChecks) errors.push(...checkSparql(tpl.template));
     }

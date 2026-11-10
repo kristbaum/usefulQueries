@@ -70,9 +70,11 @@ function loadConfig(userName) {
  * of silently overwriting it.
  * @param {function(object, ?string): object} transform
  * @param {string} summary - Edit summary
- * @returns {Promise<object>} The saved config
+ * @param {{keepInvalid?: boolean}} [options] - keepInvalid: write the entries
+ *   this script can't use back to the page unchanged (see keepSkipped())
+ * @returns {Promise<object>} The saved config, valid entries only
  */
-function saveConfig(transform, summary) {
+function saveConfig(transform, summary, options = {}) {
   const title = configPageTitle();
   const params = { summary: summary + " (usefulQueries)" };
   let saved = null;
@@ -83,7 +85,10 @@ function saveConfig(transform, summary) {
       throw "usefulqueries-invalid-json";
     }
     saved = transform(current.config, text);
-    return serializeConfig(saved);
+    if (!options.keepInvalid) return serializeConfig(saved);
+    // Copy the lists: `saved` is what the caller renders, so it must stay valid.
+    const toWrite = { ...saved, queries: [...saved.queries], links: [...saved.links] };
+    return serializeConfig(keepSkipped(toWrite, current.skipped));
   }
 
   return mw.loader.using("mediawiki.api").then(function () {
@@ -105,10 +110,14 @@ function saveConfig(transform, summary) {
  * @param {string} summary
  */
 function updateConfig(mutate, summary) {
-  return saveConfig(function (config) {
-    mutate(config);
-    return config;
-  }, summary);
+  return saveConfig(
+    function (config) {
+      mutate(config);
+      return config;
+    },
+    summary,
+    { keepInvalid: true },
+  );
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   emptyConfig,
   generalizeQuery,
   importTemplates,
+  keepSkipped,
   makeTemplateId,
   mergeTemplates,
   parseUserConfig,
@@ -201,4 +202,24 @@ test("suggestion links carry the template as JSON", () => {
   const body = decodeURIComponent(url.split("&body=")[1]);
   assert.match(body, /templates\/queries\/bornHere\.json/);
   assert.match(body, /"u_bornHere"/);
+});
+
+test("invalid entries are skipped but kept for writing back", () => {
+  const broken = userQuery({ id: "u_broken", template: ["SELECT ?s WHERE { ?s ps:P937 {valueId}. }"] });
+  const { config, skipped } = validateUserConfig({ queries: [userQuery(), broken], links: [{ nonsense: true }] });
+  assert.deepEqual(config.queries.map((t) => t.id), ["u_bornHere"]);
+  assert.deepEqual(skipped, { queries: [broken], links: [{ nonsense: true }] });
+});
+
+test("keepSkipped puts invalid entries back unless their id is taken", () => {
+  const config = emptyConfig();
+  config.queries.push(userQuery({ id: "u_fixed" }));
+  const skipped = {
+    queries: [{ id: "u_fixed", broken: true }, { id: "u_stillBroken", broken: true }, "junk"],
+    links: [],
+  };
+  keepSkipped(config, skipped);
+  assert.deepEqual(config.queries.map((t) => (typeof t === "string" ? t : t.id)), ["u_fixed", "u_stillBroken", "junk"]);
+  assert.equal(config.queries[0].broken, undefined);
+  assert.equal(keepSkipped(config, undefined), config);
 });

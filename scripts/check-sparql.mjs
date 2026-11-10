@@ -16,7 +16,7 @@
  * @param {string} line
  * @returns {string}
  */
-function stripComment(line) {
+export function stripComment(line) {
   let inStr = false;
   let quote = "";
   for (let i = 0; i < line.length; i++) {

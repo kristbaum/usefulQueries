@@ -358,6 +358,13 @@ function mountEditor(Vue, Codex) {
         if (this.kind !== "query" || !this.sparql.trim()) return [];
         return checkSparql(this.sparqlLines);
       },
+      // Problems in the query itself (unknown or unprefixed placeholders),
+      // shown while typing so "Test on this item" isn't the first to fail.
+      // After a save attempt they are listed with the other errors instead.
+      queryErrors: function () {
+        if (this.kind !== "query" || !this.sparql.trim() || this.triedSave) return [];
+        return this.errors.filter((e) => e.startsWith('"template" uses'));
+      },
       filledQuery: function () {
         return replacePlaceholders(this.sparql, this.context);
       },
@@ -396,6 +403,8 @@ function mountEditor(Vue, Codex) {
           queryServiceUrl: SETTINGS.queryServiceUrl,
           guideUrl: SETTINGS.templateGuideUrl,
           currentQuery: this.sparql,
+          currentTitle: this.title,
+          currentEmoji: this.emoji,
         });
       },
       suggestUrl: function () {
@@ -474,8 +483,36 @@ function mountEditor(Vue, Codex) {
         const text = this.filledQuery.trim() || "SELECT ?item WHERE {\n  \n}";
         window.open(SETTINGS.queryServiceUrl + encodeQueryString(text), "_blank", "noopener,noreferrer");
       },
+      /**
+       * A pasted query that starts with "#title:" / "#emoji:" lines (the
+       * format the AI prompt asks for) is a whole button: it replaces the
+       * query, and its header fills the title and emoji fields.
+       */
+      onSparqlPaste: function (event) {
+        const pasted = event.clipboardData ? event.clipboardData.getData("text/plain") : "";
+        const parsed = splitButtonHeader(pasted);
+        if (!parsed.found) return;
+        event.preventDefault();
+        this.sparql = parsed.text;
+        this.pasteMessage = { type: "success", text: "Pasted the query. " + this.applyHeader(parsed) };
+      },
+      /** Copy a parsed header into the fields; returns a message saying so. */
+      applyHeader: function (parsed) {
+        const took = [];
+        if (parsed.title) {
+          this.title = parsed.title;
+          took.push("title");
+        }
+        if (parsed.emoji) {
+          this.emoji = parsed.emoji;
+          took.push("emoji");
+        }
+        return "Filled in the " + took.join(" and ") + " from the query's first lines.";
+      },
       importFromUrl: function () {
-        const text = queryFromServiceUrl(this.pasteUrl);
+        const fromUrl = queryFromServiceUrl(this.pasteUrl);
+        const header = fromUrl ? splitButtonHeader(fromUrl) : null;
+        const text = header && header.found ? header.text : fromUrl;
         if (!text) {
           this.pasteMessage = {
             type: "error",
@@ -492,15 +529,17 @@ function mountEditor(Vue, Codex) {
         });
         this.sparql = result.text;
         this.pasteUrl = "";
+        const headerNote = header && header.found ? " " + this.applyHeader(header) : "";
         this.pasteMessage = {
           type: "success",
-          text: result.replacements.length
+          text: (result.replacements.length
             ? "Query imported. Replaced " +
               result.replacements
                 .map((r) => r.from + " → " + r.to + (r.count > 1 ? " (" + r.count + "×)" : ""))
                 .join(", ") +
               ", so it works on other items too."
-            : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.",
+            : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.") +
+            headerNote,
         };
       },
       copyPrompt: function () {
@@ -668,8 +707,10 @@ function mountEditor(Vue, Codex) {
               The <code>{statement…}</code> placeholders refer to the statement this {{ sectionNoun.trim() }} belongs to
               ({{ statementText || 'its property and value' }}).
             </p>
-            <cdx-text-area ref="sparqlInput" v-model="sparql" class="uq-mono" rows="12"
-              placeholder="SELECT ?item ?itemLabel WHERE { … }"></cdx-text-area>
+            <div @paste="onSparqlPaste">
+              <cdx-text-area ref="sparqlInput" v-model="sparql" class="uq-mono" rows="12"
+                placeholder="SELECT ?item ?itemLabel WHERE { … }"></cdx-text-area>
+            </div>
           </cdx-field>
           <div class="uq-row">
             <cdx-button @click="openInQueryService">Open in Query Service ↗</cdx-button>
@@ -687,7 +728,8 @@ function mountEditor(Vue, Codex) {
               <template #help-text>
                 This goes at the top of a prompt that also explains usefulQueries, where the button sits and
                 which placeholders it can use here. Paste the prompt into a chatbot (best one that can look
-                things up on {{ wikiName }}), then paste its query into the field above and test it.
+                things up on {{ wikiName }}). Then paste its answer into the query field above: its first lines
+                fill in the button's title and emoji. Test it before saving.
               </template>
               <cdx-text-area v-model="aiRequest" rows="2"
                 placeholder="e.g. Other people born in this place, as a gallery with their pictures"></cdx-text-area>
@@ -698,6 +740,9 @@ function mountEditor(Vue, Codex) {
               <a v-if="guideUrl" :href="guideUrl" target="_blank" rel="noopener noreferrer" class="uq-muted">Template guide ↗</a>
             </div>
           </details>
+          <cdx-message v-for="e in queryErrors" :key="e" type="error" :inline="true" style="margin-top: 6px;">
+            {{ e }}
+          </cdx-message>
           <cdx-message v-for="w in warnings" :key="w" type="warning" :inline="true" style="margin-top: 6px;">
             {{ w }}
           </cdx-message>
