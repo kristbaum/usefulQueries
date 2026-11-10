@@ -76,6 +76,20 @@ test("names the statement of a qualifier button", () => {
   assert.match(prompt, /each qualifier value of “electoral district” \(P768\).* of the statement “position held → member of the Bundestag”/);
 });
 
+test("the title example only uses a placeholder available at this spot", () => {
+  // Property button on a qualifier: no {valueLabel} here.
+  const prompt = buildQueryPrompt(
+    valueSpot({
+      scope: "property",
+      section: "qualifiers",
+      placeholders: ["itemId", "itemLabel", "userLanguage", "propertyId", "statementPropertyId", "statementValueId", "statementValueSparql", "statementValueLabel"],
+    }),
+  );
+  assert.doesNotMatch(prompt, /\{valueLabel\}/);
+  assert.match(prompt, /exactly the placeholders listed above\. .*don't invent one\. For example \{statementValueLabel\}/);
+  assert.match(buildQueryPrompt(valueSpot()), /For example \{valueLabel\}/);
+});
+
 test("mentions {propertyId} when several properties trigger the button", () => {
   assert.match(buildQueryPrompt(valueSpot({ propertyIds: ["P19", "P20"] })), /any of these properties: P19, P20/);
   assert.doesNotMatch(buildQueryPrompt(valueSpot()), /any of these properties/);

@@ -1029,6 +1029,23 @@ function describePromptSpot(spot) {
 }
 
 /**
+ * What the title may contain: only the Wikidata information the script reads
+ * from the page, i.e. the placeholders at this spot. Chatbots otherwise invent
+ * names for other data of the item, like {startTime} for a qualifier.
+ * @param {string[]} placeholders - Names available at this spot
+ * @returns {string}
+ */
+function titleHint(placeholders) {
+  const labels = ["valueLabel", "statementValueLabel", "itemLabel"].filter((n) => placeholders.includes(n));
+  const example = labels.length ? ` For example {${labels[0]}}.` : "";
+  return (
+    "The title is built from the Wikidata information the script already has on the page, which is " +
+    "exactly the placeholders listed above. Other data of the item (e.g. a start time qualifier) " +
+    "has no placeholder; don't invent one." + example
+  );
+}
+
+/**
  * Build the prompt.
  * @param {Object} opts
  * @param {string} opts.request - What the user wants the button to show
@@ -1104,7 +1121,8 @@ function buildQueryPrompt(opts) {
     "- Use the placeholders instead of the IDs of this item or value, so the query works on other items. " +
       "Names ending in Id are bare IDs: write wd:{itemId}, wdt:{propertyId}. Only the …Sparql ones are " +
       "complete SPARQL terms: use them as they are, without quotes.",
-    "- No other {name} in curly braces: anything else is not replaced and breaks the query.",
+    "- No other {name} in curly braces, in the query or the title: anything else is not replaced " +
+      "and the button is rejected.",
     `- Look up every property and item ID on ${wiki}; never write one from memory.`,
     "- Check on two or three real items how the data is modelled and that the query returns rows " +
       `for ${opts.itemId}. Test it with the placeholders filled in as above.`,
@@ -1138,8 +1156,7 @@ function buildQueryPrompt(opts) {
     "",
     "1. The query with placeholders, in a single ```sparql code block, ready to paste. Short # comments " +
       "saying what it does are welcome.",
-    "2. A title for the button (tooltip and popup heading; it may use the placeholders, e.g. {valueLabel}) " +
-      "and one emoji as its label.",
+    `2. A title for the button (tooltip and popup heading) and one emoji as its label. ${titleHint(opts.placeholders)}`,
   );
   if (opts.guideUrl) {
     add(
