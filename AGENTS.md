@@ -21,7 +21,8 @@ usefulQueries/
 │   ├── editor.js             # Edit mode on item pages + the add/edit-button dialog
 │   ├── settings-page.js      # Special:BlankPage/<configName>: toggles, own buttons, import
 │   ├── shared/
-│   │   └── user-config.mjs   # Pure config logic (parse, validate, merge, generalize queries); tested directly
+│   │   ├── user-config.mjs   # Pure config logic (parse, validate, merge, generalize queries); tested directly
+│   │   └── llm-prompt.mjs    # Builds the editor's "ask an AI chatbot" prompt; tested directly
 │   └── settings.json         # Runtime config: query service URLs, QLever toggle
 ├── templates/
 │   ├── queries/              # One JSON file per query button (see template format below)
@@ -58,6 +59,7 @@ deps) covers:
 - `test/check-sparql.test.mjs` pins the WDQS/QLever portability rules described
   below, and asserts that every shipped query template still satisfies them.
 - `test/user-config.test.mjs` covers parsing, validating and merging user configs.
+- `test/llm-prompt.test.mjs` pins what the editor's AI prompt tells the chatbot.
 - `test/runtime-smoke.test.mjs` runs both built files (`usefulQueries.js` and
   `minified_usefulQueries.js`) against stubbed `mw`/`$`: as an item page (logged
   out, logged in, broken config), as the settings page, and on pages it must
@@ -75,7 +77,8 @@ Keep them green before committing.
    Steps 3 and 4 validate each file first (`scripts/validate-templates.mjs`) and
    abort the build, listing every problem found, if any template is malformed.
 5. Inlines the shared ES modules (`scripts/check-sparql.mjs`,
-   `scripts/validate-templates.mjs`, `src/shared/user-config.mjs`) with their
+   `scripts/validate-templates.mjs`, `src/shared/user-config.mjs`,
+   `src/shared/llm-prompt.mjs`) with their
    `import`/`export` keywords stripped, so the runtime validates user configs
    with the same code the build uses. Keep their top-level names distinct from
    the `src/` files, since they all share one scope.

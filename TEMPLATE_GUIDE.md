@@ -229,9 +229,9 @@ For item values, `wd:{valueId}` and `{valueSparql}` are the same thing; use
 For a coordinate you can also build your own point from `{valueLatitude}` /
 `{valueLongitude}`.
 
-Placeholders were renamed in 2026: `{itemId}` → `{itemId}`, `{propertyId}` →
+Placeholders were renamed in 2026: `{itemQid}` → `{itemId}`, `{propertyPid}` →
 `{propertyId}`, `{valueQid}` → `wd:{valueId}` (items) or `{valueSparql}`
-(anything else), `{valueLatitude}` / `{valueLongitude}` → `{valueLatitude}` /
+(anything else), `{valueLat}` / `{valueLon}` → `{valueLatitude}` /
 `{valueLongitude}`. The validator rejects the old names and says which new one
 to use.
 

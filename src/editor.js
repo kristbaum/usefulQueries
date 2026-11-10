@@ -221,7 +221,10 @@ function mountEditor(Vue, Codex) {
       ".usefulqueries-editor .uq-preview { overflow-x: auto; max-height: 16em; margin-top: 6px; }" +
       ".usefulqueries-editor .uq-preview table { font-size: 0.85em; }" +
       ".usefulqueries-editor .uq-muted { opacity: 0.75; font-size: 0.9em; }" +
-      ".usefulqueries-editor section { margin-bottom: 1.2em; }",
+      ".usefulqueries-editor section { margin-bottom: 1.2em; }" +
+      ".usefulqueries-editor .uq-ai { margin-top: 8px; padding: 6px 10px; border: 1px solid #c8ccd1; border-radius: 2px; }" +
+      ".usefulqueries-editor .uq-ai > summary { cursor: pointer; font-weight: bold; }" +
+      ".usefulqueries-editor .uq-ai-prompt { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 0.8em; color: inherit; background: none; border: 1px solid #c8ccd1; border-radius: 2px; padding: 4px; resize: vertical; }",
   );
 
   const mountPoint = document.createElement("div");
@@ -251,6 +254,10 @@ function mountEditor(Vue, Codex) {
         confirmDelete: false,
         preview: { status: "idle" },
         emojiSuggestions: EMOJI_SUGGESTIONS,
+        wikiName: mw.config.get("wgSiteName") || "the wiki",
+        guideUrl: SETTINGS.templateGuideUrl || null,
+        aiRequest: "",
+        aiCopied: false,
       };
     },
     computed: {
@@ -367,6 +374,30 @@ function mountEditor(Vue, Codex) {
           disabled: this.saving,
         };
       },
+      llmPrompt: function () {
+        const t = this.target;
+        return buildQueryPrompt({
+          request: this.aiRequest,
+          scope: this.scope,
+          section: this.section,
+          propertyId: this.propertyIds[0] || t.propertyId,
+          propertyLabel: this.propertyIds[0] && this.propertyIds[0] !== t.propertyId
+            ? propertyLabelOnPage(this.propertyIds[0])
+            : this.propertyLabel,
+          propertyIds: this.propertyIds,
+          valueIds: this.placement === "only" ? this.valueIds : [],
+          valueLabel: this.valueLabel,
+          statementText: this.statementText,
+          placeholders: this.placeholders,
+          context: this.context,
+          itemId: _page.context.itemId,
+          itemLabel: _page.context.itemLabel,
+          wikiName: this.wikiName,
+          queryServiceUrl: SETTINGS.queryServiceUrl,
+          guideUrl: SETTINGS.templateGuideUrl,
+          currentQuery: this.sparql,
+        });
+      },
       suggestUrl: function () {
         return this.existingId
           ? suggestionIssueUrl(this.draft, this.kind, SETTINGS.repositoryUrl)
@@ -394,6 +425,8 @@ function mountEditor(Vue, Codex) {
         this.pasteUrl = "";
         this.pasteMessage = null;
         this.preview = { status: "idle" };
+        this.aiRequest = "";
+        this.aiCopied = false;
         if (existing) {
           const tpl = existing.template;
           this.existingId = tpl.id;
@@ -469,6 +502,28 @@ function mountEditor(Vue, Codex) {
               ", so it works on other items too."
             : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.",
         };
+      },
+      copyPrompt: function () {
+        const vm = this;
+        const text = this.llmPrompt;
+        const done = function () {
+          vm.aiCopied = true;
+          setTimeout(() => { vm.aiCopied = false; }, 2500);
+        };
+        const fallback = function () {
+          // No async clipboard (e.g. an http:// wiki): copy the selection.
+          const el = vm.$refs.aiPromptEl;
+          if (!el) return;
+          el.focus();
+          el.select();
+          if (document.execCommand("copy")) done();
+          else mw.notify("Couldn't copy. Select the prompt and copy it by hand.", { type: "error" });
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(done, fallback);
+        } else {
+          fallback();
+        }
       },
       runPreview: function () {
         const vm = this;
@@ -625,6 +680,24 @@ function mountEditor(Vue, Codex) {
           <cdx-message v-if="pasteMessage" :type="pasteMessage.type" :inline="true" style="margin-top: 6px;">
             {{ pasteMessage.text }}
           </cdx-message>
+          <details class="uq-ai">
+            <summary>Let an AI chatbot write the query</summary>
+            <cdx-field>
+              <template #label>What should the button show?</template>
+              <template #help-text>
+                This goes at the top of a prompt that also explains usefulQueries, where the button sits and
+                which placeholders it can use here. Paste the prompt into a chatbot (best one that can look
+                things up on {{ wikiName }}), then paste its query into the field above and test it.
+              </template>
+              <cdx-text-area v-model="aiRequest" rows="2"
+                placeholder="e.g. Other people born in this place, as a gallery with their pictures"></cdx-text-area>
+            </cdx-field>
+            <textarea ref="aiPromptEl" class="uq-ai-prompt" rows="8" readonly :value="llmPrompt"></textarea>
+            <div class="uq-row">
+              <cdx-button action="progressive" @click="copyPrompt">{{ aiCopied ? 'Copied ✓' : 'Copy prompt' }}</cdx-button>
+              <a v-if="guideUrl" :href="guideUrl" target="_blank" rel="noopener noreferrer" class="uq-muted">Template guide ↗</a>
+            </div>
+          </details>
           <cdx-message v-for="w in warnings" :key="w" type="warning" :inline="true" style="margin-top: 6px;">
             {{ w }}
           </cdx-message>

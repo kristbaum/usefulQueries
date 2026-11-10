@@ -51,6 +51,7 @@ const SHARED_MODULES = [
   "scripts/check-sparql.mjs",
   "scripts/validate-templates.mjs",
   "src/shared/user-config.mjs",
+  "src/shared/llm-prompt.mjs",
 ];
 
 /**
@@ -159,6 +160,9 @@ const settings = {
   // Help for the settings page and editor (the "Your own buttons" section of
   // usefulQueries.wiki, published as User:Kristbaum/usefulQueries).
   helpUrl: "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries#Your_own_buttons",
+  // TEMPLATE_GUIDE.md, linked from the editor's AI prompt. The raw file, so a
+  // chatbot that can browse gets plain Markdown.
+  templateGuideUrl: "https://raw.githubusercontent.com/kristbaum/usefulQueries/main/TEMPLATE_GUIDE.md",
   ...JSON.parse(await readFile(settingsPath, "utf8")),
 };
 // QLever (via the To QLever tool) only indexes Wikidata, so the runtime only

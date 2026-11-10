@@ -16,6 +16,7 @@ $(function () {
     displayName: "usefulQueries (Deckenmalerei)",
     repositoryUrl: "https://github.com/kristbaum/usefulQueries",
     helpUrl: "https://www.wikidata.org/wiki/User:Kristbaum/usefulQueries#Your_own_buttons",
+    templateGuideUrl: "https://raw.githubusercontent.com/kristbaum/usefulQueries/main/TEMPLATE_GUIDE.md",
     queryServiceUrl: "https://query.wikidata.org/",
     queryEmbedUrl: "https://query.wikidata.org/embed.html",
     enableQLever: true,
@@ -1266,6 +1267,177 @@ function suggestionIssueUrl(tpl, kind, repoUrl) {
     `${repoUrl}/issues/new?title=${encodeURIComponent(`New ${kind}: ${tpl.title}`)}` +
     `&body=${encodeURIComponent(body)}`
   );
+}
+
+// Prompt for an AI chatbot that writes the SPARQL of a query button.
+//
+// The button editor lets users describe what a button should show and copy a
+// prompt that carries everything a chatbot needs to answer with a query that
+// pastes straight into the editor: what usefulQueries is, where the button
+// sits, which placeholders exist at that spot (with their values on the
+// current item, for testing) and the query rules the build enforces. Pure
+// string building, so the tests import it directly; the build inlines it like
+// the other shared modules.
+
+
+/**
+ * One sentence on where the button sits and what its query should be about.
+ * @param {Object} spot - See buildQueryPrompt()
+ * @returns {string}
+ */
+function describePromptSpot(spot) {
+  if (spot.scope === "entity") {
+    return "Next to the item's title, on every item. The query should make sense for any item.";
+  }
+  const prop = `“${spot.propertyLabel || spot.propertyId}” (${spot.propertyId})`;
+  const section = spot.section || "statement";
+  const kind = { statement: "", qualifiers: "qualifier ", references: "reference " }[section];
+  const of = spot.statementText
+    ? ` ${section === "qualifiers" ? "of" : "in a reference of"} the statement “${spot.statementText}”`
+    : "";
+  if (spot.scope === "property") {
+    return (
+      `Once, next to the ${kind}property ${prop}${of}. ` +
+      "The query should use all of the property's values together, or none of them " +
+      "(the property only shows that the item is of the right kind)."
+    );
+  }
+  if (spot.valueIds && spot.valueIds.length) {
+    return (
+      `Next to the ${kind}property ${prop}${of}, but only when its value is ${spot.valueIds.join(" or ")}. ` +
+      "The value only decides whether the button shows; the query should be about the item itself."
+    );
+  }
+  const value = spot.valueLabel ? `, e.g. “${spot.valueLabel}”` : "";
+  return (
+    `Next to each ${kind}value of ${prop}${value}${of}. ` +
+    "The query should be about that value (the object of the statement), " +
+    "so an item with several values gets one button per value."
+  );
+}
+
+/**
+ * Build the prompt.
+ * @param {Object} opts
+ * @param {string} opts.request - What the user wants the button to show
+ * @param {string} opts.scope - "entity", "property" or "value"
+ * @param {string} [opts.section] - "statement", "qualifiers" or "references"
+ * @param {string} [opts.propertyId] - The property the button was added on
+ * @param {string} [opts.propertyLabel]
+ * @param {string[]} [opts.propertyIds] - All properties that trigger the button
+ * @param {string[]} [opts.valueIds] - Values that gate the button, if any
+ * @param {string} [opts.valueLabel] - The value the button was added on
+ * @param {string} [opts.statementText] - "property → value" of the statement a
+ *   qualifier or reference belongs to
+ * @param {string[]} opts.placeholders - Placeholder names available at this spot
+ * @param {Object} opts.context - Their values on the current item
+ * @param {string} opts.itemId
+ * @param {string} [opts.itemLabel]
+ * @param {string} [opts.wikiName] - e.g. "Wikidata"
+ * @param {string} opts.queryServiceUrl
+ * @param {string} [opts.guideUrl] - The template guide
+ * @param {string} [opts.currentQuery] - The query so far, to improve on
+ * @returns {string}
+ */
+function buildQueryPrompt(opts) {
+  const wiki = opts.wikiName || "Wikidata";
+  const request = (opts.request || "").trim() || "(describe here what the button should show)";
+  const item = opts.itemLabel && opts.itemLabel !== opts.itemId
+    ? `${opts.itemLabel} (${opts.itemId})`
+    : opts.itemId;
+  const lines = [];
+  const add = (...l) => lines.push(...l);
+
+  add(
+    "Please write a SPARQL query for a usefulQueries button. What the button should show:",
+    "",
+    request,
+    "",
+    "## Background",
+    "",
+    `usefulQueries is a user script for ${wiki}. On an item page it adds small buttons; a query ` +
+      `button runs a SPARQL query on the query service (${opts.queryServiceUrl}) and shows the ` +
+      "result in a popup. The query is a template: placeholders in curly braces, like {itemId}, " +
+      "are filled in for whichever item the button appears on, so one query works on every item.",
+    "",
+    "## Where the button appears",
+    "",
+    `- ${describePromptSpot(opts)}`,
+  );
+  if (opts.scope !== "entity" && opts.propertyIds && opts.propertyIds.length > 1) {
+    add(
+      `- It appears for any of these properties: ${opts.propertyIds.join(", ")}. ` +
+        "{propertyId} is the one that matched.",
+    );
+  }
+  add(`- I am setting it up on the item ${item}.`);
+  add(
+    "",
+    "If you think the button belongs somewhere else (for example next to each value instead of " +
+      "once next to the property), tell me before writing the query.",
+    "",
+    `## Placeholders available here (value on ${opts.itemId} in brackets)`,
+    "",
+  );
+  for (const name of opts.placeholders) {
+    const value = opts.context[name];
+    const example =
+      value === undefined ? "" : value === "" ? " [empty here]" : ` [${value}]`;
+    add(`- {${name}}${example}: ${PLACEHOLDER_HELP[name] || ""}`.trimEnd());
+  }
+  add(
+    "",
+    "## Rules",
+    "",
+    "- Use the placeholders instead of the IDs of this item or value, so the query works on other items. " +
+      "Names ending in Id are bare IDs: write wd:{itemId}, wdt:{propertyId}. Only the …Sparql ones are " +
+      "complete SPARQL terms: use them as they are, without quotes.",
+    "- No other {name} in curly braces: anything else is not replaced and breaks the query.",
+    `- Look up every property and item ID on ${wiki}; never write one from memory.`,
+    "- Check on two or three real items how the data is modelled and that the query returns rows " +
+      `for ${opts.itemId}. Test it with the placeholders filled in as above.`,
+    "- Always set a LIMIT (usually 100–400). If the core pattern can match many rows, LIMIT them " +
+      "in a subselect first and add OPTIONALs and labels outside it.",
+    '- End the WHERE clause with SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en". }',
+    "- Never put two unconnected patterns in one OPTIONAL; write one OPTIONAL per pattern.",
+    "- Don't repeat the same OPTIONAL in several UNION arms; put it once after the UNION.",
+    "- Avoid property-path alternation like (wdt:P1|wdt:P2) on large relations; use UNION, " +
+      "or {propertyId} when the query is about the property the button sits on.",
+    "- Prefer wdt:; use p:/ps:/pq: only when you need qualifiers.",
+    "- It must finish well within the 60 s limit, also on big items (a capital city, a large organisation).",
+    "- The first line may choose a result view: #defaultView:Map (needs a coordinate column), " +
+      "#defaultView:Timeline (a date column), #defaultView:ImageGrid (an image column), " +
+      "#defaultView:Graph, #defaultView:BarChart, #defaultView:LineChart. Otherwise it is a table. " +
+      "Select ?xLabel for every item column shown.",
+  );
+  if (opts.scope === "property") {
+    add(
+      "- Don't read the property's values back out of the item (wd:{itemId} wdt:P… ?x) unless the " +
+        "query really means all values together; a per-value query belongs next to each value.",
+    );
+  }
+  const current = (opts.currentQuery || "").trim();
+  if (current) {
+    add("", "## Current query (improve on this)", "", "```sparql", current, "```");
+  }
+  add(
+    "",
+    "## Answer with",
+    "",
+    "1. The query with placeholders, in a single ```sparql code block, ready to paste. Short # comments " +
+      "saying what it does are welcome.",
+    "2. A title for the button (tooltip and popup heading; it may use the placeholders, e.g. {valueLabel}) " +
+      "and one emoji as its label.",
+  );
+  if (opts.guideUrl) {
+    add(
+      "",
+      `The full guide, with more rules and examples: ${opts.guideUrl}`,
+      "It describes complete JSON template files; I only need the query, because I paste it into " +
+        "the script's on-wiki button editor.",
+    );
+  }
+  return lines.join("\n");
 }
 
 // ===== QLEVER =====
@@ -2575,7 +2747,10 @@ function mountEditor(Vue, Codex) {
       ".usefulqueries-editor .uq-preview { overflow-x: auto; max-height: 16em; margin-top: 6px; }" +
       ".usefulqueries-editor .uq-preview table { font-size: 0.85em; }" +
       ".usefulqueries-editor .uq-muted { opacity: 0.75; font-size: 0.9em; }" +
-      ".usefulqueries-editor section { margin-bottom: 1.2em; }",
+      ".usefulqueries-editor section { margin-bottom: 1.2em; }" +
+      ".usefulqueries-editor .uq-ai { margin-top: 8px; padding: 6px 10px; border: 1px solid #c8ccd1; border-radius: 2px; }" +
+      ".usefulqueries-editor .uq-ai > summary { cursor: pointer; font-weight: bold; }" +
+      ".usefulqueries-editor .uq-ai-prompt { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 0.8em; color: inherit; background: none; border: 1px solid #c8ccd1; border-radius: 2px; padding: 4px; resize: vertical; }",
   );
 
   const mountPoint = document.createElement("div");
@@ -2605,6 +2780,10 @@ function mountEditor(Vue, Codex) {
         confirmDelete: false,
         preview: { status: "idle" },
         emojiSuggestions: EMOJI_SUGGESTIONS,
+        wikiName: mw.config.get("wgSiteName") || "the wiki",
+        guideUrl: SETTINGS.templateGuideUrl || null,
+        aiRequest: "",
+        aiCopied: false,
       };
     },
     computed: {
@@ -2721,6 +2900,30 @@ function mountEditor(Vue, Codex) {
           disabled: this.saving,
         };
       },
+      llmPrompt: function () {
+        const t = this.target;
+        return buildQueryPrompt({
+          request: this.aiRequest,
+          scope: this.scope,
+          section: this.section,
+          propertyId: this.propertyIds[0] || t.propertyId,
+          propertyLabel: this.propertyIds[0] && this.propertyIds[0] !== t.propertyId
+            ? propertyLabelOnPage(this.propertyIds[0])
+            : this.propertyLabel,
+          propertyIds: this.propertyIds,
+          valueIds: this.placement === "only" ? this.valueIds : [],
+          valueLabel: this.valueLabel,
+          statementText: this.statementText,
+          placeholders: this.placeholders,
+          context: this.context,
+          itemId: _page.context.itemId,
+          itemLabel: _page.context.itemLabel,
+          wikiName: this.wikiName,
+          queryServiceUrl: SETTINGS.queryServiceUrl,
+          guideUrl: SETTINGS.templateGuideUrl,
+          currentQuery: this.sparql,
+        });
+      },
       suggestUrl: function () {
         return this.existingId
           ? suggestionIssueUrl(this.draft, this.kind, SETTINGS.repositoryUrl)
@@ -2748,6 +2951,8 @@ function mountEditor(Vue, Codex) {
         this.pasteUrl = "";
         this.pasteMessage = null;
         this.preview = { status: "idle" };
+        this.aiRequest = "";
+        this.aiCopied = false;
         if (existing) {
           const tpl = existing.template;
           this.existingId = tpl.id;
@@ -2823,6 +3028,28 @@ function mountEditor(Vue, Codex) {
               ", so it works on other items too."
             : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.",
         };
+      },
+      copyPrompt: function () {
+        const vm = this;
+        const text = this.llmPrompt;
+        const done = function () {
+          vm.aiCopied = true;
+          setTimeout(() => { vm.aiCopied = false; }, 2500);
+        };
+        const fallback = function () {
+          // No async clipboard (e.g. an http:// wiki): copy the selection.
+          const el = vm.$refs.aiPromptEl;
+          if (!el) return;
+          el.focus();
+          el.select();
+          if (document.execCommand("copy")) done();
+          else mw.notify("Couldn't copy. Select the prompt and copy it by hand.", { type: "error" });
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(done, fallback);
+        } else {
+          fallback();
+        }
       },
       runPreview: function () {
         const vm = this;
@@ -2979,6 +3206,24 @@ function mountEditor(Vue, Codex) {
           <cdx-message v-if="pasteMessage" :type="pasteMessage.type" :inline="true" style="margin-top: 6px;">
             {{ pasteMessage.text }}
           </cdx-message>
+          <details class="uq-ai">
+            <summary>Let an AI chatbot write the query</summary>
+            <cdx-field>
+              <template #label>What should the button show?</template>
+              <template #help-text>
+                This goes at the top of a prompt that also explains usefulQueries, where the button sits and
+                which placeholders it can use here. Paste the prompt into a chatbot (best one that can look
+                things up on {{ wikiName }}), then paste its query into the field above and test it.
+              </template>
+              <cdx-text-area v-model="aiRequest" rows="2"
+                placeholder="e.g. Other people born in this place, as a gallery with their pictures"></cdx-text-area>
+            </cdx-field>
+            <textarea ref="aiPromptEl" class="uq-ai-prompt" rows="8" readonly :value="llmPrompt"></textarea>
+            <div class="uq-row">
+              <cdx-button action="progressive" @click="copyPrompt">{{ aiCopied ? 'Copied ✓' : 'Copy prompt' }}</cdx-button>
+              <a v-if="guideUrl" :href="guideUrl" target="_blank" rel="noopener noreferrer" class="uq-muted">Template guide ↗</a>
+            </div>
+          </details>
           <cdx-message v-for="w in warnings" :key="w" type="warning" :inline="true" style="margin-top: 6px;">
             {{ w }}
           </cdx-message>
