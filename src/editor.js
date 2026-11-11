@@ -17,6 +17,9 @@ const EMOJI_SUGGESTIONS = ["🔍", "🗺️", "📅", "📊", "🖼️", "👥",
 
 const PREVIEW_ROWS = 5;
 
+// Scopes a pasted button JSON may set (see applyTemplateJson()).
+const SCOPES_FOR_PASTE = ["entity", "property", "value"];
+
 // The Vue instance of the dialog, created on first use.
 let _editorVm = null;
 
@@ -245,6 +248,10 @@ function mountEditor(Vue, Codex) {
       ".usefulqueries-editor .uq-preview table { font-size: 0.85em; }" +
       ".usefulqueries-editor .uq-muted { opacity: 0.75; font-size: 0.9em; }" +
       ".usefulqueries-editor section { margin-bottom: 1.2em; }" +
+      ".usefulqueries-editor .uq-paste { padding: 8px 12px; border: 1px dashed #72777d; border-radius: 2px; background: var(--background-color-interactive-subtle, #f8f9fa); }" +
+      ".usefulqueries-editor .uq-paste .cdx-field { margin-top: 0; }" +
+      ".usefulqueries-editor .uq-paste-kinds { margin: 4px 0 0 1.2em; padding: 0; }" +
+      ".usefulqueries-editor .uq-paste-kinds li { margin: 2px 0; }" +
       ".usefulqueries-editor .uq-ai { margin-top: 8px; padding: 6px 10px; border: 1px solid #c8ccd1; border-radius: 2px; }" +
       ".usefulqueries-editor .uq-ai > summary { cursor: pointer; font-weight: bold; }" +
       ".usefulqueries-editor .uq-ai-prompt { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 0.8em; color: inherit; background: none; border: 1px solid #c8ccd1; border-radius: 2px; padding: 4px; resize: vertical; }",
@@ -273,7 +280,7 @@ function mountEditor(Vue, Codex) {
         urlTemplate: "",
         emoji: "🔍",
         title: "",
-        pasteUrl: "",
+        pasteText: "",
         pasteMessage: null,
         triedSave: false,
         saving: false,
@@ -283,6 +290,7 @@ function mountEditor(Vue, Codex) {
         emojiSuggestions: EMOJI_SUGGESTIONS,
         wikiName: mw.config.get("wgSiteName") || "the wiki",
         guideUrl: SETTINGS.templateGuideUrl || null,
+        emojiListUrl: "https://en.wikipedia.org/wiki/List_of_emojis",
         aiRequest: "",
         aiCopied: false,
       };
@@ -461,7 +469,7 @@ function mountEditor(Vue, Codex) {
         this.saving = false;
         this.saveError = null;
         this.confirmDelete = false;
-        this.pasteUrl = "";
+        this.pasteText = "";
         this.pasteMessage = null;
         this.preview = { status: "idle" };
         this.aiRequest = "";
@@ -524,6 +532,11 @@ function mountEditor(Vue, Codex) {
        */
       onSparqlPaste: function (event) {
         const pasted = event.clipboardData ? event.clipboardData.getData("text/plain") : "";
+        if (parseTemplateJson(pasted).found) {
+          event.preventDefault();
+          this.fillFrom(pasted);
+          return;
+        }
         const parsed = splitButtonHeader(pasted);
         if (!parsed.found) return;
         event.preventDefault();
@@ -543,27 +556,64 @@ function mountEditor(Vue, Codex) {
         }
         return "Filled in the " + took.join(" and ") + " from the query's first lines.";
       },
-      importFromUrl: function () {
-        const fromUrl = queryFromServiceUrl(this.pasteUrl);
-        const header = fromUrl ? splitButtonHeader(fromUrl) : null;
-        const text = header && header.found ? header.text : fromUrl;
-        if (!text) {
+      /** The paste box: fill in as soon as something is pasted. */
+      onPasteBoxPaste: function (event) {
+        const pasted = event.clipboardData ? event.clipboardData.getData("text/plain") : "";
+        if (!pasted.trim()) return;
+        event.preventDefault();
+        this.fillFrom(pasted);
+      },
+      /**
+       * Fill the dialog from whatever was pasted: a button's JSON, a Query
+       * Service link, a chatbot's answer (query with #title/#emoji lines) or
+       * a plain query. Links and plain queries get this item's IDs swapped
+       * for placeholders.
+       * @param {string} [text] - Defaults to the paste box
+       */
+      fillFrom: function (text) {
+        const input = String(text === undefined ? this.pasteText : text);
+        if (!input.trim()) return;
+        const json = parseTemplateJson(input);
+        if (json.found) {
+          if (json.error) {
+            this.pasteText = input;
+            this.pasteMessage = { type: "error", text: json.error };
+            return;
+          }
+          this.pasteText = "";
+          this.pasteMessage = { type: "success", text: this.applyTemplateJson(json) };
+          return;
+        }
+        const trimmed = input.trim();
+        const isLink = /^https?:\/\//i.test(trimmed);
+        const fromUrl = isLink ? queryFromServiceUrl(trimmed) : null;
+        if (isLink && !fromUrl) {
+          this.pasteText = input;
           this.pasteMessage = {
             type: "error",
             text: "No query found in that link. Short links (w.wiki/…) can't be read — copy the full address from the browser's address bar instead.",
           };
           return;
         }
+        const header = splitButtonHeader(fromUrl || input);
+        const query = header.found ? header.text : fromUrl || input;
+        this.kind = "query";
+        this.pasteText = "";
+        const headerNote = header.found ? " " + this.applyHeader(header) : "";
+        if (header.found && !isLink) {
+          // A chatbot's answer is already written with placeholders.
+          this.sparql = query;
+          this.pasteMessage = { type: "success", text: "Pasted the query." + headerNote };
+          return;
+        }
         const value = this.scope === "value" && this.target.value ? this.context : {};
-        const result = generalizeQuery(text, {
+        const result = generalizeQuery(query, {
           itemId: _page.context.itemId,
           valueId: value.valueId || null,
           valueSparql: value.valueSparql || null,
           statementValueId: this.context.statementValueId || null,
         });
         this.sparql = result.text;
-        this.pasteUrl = "";
-        const headerNote = header && header.found ? " " + this.applyHeader(header) : "";
         this.pasteMessage = {
           type: "success",
           text: (result.replacements.length
@@ -575,6 +625,57 @@ function mountEditor(Vue, Codex) {
             : "Query imported. It contains no ID of this item or value — check it is meant to be the same everywhere.") +
             headerNote,
         };
+      },
+      /**
+       * Copy a pasted button (see parseTemplateJson()) into the fields. Its
+       * scope, section, properties and values decide where the button goes,
+       * replacing the spot the dialog was opened on; that spot is then looked
+       * up on this item so the placeholders can be tested here.
+       * @returns {string} What was filled in, and where the button now goes
+       */
+      applyTemplateJson: function (json) {
+        const t = json.template;
+        const notes = [];
+        this.kind = json.kind;
+        if (json.kind === "query") this.sparql = t.template.join("\n").replace(/\s+$/, "");
+        else this.urlTemplate = t.urlTemplate;
+        if (t.emoji) this.emoji = t.emoji;
+        if (t.title) this.title = t.title;
+
+        if (!this.existingId) this.existingExample = null;
+
+        // Fields the JSON leaves out keep their current value.
+        const scope = SCOPES_FOR_PASTE.includes(t.scope) ? t.scope : this.scope;
+        const location = { scope };
+        if (scope !== "entity") {
+          location.section = t.section || (t.scope ? "statement" : this.section);
+          location.propertyId = t.propertyId && t.propertyId.length ? t.propertyId : this.propertyIds;
+          if (t.valueId && t.valueId.length) location.valueId = t.valueId;
+        }
+        if (scope !== "entity" && !location.propertyId.length) {
+          notes.push("It names no property, so it stays " + this.where + ".");
+        } else {
+          const target = findTargetForTemplate(location);
+          this.target = target;
+          this.placement =
+            scope === "value" ? (location.valueId ? "only" : "every") : scope;
+          this.propertyIdsText = scope === "entity" ? "" : location.propertyId.join(", ");
+          this.valueIdsText = location.valueId ? location.valueId.join(", ") : "";
+          notes.push("It goes " + this.where + ".");
+          if (scope !== "entity" && target.value === null) {
+            notes.push(
+              "This item has no such spot, so the button won't show here and testing can't fill in " +
+                "the value placeholders.",
+            );
+            // Keep an example where it does show, if the JSON names one.
+            if (!this.existingId && json.example) this.existingExample = json.example;
+          }
+        }
+        if (json.ignored.length) notes.push("Ignored unknown fields: " + json.ignored.join(", ") + ".");
+        return (
+          "Filled in the " + (json.kind === "query" ? "query" : "link") + " button from the JSON. " +
+          notes.join(" ") + " Test it before saving."
+        ).replace(/\s+/g, " ").trim();
       },
       copyPrompt: function () {
         const vm = this;
@@ -703,6 +804,31 @@ function mountEditor(Vue, Codex) {
         @primary="save"
         @default="open = false"
       >
+        <section class="uq-paste">
+          <cdx-field>
+            <template #label>Start from something you already have (optional)</template>
+            <template #help-text>
+              Paste it here and the fields below are filled in for you:
+              <ul class="uq-paste-kinds">
+                <li><strong>A Query Service link</strong> — write the query for this item in the Query Service, then copy the address from the browser. This item's IDs become placeholders.</li>
+                <li><strong>A button's JSON</strong> — a template file from the <a v-if="guideUrl" :href="guideUrl" target="_blank" rel="noopener noreferrer">template guide</a><template v-else>template guide</template>, an entry from someone's config page, or a chatbot's answer in that form.</li>
+                <li><strong>A chatbot's answer</strong> — a query starting with <code>#title:</code> and <code>#emoji:</code> lines (see “Let an AI chatbot write the query” below).</li>
+              </ul>
+            </template>
+            <div @paste="onPasteBoxPaste">
+              <cdx-text-area v-model="pasteText" class="uq-mono" rows="2"
+                placeholder="Paste a link, JSON or a query here…"></cdx-text-area>
+            </div>
+          </cdx-field>
+          <div class="uq-row">
+            <cdx-button :disabled="!pasteText.trim()" @click="fillFrom()">Fill in</cdx-button>
+            <cdx-button weight="quiet" @click="openInQueryService">Write it in the Query Service ↗</cdx-button>
+          </div>
+          <cdx-message v-if="pasteMessage" :type="pasteMessage.type" :inline="true" style="margin-top: 6px;">
+            {{ pasteMessage.text }}
+          </cdx-message>
+        </section>
+
         <section v-if="target.scope === 'value'">
           <cdx-field :is-fieldset="true">
             <template #label>Where should the button appear?</template>
@@ -746,8 +872,8 @@ function mountEditor(Vue, Codex) {
           <cdx-field>
             <template #label>SPARQL query</template>
             <template #help-text>
-              Easiest: write it in the Query Service for this item, then paste the link below — the IDs of
-              this item and value are swapped for placeholders automatically.
+              Use placeholders (click one to insert it) where the query refers to this item or value, so it
+              works on every item. Already have a query somewhere? Use the paste box at the top.
             </template>
             <uq-placeholder-chips :names="placeholders" :context="context"
               @pick="insert('sparqlInput', 'sparql', $event)"></uq-placeholder-chips>
@@ -760,15 +886,6 @@ function mountEditor(Vue, Codex) {
                 placeholder="SELECT ?item ?itemLabel WHERE { … }"></cdx-text-area>
             </div>
           </cdx-field>
-          <div class="uq-row">
-            <cdx-button @click="openInQueryService">Open in Query Service ↗</cdx-button>
-            <cdx-text-input v-model="pasteUrl" style="flex: 1; min-width: 12em;"
-              placeholder="…then paste the Query Service link here" @keydown.enter.prevent="importFromUrl"></cdx-text-input>
-            <cdx-button :disabled="!pasteUrl.trim()" @click="importFromUrl">Use this query</cdx-button>
-          </div>
-          <cdx-message v-if="pasteMessage" :type="pasteMessage.type" :inline="true" style="margin-top: 6px;">
-            {{ pasteMessage.text }}
-          </cdx-message>
           <details class="uq-ai">
             <summary>Let an AI chatbot write the query</summary>
             <cdx-field>
@@ -776,8 +893,8 @@ function mountEditor(Vue, Codex) {
               <template #help-text>
                 This goes at the top of a prompt that also explains usefulQueries, where the button sits and
                 which placeholders it can use here. Paste the prompt into a chatbot (best one that can look
-                things up on {{ wikiName }}). Then paste its answer into the query field above: its first lines
-                fill in the button's title and emoji. Test it before saving.
+                things up on {{ wikiName }}). Then paste its answer into the paste box at the top (or straight
+                into the query field): its first lines fill in the button's title and emoji. Test it before saving.
               </template>
               <cdx-text-area v-model="aiRequest" rows="2"
                 placeholder="e.g. Other people born in this place, as a gallery with their pictures"></cdx-text-area>
@@ -834,7 +951,11 @@ function mountEditor(Vue, Codex) {
         <section>
           <cdx-field>
             <template #label>Button</template>
-            <template #help-text>A short label, usually one emoji.</template>
+            <template #help-text>
+              A short label, usually one emoji. Any emoji works, not just the suggestions: copy one from the
+              <a :href="emojiListUrl" target="_blank" rel="noopener noreferrer">list of emojis on Wikipedia ↗</a>
+              and paste it here.
+            </template>
             <div class="uq-row" style="margin-top: 0;">
               <cdx-text-input v-model="emoji" style="width: 6em;"></cdx-text-input>
               <button v-for="e in emojiSuggestions" :key="e" type="button" class="uq-chip" @click="emoji = e">{{ e }}</button>

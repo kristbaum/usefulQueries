@@ -10,6 +10,7 @@ import {
   makeTemplateId,
   mergeTemplates,
   overriddenIds,
+  parseTemplateJson,
   parseUserConfig,
   queryFromServiceUrl,
   removeTemplate,
@@ -281,4 +282,43 @@ test("imports drop basedOn; suggestions of a modified built-in target its file",
   assert.match(body, /File: `templates\/queries\/a\.json`/);
   assert.match(body, /"id": "a"/);
   assert.doesNotMatch(body, /basedOn/);
+});
+
+test("pasted JSON: a template file fills in a button", () => {
+  const tpl = userQuery({ basedOn: "a", extra: 1 });
+  const parsed = parseTemplateJson("```json\n" + JSON.stringify(tpl, null, 2) + "\n```");
+  assert.equal(parsed.found, true);
+  assert.equal(parsed.error, undefined);
+  assert.equal(parsed.kind, "query");
+  assert.deepEqual(parsed.ignored, ["extra"]);
+  assert.equal(parsed.template.id, undefined);
+  assert.equal(parsed.template.basedOn, undefined);
+  assert.deepEqual(parsed.template.propertyId, ["P19"]);
+  assert.deepEqual(parsed.template.template, tpl.template);
+  assert.equal(parsed.example, "Q64");
+  assert.equal(parseTemplateJson(JSON.stringify({ template: ["x"], example: "nope" })).example, null);
+});
+
+test("pasted JSON: links, one-string queries and one-button configs", () => {
+  const link = parseTemplateJson(JSON.stringify({ scope: "entity", urlTemplate: "https://x/{itemId}", emoji: "🔗", title: "X" }));
+  assert.equal(link.kind, "link");
+  assert.equal(link.template.urlTemplate, "https://x/{itemId}");
+  const oneString = parseTemplateJson(JSON.stringify({ template: "L1\nL2", propertyId: "P19" }));
+  assert.deepEqual(oneString.template.template, ["L1", "L2"]);
+  assert.deepEqual(oneString.template.propertyId, ["P19"]);
+  const config = parseTemplateJson(serializeConfig({ ...emptyConfig(), queries: [userQuery()] }));
+  assert.equal(config.kind, "query");
+  assert.equal(config.template.title, userQuery().title);
+});
+
+test("pasted JSON: problems are reported, non-JSON is left alone", () => {
+  assert.deepEqual(parseTemplateJson("SELECT * WHERE { ?s ?p ?o }"), { found: false });
+  assert.deepEqual(parseTemplateJson("https://query.wikidata.org/#SELECT"), { found: false });
+  assert.match(parseTemplateJson("{ nope").error, /isn't valid/);
+  assert.match(parseTemplateJson("{}").error, /"template"/);
+  assert.match(parseTemplateJson(JSON.stringify({ template: ["x"], urlTemplate: "y" })).error, /not both/);
+  assert.match(parseTemplateJson(JSON.stringify({ template: [1] })).error, /list of lines/);
+  assert.match(parseTemplateJson(JSON.stringify({ template: ["x"], valueId: [5] })).error, /"valueId"/);
+  const two = serializeConfig({ ...emptyConfig(), queries: [userQuery(), userQuery({ id: "u_b" })] });
+  assert.match(parseTemplateJson(two).error, /2 buttons/);
 });

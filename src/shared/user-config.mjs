@@ -276,6 +276,93 @@ export function queryFromServiceUrl(url) {
   }
 }
 
+// Fields of a pasted button JSON the editor takes over. id and example are its
+// own (a pasted button becomes a new one, made on the current item), and
+// basedOn is set only by editing a built-in.
+const PASTE_FIELDS = ["scope", "section", "propertyId", "valueId", "template", "urlTemplate", "emoji", "title"];
+const PASTE_OWN_FIELDS = ["id", "example", BASED_ON_FIELD];
+
+/**
+ * Read a button from pasted JSON: a template file (as in templates/ or the
+ * template guide), one entry of someone's config page, or a whole config page
+ * holding exactly one button. A Markdown code fence around it is dropped.
+ * Only the shape is checked here; the editor validates the result like any
+ * button it saves.
+ * @param {string} text
+ * @returns {{found: boolean, error?: string, kind?: "query"|"link", template?: object, ignored?: string[]}}
+ *   `found` is false when the text is not JSON at all (so it can be read as
+ *   something else); `template` holds only PASTE_FIELDS, with SPARQL as lines;
+ *   `example` is the JSON's example item, if it names a valid one
+ */
+export function parseTemplateJson(text) {
+  let body = String(text || "").trim();
+  const fence = /^```[^\n]*\n([\s\S]*?)\n?```\s*$/.exec(body);
+  if (fence) body = fence[1].trim();
+  if (!body.startsWith("{")) return { found: false };
+
+  let raw;
+  try {
+    raw = JSON.parse(body);
+  } catch (err) {
+    return { found: true, error: `This looks like JSON but isn't valid: ${err.message}` };
+  }
+  if (Array.isArray(raw.queries) || Array.isArray(raw.links)) {
+    const entries = [
+      ...(raw.queries || []).map((t) => ({ kind: "query", t })),
+      ...(raw.links || []).map((t) => ({ kind: "link", t })),
+    ];
+    if (entries.length !== 1) {
+      return {
+        found: true,
+        error: `This is a whole config with ${entries.length} buttons. Paste one button at a time, or import them on the settings page.`,
+      };
+    }
+    raw = entries[0].t;
+  }
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { found: true, error: "The JSON must be one button: an object with a query or a link." };
+  }
+
+  let kind;
+  if (raw.template !== undefined && raw.urlTemplate === undefined) kind = "query";
+  else if (raw.urlTemplate !== undefined && raw.template === undefined) kind = "link";
+  else {
+    return {
+      found: true,
+      error: 'The JSON needs either "template" (the SPARQL query) or "urlTemplate" (a link), not both.',
+    };
+  }
+
+  const template = {};
+  const ignored = [];
+  for (const [key, value] of Object.entries(raw)) {
+    if (PASTE_FIELDS.includes(key)) template[key] = value;
+    else if (!PASTE_OWN_FIELDS.includes(key)) ignored.push(key);
+  }
+  if (typeof template.template === "string") template.template = template.template.split("\n");
+  if (kind === "query" && !isStringArray(template.template)) {
+    return { found: true, error: '"template" must be the SPARQL query, as a list of lines or as one string.' };
+  }
+  if (kind === "link" && typeof template.urlTemplate !== "string") {
+    return { found: true, error: '"urlTemplate" must be a text.' };
+  }
+  for (const key of ["propertyId", "valueId"]) {
+    if (typeof template[key] === "string") template[key] = [template[key]];
+    if (template[key] !== undefined && !isStringArray(template[key])) {
+      return { found: true, error: `"${key}" must be a list of IDs.` };
+    }
+  }
+  for (const key of ["scope", "section", "emoji", "title"]) {
+    if (template[key] !== undefined && typeof template[key] !== "string") {
+      return { found: true, error: `"${key}" must be a text.` };
+    }
+  }
+  // Not part of the new button, but a hint where it can be tried out when it
+  // doesn't apply to the current item.
+  const example = typeof raw.example === "string" && /^Q\d+$/.test(raw.example) ? raw.example : null;
+  return { found: true, kind, template, ignored, example };
+}
+
 function escapeRegExp(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
