@@ -1432,6 +1432,11 @@ const CONFIG_VERSION = 1;
 // Prefix for ids of user-made templates, so they never collide with built-ins.
 const USER_ID_PREFIX = "u_";
 
+// Field of a user template that marks it as the user's modified copy of a
+// built-in: it holds the built-in's id, and the copy replaces that built-in.
+// Deleting the copy reverts to the built-in. Only allowed on config pages.
+const BASED_ON_FIELD = "basedOn";
+
 /**
  * A fresh config. `seen` lists the built-in ids the user has been shown, so a
  * built-in added in a later release can be flagged as new on the settings page.
@@ -1487,6 +1492,7 @@ function validateUserConfig(raw, builtinIds = []) {
   }
 
   const usedIds = new Set();
+  const usedBasedOn = new Set();
   for (const [field, kind] of [
     ["queries", "query"],
     ["links", "link"],
@@ -1499,7 +1505,22 @@ function validateUserConfig(raw, builtinIds = []) {
     raw[field].forEach((tpl, i) => {
       const where =
         tpl && typeof tpl.id === "string" ? `${field}[${i}] "${tpl.id}"` : `${field}[${i}]`;
-      const problems = validateTemplate(tpl, kind, { sparqlChecks: false });
+      const hasBasedOn =
+        tpl !== null && typeof tpl === "object" && !Array.isArray(tpl) && Object.hasOwn(tpl, BASED_ON_FIELD);
+      const basedOn = hasBasedOn ? tpl[BASED_ON_FIELD] : undefined;
+      let bare = tpl;
+      if (hasBasedOn) {
+        bare = { ...tpl };
+        delete bare[BASED_ON_FIELD];
+      }
+      const problems = validateTemplate(bare, kind, { sparqlChecks: false });
+      if (hasBasedOn) {
+        if (typeof basedOn !== "string" || !basedOn) {
+          problems.push(`"${BASED_ON_FIELD}" must be the id of a built-in button`);
+        } else if (usedBasedOn.has(basedOn)) {
+          problems.push(`"${BASED_ON_FIELD}" ${JSON.stringify(basedOn)} is used twice`);
+        }
+      }
       if (!problems.length) {
         if (builtinIds.includes(tpl.id)) {
           problems.push(`"id" ${JSON.stringify(tpl.id)} is a built-in id — pick another`);
@@ -1512,6 +1533,7 @@ function validateUserConfig(raw, builtinIds = []) {
         skipped[field].push(tpl);
       } else {
         usedIds.add(tpl.id);
+        if (hasBasedOn) usedBasedOn.add(basedOn);
         config[field].push(tpl);
       }
     });
@@ -1592,17 +1614,60 @@ function toRuntimeTemplate(tpl) {
 }
 
 /**
- * The templates that should be active: built-ins minus the disabled ones,
- * followed by the user's own.
+ * Ids of the built-ins the user has replaced with a modified copy, across both
+ * kinds (a copy may turn a query into a link).
+ * @param {object} config
+ * @returns {string[]}
+ */
+function overriddenIds(config) {
+  return [...config.queries, ...config.links]
+    .map((t) => t[BASED_ON_FIELD])
+    .filter((id) => typeof id === "string");
+}
+
+/**
+ * The user's modified copy of a built-in, if there is one.
+ * @param {object} config
+ * @param {string} builtinId
+ * @returns {{kind: "query"|"link", template: object}|null}
+ */
+function findOverride(config, builtinId) {
+  const query = config.queries.find((t) => t[BASED_ON_FIELD] === builtinId);
+  if (query) return { kind: "query", template: query };
+  const link = config.links.find((t) => t[BASED_ON_FIELD] === builtinId);
+  return link ? { kind: "link", template: link } : null;
+}
+
+/**
+ * A built-in in JSON form (SPARQL as lines), ready to become a modified copy:
+ * a fresh user id and `basedOn` pointing back at the original.
+ * @param {object} builtin - Built-in template (runtime form)
+ * @param {Iterable<string>} existingIds
+ */
+function makeOverride(builtin, existingIds) {
+  const taken = new Set(existingIds);
+  let id = USER_ID_PREFIX + builtin.id;
+  for (let n = 2; taken.has(id); n++) id = `${USER_ID_PREFIX}${builtin.id}${n}`;
+  const copy = JSON.parse(JSON.stringify(builtin));
+  if (typeof copy.template === "string") copy.template = copy.template.split("\n");
+  return { ...copy, id, [BASED_ON_FIELD]: builtin.id };
+}
+
+/**
+ * The templates that should be active: built-ins minus the disabled and the
+ * replaced ones, followed by the user's own. A modified copy of a built-in is
+ * hidden together with its original when the user switches that one off.
  * @param {object[]} builtins - Built-in templates (runtime form)
  * @param {object[]} userTemplates - User templates (JSON form)
  * @param {string[]} disabled - Built-in ids the user switched off
+ * @param {string[]} [replaced] - Built-in ids with a modified copy (overriddenIds())
  */
-function mergeTemplates(builtins, userTemplates, disabled) {
+function mergeTemplates(builtins, userTemplates, disabled, replaced = []) {
   const off = new Set(disabled);
+  const gone = new Set(replaced);
   return [
-    ...builtins.filter((t) => !off.has(t.id)),
-    ...userTemplates.map(toRuntimeTemplate),
+    ...builtins.filter((t) => !off.has(t.id) && !gone.has(t.id)),
+    ...userTemplates.filter((t) => !off.has(t[BASED_ON_FIELD])).map(toRuntimeTemplate),
   ];
 }
 
@@ -1735,7 +1800,11 @@ function importTemplates(config, picked, builtinIds = []) {
       id = makeTemplateId(template.title, taken);
     }
     taken.add(id);
-    (kind === "query" ? next.queries : next.links).push({ ...template, id });
+    // Someone else's modified built-in arrives as a button of its own, so it
+    // never silently replaces a built-in (or the user's own copy of it).
+    const copy = { ...template, id };
+    delete copy[BASED_ON_FIELD];
+    (kind === "query" ? next.queries : next.links).push(copy);
   }
   return next;
 }
@@ -1747,21 +1816,26 @@ function importTemplates(config, picked, builtinIds = []) {
  * @param {string} repoUrl - e.g. https://github.com/kristbaum/usefulQueries
  */
 function suggestionIssueUrl(tpl, kind, repoUrl) {
-  const file = `templates/${kind === "query" ? "queries" : "links"}/${tpl.id.replace(
-    new RegExp(`^${USER_ID_PREFIX}`),
-    "",
-  )}.json`;
+  // A modified built-in is proposed as a change to the built-in's own file.
+  const basedOn = typeof tpl[BASED_ON_FIELD] === "string" ? tpl[BASED_ON_FIELD] : null;
+  const shipped = { ...tpl, id: basedOn || tpl.id };
+  delete shipped[BASED_ON_FIELD];
+  const fileId = basedOn || tpl.id.replace(new RegExp(`^${USER_ID_PREFIX}`), "");
+  const file = `templates/${kind === "query" ? "queries" : "links"}/${fileId}.json`;
   const body = [
-    `Suggested ${kind} button from the usefulQueries editor.`,
+    basedOn
+      ? `Suggested change to the built-in ${kind} button "${basedOn}" from the usefulQueries editor.`
+      : `Suggested ${kind} button from the usefulQueries editor.`,
     "",
-    `Proposed file: \`${file}\``,
+    `${basedOn ? "File" : "Proposed file"}: \`${file}\``,
     "",
     "```json",
-    JSON.stringify(tpl, null, 2),
+    JSON.stringify(shipped, null, 2),
     "```",
   ].join("\n");
+  const title = basedOn ? `Change ${kind}: ${tpl.title}` : `New ${kind}: ${tpl.title}`;
   return (
-    `${repoUrl}/issues/new?title=${encodeURIComponent(`New ${kind}: ${tpl.title}`)}` +
+    `${repoUrl}/issues/new?title=${encodeURIComponent(title)}` +
     `&body=${encodeURIComponent(body)}`
   );
 }
@@ -2341,12 +2415,15 @@ function mountButtons() {
         add: function (b) {
           openTemplateEditor(b.target, null);
         },
-        editOrHide: function (b) {
+        edit: function (b) {
           if (b.isUser) {
             openTemplateEditor(null, b.ref);
           } else {
-            hideBuiltinButton(b.ref, b.title);
+            openBuiltinEditor(b.ref.id);
           }
+        },
+        hide: function (b) {
+          hideBuiltinButton(b.ref, b.title);
         },
       },
       template: `
@@ -2380,11 +2457,19 @@ function mountButtons() {
               <span v-if="editMode && b.ref" class="usefulqueries-edit">
                 <cdx-button
                   weight="quiet"
-                  :action="b.isUser ? 'progressive' : 'destructive'"
-                  :aria-label="b.isUser ? 'Edit this button' : 'Hide this button'"
-                  :title="b.isUser ? 'Edit this button' : 'Hide this built-in button (bring it back in usefulQueries settings)'"
-                  @click="editOrHide(b)"
-                >{{ b.isUser ? "✎" : "✕" }}</cdx-button>
+                  action="progressive"
+                  :aria-label="b.isUser ? 'Edit this button' : 'Edit your own copy of this built-in button'"
+                  :title="b.isUser ? 'Edit this button' : 'Edit your own copy of this built-in button (revert any time)'"
+                  @click="edit(b)"
+                >✎</cdx-button>
+                <cdx-button
+                  v-if="!b.isUser"
+                  weight="quiet"
+                  action="destructive"
+                  aria-label="Hide this button"
+                  title="Hide this built-in button (bring it back in usefulQueries settings)"
+                  @click="hide(b)"
+                >✕</cdx-button>
               </span>
             </teleport>
           </template>
@@ -3234,7 +3319,7 @@ function toggleEditMode() {
   renderButtons();
   mw.notify(
     _editMode
-      ? SETTINGS.displayName + " edit mode: “+” adds a button at that spot, ✕ hides a built-in, ✎ edits one of yours."
+      ? SETTINGS.displayName + " edit mode: “+” adds a button at that spot, ✎ edits a button (built-ins as your own copy), ✕ hides a built-in."
       : SETTINGS.displayName + " edit mode off.",
     { tag: "usefulqueries-editmode" },
   );
@@ -3272,14 +3357,37 @@ function saveAndApply(mutate, summary, message) {
 
 
 /**
+ * Edit a built-in: opens the user's modified copy if there is one, otherwise
+ * a fresh copy that replaces the built-in once saved.
+ * @param {string} builtinId
+ */
+function openBuiltinEditor(builtinId) {
+  const override = findOverride(_userConfig, builtinId);
+  if (override) {
+    openTemplateEditor(null, { kind: override.kind, id: override.template.id });
+    return;
+  }
+  const isQuery = USEFUL_QUERIES.some((t) => t.id === builtinId);
+  const builtin = (isQuery ? USEFUL_QUERIES : USEFUL_LINKS).find((t) => t.id === builtinId);
+  const taken = [...BUILTIN_IDS, ..._userConfig.queries.map((t) => t.id), ..._userConfig.links.map((t) => t.id)];
+  const copy = makeOverride(builtin, taken);
+  openTemplateEditor(null, null, { kind: isQuery ? "query" : "link", template: copy, isNew: true });
+}
+
+/**
  * Open the editor dialog, either for a new button at `target` or for an
  * existing user template `ref`.
  * @param {Object|null} target - {scope, propertyId?, value?}
  * @param {{kind: string, id: string}|null} ref
+ * @param {{kind: string, template: Object, isNew: boolean}} [copy] - An unsaved
+ *   modified copy of a built-in (see openBuiltinEditor())
  */
-function openTemplateEditor(target, ref) {
+function openTemplateEditor(target, ref, copy) {
   let existing = null;
-  if (ref) {
+  if (copy) {
+    existing = copy;
+    target = target || findTargetForTemplate(copy.template);
+  } else if (ref) {
     const list = ref.kind === "query" ? _userConfig.queries : _userConfig.links;
     const tpl = list.find((t) => t.id === ref.id);
     if (!tpl) {
@@ -3360,6 +3468,10 @@ function mountEditor(Vue, Codex) {
         target: { scope: "entity" },
         existingId: null,
         existingExample: null,
+        // Id of the built-in this button is a modified copy of, if any.
+        basedOn: null,
+        // Saving adds a new entry (a copy of a built-in not saved yet).
+        isNewCopy: false,
         kind: "query",
         placement: "entity",
         propertyIdsText: "",
@@ -3461,6 +3573,7 @@ function mountEditor(Vue, Codex) {
           example: this.existingExample || _page.context.itemId,
           scope: this.scope,
         };
+        if (this.basedOn) tpl.basedOn = this.basedOn;
         if (this.scope !== "entity" && this.section !== "statement") tpl.section = this.section;
         if (this.scope !== "entity") tpl.propertyId = this.propertyIds;
         if (this.placement === "only") tpl.valueId = this.valueIds;
@@ -3474,7 +3587,9 @@ function mountEditor(Vue, Codex) {
         return tpl;
       },
       errors: function () {
-        return validateTemplate(this.draft, this.kind, { sparqlChecks: false });
+        const tpl = { ...this.draft };
+        delete tpl.basedOn;
+        return validateTemplate(tpl, this.kind, { sparqlChecks: false });
       },
       warnings: function () {
         if (this.kind !== "query" || !this.sparql.trim()) return [];
@@ -3498,7 +3613,7 @@ function mountEditor(Vue, Codex) {
       },
       primaryAction: function () {
         return {
-          label: this.saving ? "Saving…" : this.existingId ? "Save changes" : "Add button",
+          label: this.saving ? "Saving…" : this.existingId || this.basedOn ? "Save changes" : "Add button",
           actionType: "progressive",
           disabled: this.saving,
         };
@@ -3530,7 +3645,7 @@ function mountEditor(Vue, Codex) {
         });
       },
       suggestUrl: function () {
-        return this.existingId
+        return this.existingId && !this.isNewCopy
           ? suggestionIssueUrl(this.draft, this.kind, SETTINGS.repositoryUrl)
           : null;
       },
@@ -3562,6 +3677,8 @@ function mountEditor(Vue, Codex) {
           const tpl = existing.template;
           this.existingId = tpl.id;
           this.existingExample = tpl.example;
+          this.basedOn = tpl.basedOn || null;
+          this.isNewCopy = !!existing.isNew;
           this.kind = existing.kind;
           this.placement =
             tpl.scope === "value" ? (tpl.valueId ? "only" : "every") : tpl.scope;
@@ -3574,6 +3691,8 @@ function mountEditor(Vue, Codex) {
         } else {
           this.existingId = null;
           this.existingExample = null;
+          this.basedOn = null;
+          this.isNewCopy = false;
           this.kind = "query";
           this.placement = target.scope === "value" ? "every" : target.scope;
           this.propertyIdsText = target.propertyId || "";
@@ -3735,18 +3854,32 @@ function mountEditor(Vue, Codex) {
         if (this.errors.length) return;
         const tpl = this.draft;
         const kind = this.kind;
-        const replacing = this.existingId;
+        const replacing = this.isNewCopy ? null : this.existingId;
+        const basedOn = this.basedOn;
         this.persist(
           function (config) {
-            removeTemplate(config, replacing);
+            if (replacing) removeTemplate(config, replacing);
+            // Saved from two tabs: keep one copy per built-in.
+            if (basedOn) {
+              const other = findOverride(config, basedOn);
+              if (other) removeTemplate(config, other.template.id);
+            }
             (kind === "query" ? config.queries : config.links).push(tpl);
           },
-          (replacing ? "Edit button: " : "Add button: ") + tpl.title,
-          replacing ? "Button saved." : "Button added.",
+          (basedOn ? "Modify built-in button: " : replacing ? "Edit button: " : "Add button: ") + tpl.title,
+          replacing || basedOn ? "Button saved." : "Button added.",
         );
       },
       remove: function () {
         const id = this.existingId;
+        if (this.basedOn) {
+          this.persist(
+            (config) => removeTemplate(config, id),
+            "Revert built-in button: " + this.basedOn,
+            "Reverted to the built-in button.",
+          );
+          return;
+        }
         this.persist((config) => removeTemplate(config, id), "Delete button: " + this.title, "Button deleted.");
       },
       persist: function (mutate, summary, message) {
@@ -3769,7 +3902,7 @@ function mountEditor(Vue, Codex) {
       <cdx-dialog
         v-model:open="open"
         class="usefulqueries-editor"
-        :title="existingId ? 'Edit button' : 'Add a button'"
+        :title="basedOn ? 'Edit built-in button' : existingId ? 'Edit button' : 'Add a button'"
         :subtitle="'Shown ' + where"
         :use-close-button="true"
         :primary-action="primaryAction"
@@ -3929,7 +4062,24 @@ function mountEditor(Vue, Codex) {
         </cdx-message>
         <cdx-message v-if="saveError" type="error">{{ saveError }}</cdx-message>
 
-        <section v-if="existingId" class="uq-row">
+        <cdx-message v-if="basedOn" type="notice">
+          You are editing your own copy of the built-in button <code>{{ basedOn }}</code>. Once saved, it replaces
+          the built-in for you; revert any time to get the original back.
+        </cdx-message>
+
+        <section v-if="existingId && basedOn && !isNewCopy" class="uq-row">
+          <a v-if="suggestUrl" :href="suggestUrl" target="_blank" rel="noopener noreferrer">Suggest this change for everyone ↗</a>
+          <span style="flex: 1;"></span>
+          <template v-if="!confirmDelete">
+            <cdx-button action="destructive" weight="quiet" @click="confirmDelete = true">Revert to built-in</cdx-button>
+          </template>
+          <template v-else>
+            <span>Discard your changes to “{{ title }}”?</span>
+            <cdx-button action="destructive" weight="primary" :disabled="saving" @click="remove">Revert</cdx-button>
+            <cdx-button @click="confirmDelete = false">Keep</cdx-button>
+          </template>
+        </section>
+        <section v-else-if="existingId && !basedOn" class="uq-row">
           <a v-if="suggestUrl" :href="suggestUrl" target="_blank" rel="noopener noreferrer">Suggest this button for everyone ↗</a>
           <span style="flex: 1;"></span>
           <template v-if="!confirmDelete">
@@ -4128,10 +4278,15 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
           .filter((g) => g.items.length);
       },
       own: function () {
+        // Modified built-ins are listed with their built-in instead.
+        const isOverride = (t) => BUILTIN_IDS.includes(t.basedOn);
         return [
-          ...this.config.queries.map((t) => ({ kind: "query", t })),
-          ...this.config.links.map((t) => ({ kind: "link", t })),
+          ...this.config.queries.filter((t) => !isOverride(t)).map((t) => ({ kind: "query", t })),
+          ...this.config.links.filter((t) => !isOverride(t)).map((t) => ({ kind: "link", t })),
         ];
+      },
+      modifiedCount: function () {
+        return overriddenIds(this.config).filter((id) => BUILTIN_IDS.includes(id)).length;
       },
       dirty: function () {
         return serializeConfig(this.normalized()) !== this.savedText || !this.exists;
@@ -4193,6 +4348,24 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
       },
       removeOwn: function (entry) {
         removeTemplate(this.config, entry.t.id);
+        this.confirmDelete = null;
+      },
+      /** The user's modified copy of a built-in, or null. */
+      override: function (id) {
+        return findOverride(this.config, id);
+      },
+      /** What to show for a built-in: the user's copy if there is one. */
+      shown: function (b) {
+        const o = this.override(b.t.id);
+        return o ? { kind: o.kind, t: o.template } : b;
+      },
+      builtinEditUrl: function (b) {
+        const o = this.override(b.t.id);
+        return itemPageUrl(withAnchor(o ? o.template : b.t), { "usefulqueries-edit": b.t.id });
+      },
+      revert: function (b) {
+        const o = this.override(b.t.id);
+        if (o) removeTemplate(this.config, o.template.id);
         this.confirmDelete = null;
       },
       loadImport: function () {
@@ -4302,27 +4475,45 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
           <cdx-button @click="setAll(true)">Show all</cdx-button>
           <cdx-button @click="setAll(false)">Hide all</cdx-button>
           <span class="uq-meta" v-if="hiddenCount">{{ hiddenCount }} hidden</span>
+          <span class="uq-meta" v-if="modifiedCount">{{ modifiedCount }} modified</span>
         </div>
+        <p class="uq-meta">
+          Editing a built-in button saves your own copy of it on your config page. The copy replaces the
+          built-in for you; “Revert” deletes it and brings the original back.
+        </p>
         <template v-for="g in groups" :key="g.scope">
           <h3>{{ g.heading }}</h3>
           <ul class="uq-list">
             <li v-for="b in g.items" :key="b.t.id" class="uq-item">
-              <span class="uq-emoji">{{ b.t.emoji }}</span>
+              <span class="uq-emoji">{{ shown(b).t.emoji }}</span>
               <div class="uq-body">
                 <div>
-                  {{ title(b.t) }}
-                  <span class="uq-badge">{{ b.kind === 'query' ? 'Query' : 'Link' }}</span>
+                  {{ title(shown(b).t) }}
+                  <span class="uq-badge">{{ shown(b).kind === 'query' ? 'Query' : 'Link' }}</span>
+                  <span v-if="override(b.t.id)" class="uq-badge" style="color: #ac6600;"
+                    :title="'Your copy (' + override(b.t.id).template.id + ') replaces the built-in'">modified</span>
                   <span v-if="isNew(b.t.id)" class="uq-badge" style="color: #36c;">new</span>
                 </div>
                 <div class="uq-meta">
-                  Shown for {{ describe(b.t) }}
-                  <template v-if="exampleUrl(b.t)"> · <a :href="exampleUrl(b.t)">see it on {{ b.t.example }}</a></template>
+                  Shown for {{ describe(shown(b).t) }}
+                  <template v-if="exampleUrl(shown(b).t)"> · <a :href="exampleUrl(shown(b).t)">see it on {{ shown(b).t.example }}</a></template>
+                  <template v-if="override(b.t.id)"> · built-in: {{ b.t.emoji }} {{ title(b.t) }}</template>
                 </div>
               </div>
               <div class="uq-actions">
+                <template v-if="confirmDelete !== 'revert:' + b.t.id">
+                  <a :href="builtinEditUrl(b)">Edit</a>
+                  <cdx-button v-if="override(b.t.id)" action="destructive" weight="quiet"
+                    @click="confirmDelete = 'revert:' + b.t.id">Revert</cdx-button>
+                </template>
+                <template v-else>
+                  <span>Discard your changes?</span>
+                  <cdx-button action="destructive" weight="primary" @click="revert(b)">Revert</cdx-button>
+                  <cdx-button @click="confirmDelete = null">Keep</cdx-button>
+                </template>
                 <cdx-toggle-switch
                   :model-value="isOn(b.t.id)"
-                  :aria-label="(isOn(b.t.id) ? 'Hide ' : 'Show ') + b.t.title"
+                  :aria-label="(isOn(b.t.id) ? 'Hide ' : 'Show ') + shown(b).t.title"
                   @update:model-value="setOn(b.t.id, $event)"
                 ></cdx-toggle-switch>
               </div>
@@ -4381,9 +4572,10 @@ let _userConfig = null;
  */
 function applyUserConfig(config) {
   _userConfig = config;
+  const replaced = overriddenIds(config);
   setActiveTemplates(
-    mergeTemplates(USEFUL_QUERIES, config.queries, config.disabled),
-    mergeTemplates(USEFUL_LINKS, config.links, config.disabled),
+    mergeTemplates(USEFUL_QUERIES, config.queries, config.disabled, replaced),
+    mergeTemplates(USEFUL_LINKS, config.links, config.disabled, replaced),
   );
   if (_page.entityData) renderButtons();
 }
@@ -4472,11 +4664,16 @@ function processWikibaseEntityPage() {
 
       if (canConfigure()) {
         addItemPortletLinks();
-        // Deep link from the settings page: ?usefulqueries-edit=<id>
+        // Deep link from the settings page: ?usefulqueries-edit=<id>, the id
+        // of one of the user's buttons or of a built-in (edited as a copy).
         const editId = mw.util.getParamValue("usefulqueries-edit");
         if (editId && _userConfig) {
-          const kind = _userConfig.queries.some((t) => t.id === editId) ? "query" : "link";
-          openTemplateEditor(null, { kind, id: editId });
+          if (BUILTIN_IDS.includes(editId)) {
+            openBuiltinEditor(editId);
+          } else {
+            const kind = _userConfig.queries.some((t) => t.id === editId) ? "query" : "link";
+            openTemplateEditor(null, { kind, id: editId });
+          }
         }
       }
     });

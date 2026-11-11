@@ -112,7 +112,7 @@ function toggleEditMode() {
   renderButtons();
   mw.notify(
     _editMode
-      ? SETTINGS.displayName + " edit mode: “+” adds a button at that spot, ✕ hides a built-in, ✎ edits one of yours."
+      ? SETTINGS.displayName + " edit mode: “+” adds a button at that spot, ✎ edits a button (built-ins as your own copy), ✕ hides a built-in."
       : SETTINGS.displayName + " edit mode off.",
     { tag: "usefulqueries-editmode" },
   );
@@ -150,14 +150,37 @@ function saveAndApply(mutate, summary, message) {
 
 
 /**
+ * Edit a built-in: opens the user's modified copy if there is one, otherwise
+ * a fresh copy that replaces the built-in once saved.
+ * @param {string} builtinId
+ */
+function openBuiltinEditor(builtinId) {
+  const override = findOverride(_userConfig, builtinId);
+  if (override) {
+    openTemplateEditor(null, { kind: override.kind, id: override.template.id });
+    return;
+  }
+  const isQuery = USEFUL_QUERIES.some((t) => t.id === builtinId);
+  const builtin = (isQuery ? USEFUL_QUERIES : USEFUL_LINKS).find((t) => t.id === builtinId);
+  const taken = [...BUILTIN_IDS, ..._userConfig.queries.map((t) => t.id), ..._userConfig.links.map((t) => t.id)];
+  const copy = makeOverride(builtin, taken);
+  openTemplateEditor(null, null, { kind: isQuery ? "query" : "link", template: copy, isNew: true });
+}
+
+/**
  * Open the editor dialog, either for a new button at `target` or for an
  * existing user template `ref`.
  * @param {Object|null} target - {scope, propertyId?, value?}
  * @param {{kind: string, id: string}|null} ref
+ * @param {{kind: string, template: Object, isNew: boolean}} [copy] - An unsaved
+ *   modified copy of a built-in (see openBuiltinEditor())
  */
-function openTemplateEditor(target, ref) {
+function openTemplateEditor(target, ref, copy) {
   let existing = null;
-  if (ref) {
+  if (copy) {
+    existing = copy;
+    target = target || findTargetForTemplate(copy.template);
+  } else if (ref) {
     const list = ref.kind === "query" ? _userConfig.queries : _userConfig.links;
     const tpl = list.find((t) => t.id === ref.id);
     if (!tpl) {
@@ -238,6 +261,10 @@ function mountEditor(Vue, Codex) {
         target: { scope: "entity" },
         existingId: null,
         existingExample: null,
+        // Id of the built-in this button is a modified copy of, if any.
+        basedOn: null,
+        // Saving adds a new entry (a copy of a built-in not saved yet).
+        isNewCopy: false,
         kind: "query",
         placement: "entity",
         propertyIdsText: "",
@@ -339,6 +366,7 @@ function mountEditor(Vue, Codex) {
           example: this.existingExample || _page.context.itemId,
           scope: this.scope,
         };
+        if (this.basedOn) tpl.basedOn = this.basedOn;
         if (this.scope !== "entity" && this.section !== "statement") tpl.section = this.section;
         if (this.scope !== "entity") tpl.propertyId = this.propertyIds;
         if (this.placement === "only") tpl.valueId = this.valueIds;
@@ -352,7 +380,9 @@ function mountEditor(Vue, Codex) {
         return tpl;
       },
       errors: function () {
-        return validateTemplate(this.draft, this.kind, { sparqlChecks: false });
+        const tpl = { ...this.draft };
+        delete tpl.basedOn;
+        return validateTemplate(tpl, this.kind, { sparqlChecks: false });
       },
       warnings: function () {
         if (this.kind !== "query" || !this.sparql.trim()) return [];
@@ -376,7 +406,7 @@ function mountEditor(Vue, Codex) {
       },
       primaryAction: function () {
         return {
-          label: this.saving ? "Saving…" : this.existingId ? "Save changes" : "Add button",
+          label: this.saving ? "Saving…" : this.existingId || this.basedOn ? "Save changes" : "Add button",
           actionType: "progressive",
           disabled: this.saving,
         };
@@ -408,7 +438,7 @@ function mountEditor(Vue, Codex) {
         });
       },
       suggestUrl: function () {
-        return this.existingId
+        return this.existingId && !this.isNewCopy
           ? suggestionIssueUrl(this.draft, this.kind, SETTINGS.repositoryUrl)
           : null;
       },
@@ -440,6 +470,8 @@ function mountEditor(Vue, Codex) {
           const tpl = existing.template;
           this.existingId = tpl.id;
           this.existingExample = tpl.example;
+          this.basedOn = tpl.basedOn || null;
+          this.isNewCopy = !!existing.isNew;
           this.kind = existing.kind;
           this.placement =
             tpl.scope === "value" ? (tpl.valueId ? "only" : "every") : tpl.scope;
@@ -452,6 +484,8 @@ function mountEditor(Vue, Codex) {
         } else {
           this.existingId = null;
           this.existingExample = null;
+          this.basedOn = null;
+          this.isNewCopy = false;
           this.kind = "query";
           this.placement = target.scope === "value" ? "every" : target.scope;
           this.propertyIdsText = target.propertyId || "";
@@ -613,18 +647,32 @@ function mountEditor(Vue, Codex) {
         if (this.errors.length) return;
         const tpl = this.draft;
         const kind = this.kind;
-        const replacing = this.existingId;
+        const replacing = this.isNewCopy ? null : this.existingId;
+        const basedOn = this.basedOn;
         this.persist(
           function (config) {
-            removeTemplate(config, replacing);
+            if (replacing) removeTemplate(config, replacing);
+            // Saved from two tabs: keep one copy per built-in.
+            if (basedOn) {
+              const other = findOverride(config, basedOn);
+              if (other) removeTemplate(config, other.template.id);
+            }
             (kind === "query" ? config.queries : config.links).push(tpl);
           },
-          (replacing ? "Edit button: " : "Add button: ") + tpl.title,
-          replacing ? "Button saved." : "Button added.",
+          (basedOn ? "Modify built-in button: " : replacing ? "Edit button: " : "Add button: ") + tpl.title,
+          replacing || basedOn ? "Button saved." : "Button added.",
         );
       },
       remove: function () {
         const id = this.existingId;
+        if (this.basedOn) {
+          this.persist(
+            (config) => removeTemplate(config, id),
+            "Revert built-in button: " + this.basedOn,
+            "Reverted to the built-in button.",
+          );
+          return;
+        }
         this.persist((config) => removeTemplate(config, id), "Delete button: " + this.title, "Button deleted.");
       },
       persist: function (mutate, summary, message) {
@@ -647,7 +695,7 @@ function mountEditor(Vue, Codex) {
       <cdx-dialog
         v-model:open="open"
         class="usefulqueries-editor"
-        :title="existingId ? 'Edit button' : 'Add a button'"
+        :title="basedOn ? 'Edit built-in button' : existingId ? 'Edit button' : 'Add a button'"
         :subtitle="'Shown ' + where"
         :use-close-button="true"
         :primary-action="primaryAction"
@@ -807,7 +855,24 @@ function mountEditor(Vue, Codex) {
         </cdx-message>
         <cdx-message v-if="saveError" type="error">{{ saveError }}</cdx-message>
 
-        <section v-if="existingId" class="uq-row">
+        <cdx-message v-if="basedOn" type="notice">
+          You are editing your own copy of the built-in button <code>{{ basedOn }}</code>. Once saved, it replaces
+          the built-in for you; revert any time to get the original back.
+        </cdx-message>
+
+        <section v-if="existingId && basedOn && !isNewCopy" class="uq-row">
+          <a v-if="suggestUrl" :href="suggestUrl" target="_blank" rel="noopener noreferrer">Suggest this change for everyone ↗</a>
+          <span style="flex: 1;"></span>
+          <template v-if="!confirmDelete">
+            <cdx-button action="destructive" weight="quiet" @click="confirmDelete = true">Revert to built-in</cdx-button>
+          </template>
+          <template v-else>
+            <span>Discard your changes to “{{ title }}”?</span>
+            <cdx-button action="destructive" weight="primary" :disabled="saving" @click="remove">Revert</cdx-button>
+            <cdx-button @click="confirmDelete = false">Keep</cdx-button>
+          </template>
+        </section>
+        <section v-else-if="existingId && !basedOn" class="uq-row">
           <a v-if="suggestUrl" :href="suggestUrl" target="_blank" rel="noopener noreferrer">Suggest this button for everyone ↗</a>
           <span style="flex: 1;"></span>
           <template v-if="!confirmDelete">

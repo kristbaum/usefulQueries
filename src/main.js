@@ -15,9 +15,10 @@ let _userConfig = null;
  */
 function applyUserConfig(config) {
   _userConfig = config;
+  const replaced = overriddenIds(config);
   setActiveTemplates(
-    mergeTemplates(USEFUL_QUERIES, config.queries, config.disabled),
-    mergeTemplates(USEFUL_LINKS, config.links, config.disabled),
+    mergeTemplates(USEFUL_QUERIES, config.queries, config.disabled, replaced),
+    mergeTemplates(USEFUL_LINKS, config.links, config.disabled, replaced),
   );
   if (_page.entityData) renderButtons();
 }
@@ -106,11 +107,16 @@ function processWikibaseEntityPage() {
 
       if (canConfigure()) {
         addItemPortletLinks();
-        // Deep link from the settings page: ?usefulqueries-edit=<id>
+        // Deep link from the settings page: ?usefulqueries-edit=<id>, the id
+        // of one of the user's buttons or of a built-in (edited as a copy).
         const editId = mw.util.getParamValue("usefulqueries-edit");
         if (editId && _userConfig) {
-          const kind = _userConfig.queries.some((t) => t.id === editId) ? "query" : "link";
-          openTemplateEditor(null, { kind, id: editId });
+          if (BUILTIN_IDS.includes(editId)) {
+            openBuiltinEditor(editId);
+          } else {
+            const kind = _userConfig.queries.some((t) => t.id === editId) ? "query" : "link";
+            openTemplateEditor(null, { kind, id: editId });
+          }
         }
       }
     });

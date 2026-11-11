@@ -30,7 +30,7 @@ Open it from the Tools menu (''usefulQueries settings'') or go to [[Special:Blan
 ; Your buttons
 : Every button you made. ''Edit on Q…'' opens the button's example item with the editor already open. ''Suggest for everyone'' opens a pre-filled GitHub issue, so the button can be added to the script for all users. ''Delete'' removes it, after asking you to confirm.
 ; Built-in buttons
-: Every button that ships with the script, grouped by where it appears, with a switch to show or hide it. ''see it on Q…'' opens an item where the button appears. Buttons added in a later release are marked '''new'''. ''Show all'' and ''Hide all'' change every switch at once.
+: Every button that ships with the script, grouped by where it appears, with a switch to show or hide it. ''see it on Q…'' opens an item where the button appears. ''Edit'' opens the editor on that item with a copy of the button. Once saved, your copy replaces the built-in for you (it is stored on your config page with <code>"basedOn"</code> set to the built-in's id) and the button is marked '''modified'''. ''Revert'' deletes your copy and brings the original back. Hiding a modified button hides your copy too. Buttons added in a later release are marked '''new'''. ''Show all'' and ''Hide all'' change every switch at once.
 ; Import from another user
 : Enter a username to see the buttons that person made, tick the ones you want and choose ''Add selected''. You get a copy: later changes on their side don't reach you.
 ; Save
@@ -47,7 +47,7 @@ On any item, choose ''usefulQueries: edit buttons'' in the Tools menu. Choose it
 |-
 | '''✕''' || after every built-in button || Hides that built-in button for you. It is saved immediately; bring it back on the settings page
 |-
-| '''✎''' || after every button you made || Opens the editor for that button
+| '''✎''' || after every button || Opens the editor for that button. For a built-in it edits your own copy, which replaces the built-in once saved; ''Revert to built-in'' in the dialog (or ''Revert'' on the settings page) deletes the copy again
 |}
 
 The '''+''' appears in these places:

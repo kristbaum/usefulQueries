@@ -2,11 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   emptyConfig,
+  findOverride,
   generalizeQuery,
   importTemplates,
   keepSkipped,
+  makeOverride,
   makeTemplateId,
   mergeTemplates,
+  overriddenIds,
   parseUserConfig,
   queryFromServiceUrl,
   removeTemplate,
@@ -222,4 +225,60 @@ test("keepSkipped puts invalid entries back unless their id is taken", () => {
   assert.deepEqual(config.queries.map((t) => (typeof t === "string" ? t : t.id)), ["u_fixed", "u_stillBroken", "junk"]);
   assert.equal(config.queries[0].broken, undefined);
   assert.equal(keepSkipped(config, undefined), config);
+});
+
+test("a modified built-in is a user template with basedOn", () => {
+  const override = userQuery({ id: "u_a", basedOn: "a" });
+  const { config, errors } = validateUserConfig({ queries: [override] }, ["a"]);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(overriddenIds(config), ["a"]);
+  assert.deepEqual(findOverride(config, "a"), { kind: "query", template: override });
+  assert.equal(findOverride(config, "b"), null);
+  const again = parseUserConfig(serializeConfig(config), ["a"]);
+  assert.equal(again.config.queries[0].basedOn, "a");
+});
+
+test("basedOn must be a string and used once", () => {
+  const { config, errors } = validateUserConfig(
+    {
+      queries: [
+        userQuery({ id: "u_a", basedOn: "a" }),
+        userQuery({ id: "u_a2", basedOn: "a" }),
+        userQuery({ id: "u_x", basedOn: 5 }),
+      ],
+    },
+    ["a"],
+  );
+  assert.deepEqual(config.queries.map((t) => t.id), ["u_a"]);
+  assert.equal(errors.length, 2);
+});
+
+test("a modified built-in replaces it, and hides with it", () => {
+  const builtins = [
+    { id: "a", template: "x" },
+    { id: "b", template: "y" },
+  ];
+  const user = [userQuery({ id: "u_a", basedOn: "a" })];
+  assert.deepEqual(mergeTemplates(builtins, user, [], ["a"]).map((t) => t.id), ["b", "u_a"]);
+  assert.deepEqual(mergeTemplates(builtins, user, ["a"], ["a"]).map((t) => t.id), ["b"]);
+});
+
+test("makeOverride copies a built-in into JSON form with a fresh id", () => {
+  const builtin = { id: "a", scope: "entity", template: "L1\nL2", emoji: "x", title: "T" };
+  const copy = makeOverride(builtin, ["a", "u_a"]);
+  assert.equal(copy.id, "u_a2");
+  assert.equal(copy.basedOn, "a");
+  assert.deepEqual(copy.template, ["L1", "L2"]);
+  assert.equal(builtin.template, "L1\nL2");
+});
+
+test("imports drop basedOn; suggestions of a modified built-in target its file", () => {
+  const next = importTemplates(emptyConfig(), [{ kind: "query", template: userQuery({ id: "u_a", basedOn: "a" }) }], ["a"]);
+  assert.equal(next.queries[0].basedOn, undefined);
+  const body = decodeURIComponent(
+    suggestionIssueUrl(userQuery({ id: "u_a", basedOn: "a" }), "query", "https://x").split("&body=")[1],
+  );
+  assert.match(body, /File: `templates\/queries\/a\.json`/);
+  assert.match(body, /"id": "a"/);
+  assert.doesNotMatch(body, /basedOn/);
 });

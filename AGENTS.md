@@ -122,7 +122,9 @@ a ready SPARQL term; the old names (`{itemQid}`, `{valueQid}`, …) are rejected
 - **Per-user config:** logged-in users' choices live on `User:<name>/<configName>.json`
   (`configName` defaults to the build's base name, e.g. `usefulQueries`). It holds
   `disabled` (built-in ids to hide), `seen`, and `queries`/`links` in the same JSON
-  form as template files. Built-in ids must therefore be unique and stable —
+  form as template files. A user entry with `"basedOn": "<builtin id>"` is the user's
+  modified copy of that built-in: it replaces it (`overriddenIds()`/`mergeTemplates()`),
+  is hidden with it, and deleting it reverts. `basedOn` is allowed only on config pages. Built-in ids must therefore be unique and stable —
   renaming one un-hides it for everyone who hid it. A broken config page never
   breaks the script: invalid entries are skipped with a notice.
 - The config is loaded before the first render; `applyUserConfig()` rebuilds the

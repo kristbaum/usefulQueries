@@ -295,12 +295,15 @@ function mountButtons() {
         add: function (b) {
           openTemplateEditor(b.target, null);
         },
-        editOrHide: function (b) {
+        edit: function (b) {
           if (b.isUser) {
             openTemplateEditor(null, b.ref);
           } else {
-            hideBuiltinButton(b.ref, b.title);
+            openBuiltinEditor(b.ref.id);
           }
+        },
+        hide: function (b) {
+          hideBuiltinButton(b.ref, b.title);
         },
       },
       template: `
@@ -334,11 +337,19 @@ function mountButtons() {
               <span v-if="editMode && b.ref" class="usefulqueries-edit">
                 <cdx-button
                   weight="quiet"
-                  :action="b.isUser ? 'progressive' : 'destructive'"
-                  :aria-label="b.isUser ? 'Edit this button' : 'Hide this button'"
-                  :title="b.isUser ? 'Edit this button' : 'Hide this built-in button (bring it back in usefulQueries settings)'"
-                  @click="editOrHide(b)"
-                >{{ b.isUser ? "✎" : "✕" }}</cdx-button>
+                  action="progressive"
+                  :aria-label="b.isUser ? 'Edit this button' : 'Edit your own copy of this built-in button'"
+                  :title="b.isUser ? 'Edit this button' : 'Edit your own copy of this built-in button (revert any time)'"
+                  @click="edit(b)"
+                >✎</cdx-button>
+                <cdx-button
+                  v-if="!b.isUser"
+                  weight="quiet"
+                  action="destructive"
+                  aria-label="Hide this button"
+                  title="Hide this built-in button (bring it back in usefulQueries settings)"
+                  @click="hide(b)"
+                >✕</cdx-button>
               </span>
             </teleport>
           </template>

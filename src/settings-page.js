@@ -170,10 +170,15 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
           .filter((g) => g.items.length);
       },
       own: function () {
+        // Modified built-ins are listed with their built-in instead.
+        const isOverride = (t) => BUILTIN_IDS.includes(t.basedOn);
         return [
-          ...this.config.queries.map((t) => ({ kind: "query", t })),
-          ...this.config.links.map((t) => ({ kind: "link", t })),
+          ...this.config.queries.filter((t) => !isOverride(t)).map((t) => ({ kind: "query", t })),
+          ...this.config.links.filter((t) => !isOverride(t)).map((t) => ({ kind: "link", t })),
         ];
+      },
+      modifiedCount: function () {
+        return overriddenIds(this.config).filter((id) => BUILTIN_IDS.includes(id)).length;
       },
       dirty: function () {
         return serializeConfig(this.normalized()) !== this.savedText || !this.exists;
@@ -235,6 +240,24 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
       },
       removeOwn: function (entry) {
         removeTemplate(this.config, entry.t.id);
+        this.confirmDelete = null;
+      },
+      /** The user's modified copy of a built-in, or null. */
+      override: function (id) {
+        return findOverride(this.config, id);
+      },
+      /** What to show for a built-in: the user's copy if there is one. */
+      shown: function (b) {
+        const o = this.override(b.t.id);
+        return o ? { kind: o.kind, t: o.template } : b;
+      },
+      builtinEditUrl: function (b) {
+        const o = this.override(b.t.id);
+        return itemPageUrl(withAnchor(o ? o.template : b.t), { "usefulqueries-edit": b.t.id });
+      },
+      revert: function (b) {
+        const o = this.override(b.t.id);
+        if (o) removeTemplate(this.config, o.template.id);
         this.confirmDelete = null;
       },
       loadImport: function () {
@@ -344,27 +367,45 @@ function mountSettingsApp(Vue, Codex, mountPoint, loaded, labels) {
           <cdx-button @click="setAll(true)">Show all</cdx-button>
           <cdx-button @click="setAll(false)">Hide all</cdx-button>
           <span class="uq-meta" v-if="hiddenCount">{{ hiddenCount }} hidden</span>
+          <span class="uq-meta" v-if="modifiedCount">{{ modifiedCount }} modified</span>
         </div>
+        <p class="uq-meta">
+          Editing a built-in button saves your own copy of it on your config page. The copy replaces the
+          built-in for you; “Revert” deletes it and brings the original back.
+        </p>
         <template v-for="g in groups" :key="g.scope">
           <h3>{{ g.heading }}</h3>
           <ul class="uq-list">
             <li v-for="b in g.items" :key="b.t.id" class="uq-item">
-              <span class="uq-emoji">{{ b.t.emoji }}</span>
+              <span class="uq-emoji">{{ shown(b).t.emoji }}</span>
               <div class="uq-body">
                 <div>
-                  {{ title(b.t) }}
-                  <span class="uq-badge">{{ b.kind === 'query' ? 'Query' : 'Link' }}</span>
+                  {{ title(shown(b).t) }}
+                  <span class="uq-badge">{{ shown(b).kind === 'query' ? 'Query' : 'Link' }}</span>
+                  <span v-if="override(b.t.id)" class="uq-badge" style="color: #ac6600;"
+                    :title="'Your copy (' + override(b.t.id).template.id + ') replaces the built-in'">modified</span>
                   <span v-if="isNew(b.t.id)" class="uq-badge" style="color: #36c;">new</span>
                 </div>
                 <div class="uq-meta">
-                  Shown for {{ describe(b.t) }}
-                  <template v-if="exampleUrl(b.t)"> · <a :href="exampleUrl(b.t)">see it on {{ b.t.example }}</a></template>
+                  Shown for {{ describe(shown(b).t) }}
+                  <template v-if="exampleUrl(shown(b).t)"> · <a :href="exampleUrl(shown(b).t)">see it on {{ shown(b).t.example }}</a></template>
+                  <template v-if="override(b.t.id)"> · built-in: {{ b.t.emoji }} {{ title(b.t) }}</template>
                 </div>
               </div>
               <div class="uq-actions">
+                <template v-if="confirmDelete !== 'revert:' + b.t.id">
+                  <a :href="builtinEditUrl(b)">Edit</a>
+                  <cdx-button v-if="override(b.t.id)" action="destructive" weight="quiet"
+                    @click="confirmDelete = 'revert:' + b.t.id">Revert</cdx-button>
+                </template>
+                <template v-else>
+                  <span>Discard your changes?</span>
+                  <cdx-button action="destructive" weight="primary" @click="revert(b)">Revert</cdx-button>
+                  <cdx-button @click="confirmDelete = null">Keep</cdx-button>
+                </template>
                 <cdx-toggle-switch
                   :model-value="isOn(b.t.id)"
-                  :aria-label="(isOn(b.t.id) ? 'Hide ' : 'Show ') + b.t.title"
+                  :aria-label="(isOn(b.t.id) ? 'Hide ' : 'Show ') + shown(b).t.title"
                   @update:model-value="setOn(b.t.id, $event)"
                 ></cdx-toggle-switch>
               </div>

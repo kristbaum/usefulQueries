@@ -14,6 +14,11 @@ export const CONFIG_VERSION = 1;
 // Prefix for ids of user-made templates, so they never collide with built-ins.
 export const USER_ID_PREFIX = "u_";
 
+// Field of a user template that marks it as the user's modified copy of a
+// built-in: it holds the built-in's id, and the copy replaces that built-in.
+// Deleting the copy reverts to the built-in. Only allowed on config pages.
+export const BASED_ON_FIELD = "basedOn";
+
 /**
  * A fresh config. `seen` lists the built-in ids the user has been shown, so a
  * built-in added in a later release can be flagged as new on the settings page.
@@ -69,6 +74,7 @@ export function validateUserConfig(raw, builtinIds = []) {
   }
 
   const usedIds = new Set();
+  const usedBasedOn = new Set();
   for (const [field, kind] of [
     ["queries", "query"],
     ["links", "link"],
@@ -81,7 +87,22 @@ export function validateUserConfig(raw, builtinIds = []) {
     raw[field].forEach((tpl, i) => {
       const where =
         tpl && typeof tpl.id === "string" ? `${field}[${i}] "${tpl.id}"` : `${field}[${i}]`;
-      const problems = validateTemplate(tpl, kind, { sparqlChecks: false });
+      const hasBasedOn =
+        tpl !== null && typeof tpl === "object" && !Array.isArray(tpl) && Object.hasOwn(tpl, BASED_ON_FIELD);
+      const basedOn = hasBasedOn ? tpl[BASED_ON_FIELD] : undefined;
+      let bare = tpl;
+      if (hasBasedOn) {
+        bare = { ...tpl };
+        delete bare[BASED_ON_FIELD];
+      }
+      const problems = validateTemplate(bare, kind, { sparqlChecks: false });
+      if (hasBasedOn) {
+        if (typeof basedOn !== "string" || !basedOn) {
+          problems.push(`"${BASED_ON_FIELD}" must be the id of a built-in button`);
+        } else if (usedBasedOn.has(basedOn)) {
+          problems.push(`"${BASED_ON_FIELD}" ${JSON.stringify(basedOn)} is used twice`);
+        }
+      }
       if (!problems.length) {
         if (builtinIds.includes(tpl.id)) {
           problems.push(`"id" ${JSON.stringify(tpl.id)} is a built-in id — pick another`);
@@ -94,6 +115,7 @@ export function validateUserConfig(raw, builtinIds = []) {
         skipped[field].push(tpl);
       } else {
         usedIds.add(tpl.id);
+        if (hasBasedOn) usedBasedOn.add(basedOn);
         config[field].push(tpl);
       }
     });
@@ -174,17 +196,60 @@ export function toRuntimeTemplate(tpl) {
 }
 
 /**
- * The templates that should be active: built-ins minus the disabled ones,
- * followed by the user's own.
+ * Ids of the built-ins the user has replaced with a modified copy, across both
+ * kinds (a copy may turn a query into a link).
+ * @param {object} config
+ * @returns {string[]}
+ */
+export function overriddenIds(config) {
+  return [...config.queries, ...config.links]
+    .map((t) => t[BASED_ON_FIELD])
+    .filter((id) => typeof id === "string");
+}
+
+/**
+ * The user's modified copy of a built-in, if there is one.
+ * @param {object} config
+ * @param {string} builtinId
+ * @returns {{kind: "query"|"link", template: object}|null}
+ */
+export function findOverride(config, builtinId) {
+  const query = config.queries.find((t) => t[BASED_ON_FIELD] === builtinId);
+  if (query) return { kind: "query", template: query };
+  const link = config.links.find((t) => t[BASED_ON_FIELD] === builtinId);
+  return link ? { kind: "link", template: link } : null;
+}
+
+/**
+ * A built-in in JSON form (SPARQL as lines), ready to become a modified copy:
+ * a fresh user id and `basedOn` pointing back at the original.
+ * @param {object} builtin - Built-in template (runtime form)
+ * @param {Iterable<string>} existingIds
+ */
+export function makeOverride(builtin, existingIds) {
+  const taken = new Set(existingIds);
+  let id = USER_ID_PREFIX + builtin.id;
+  for (let n = 2; taken.has(id); n++) id = `${USER_ID_PREFIX}${builtin.id}${n}`;
+  const copy = JSON.parse(JSON.stringify(builtin));
+  if (typeof copy.template === "string") copy.template = copy.template.split("\n");
+  return { ...copy, id, [BASED_ON_FIELD]: builtin.id };
+}
+
+/**
+ * The templates that should be active: built-ins minus the disabled and the
+ * replaced ones, followed by the user's own. A modified copy of a built-in is
+ * hidden together with its original when the user switches that one off.
  * @param {object[]} builtins - Built-in templates (runtime form)
  * @param {object[]} userTemplates - User templates (JSON form)
  * @param {string[]} disabled - Built-in ids the user switched off
+ * @param {string[]} [replaced] - Built-in ids with a modified copy (overriddenIds())
  */
-export function mergeTemplates(builtins, userTemplates, disabled) {
+export function mergeTemplates(builtins, userTemplates, disabled, replaced = []) {
   const off = new Set(disabled);
+  const gone = new Set(replaced);
   return [
-    ...builtins.filter((t) => !off.has(t.id)),
-    ...userTemplates.map(toRuntimeTemplate),
+    ...builtins.filter((t) => !off.has(t.id) && !gone.has(t.id)),
+    ...userTemplates.filter((t) => !off.has(t[BASED_ON_FIELD])).map(toRuntimeTemplate),
   ];
 }
 
@@ -317,7 +382,11 @@ export function importTemplates(config, picked, builtinIds = []) {
       id = makeTemplateId(template.title, taken);
     }
     taken.add(id);
-    (kind === "query" ? next.queries : next.links).push({ ...template, id });
+    // Someone else's modified built-in arrives as a button of its own, so it
+    // never silently replaces a built-in (or the user's own copy of it).
+    const copy = { ...template, id };
+    delete copy[BASED_ON_FIELD];
+    (kind === "query" ? next.queries : next.links).push(copy);
   }
   return next;
 }
@@ -329,21 +398,26 @@ export function importTemplates(config, picked, builtinIds = []) {
  * @param {string} repoUrl - e.g. https://github.com/kristbaum/usefulQueries
  */
 export function suggestionIssueUrl(tpl, kind, repoUrl) {
-  const file = `templates/${kind === "query" ? "queries" : "links"}/${tpl.id.replace(
-    new RegExp(`^${USER_ID_PREFIX}`),
-    "",
-  )}.json`;
+  // A modified built-in is proposed as a change to the built-in's own file.
+  const basedOn = typeof tpl[BASED_ON_FIELD] === "string" ? tpl[BASED_ON_FIELD] : null;
+  const shipped = { ...tpl, id: basedOn || tpl.id };
+  delete shipped[BASED_ON_FIELD];
+  const fileId = basedOn || tpl.id.replace(new RegExp(`^${USER_ID_PREFIX}`), "");
+  const file = `templates/${kind === "query" ? "queries" : "links"}/${fileId}.json`;
   const body = [
-    `Suggested ${kind} button from the usefulQueries editor.`,
+    basedOn
+      ? `Suggested change to the built-in ${kind} button "${basedOn}" from the usefulQueries editor.`
+      : `Suggested ${kind} button from the usefulQueries editor.`,
     "",
-    `Proposed file: \`${file}\``,
+    `${basedOn ? "File" : "Proposed file"}: \`${file}\``,
     "",
     "```json",
-    JSON.stringify(tpl, null, 2),
+    JSON.stringify(shipped, null, 2),
     "```",
   ].join("\n");
+  const title = basedOn ? `Change ${kind}: ${tpl.title}` : `New ${kind}: ${tpl.title}`;
   return (
-    `${repoUrl}/issues/new?title=${encodeURIComponent(`New ${kind}: ${tpl.title}`)}` +
+    `${repoUrl}/issues/new?title=${encodeURIComponent(title)}` +
     `&body=${encodeURIComponent(body)}`
   );
 }
